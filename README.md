@@ -24,6 +24,14 @@ The types are generated from the [published OpenAPI document](https://0xinsider.
 npm install @0xinsider/sdk
 ```
 
+The first npm release is pending. Until it lands, build the package from this repository and install it from the folder (npm 12 refuses git dependencies by default, so `npm install github:...` does not work):
+
+```bash
+git clone https://github.com/0xinsider/0xinsider-node
+(cd 0xinsider-node && npm ci && npm run build)
+npm install ./0xinsider-node   # from your project, with the path to the clone
+```
+
 The package is ESM-only (`import`, not `require`) and ships its own type declarations.
 
 Try it with no key against the [sandbox](#sandbox):
@@ -491,7 +499,7 @@ Compare `OPENAPI_SHA256` with `curl -s https://0xinsider.com/api/v1/openapi.json
 
 - Python SDK: `pip install 0xinsider` ([0xinsider/0xinsider-python](https://github.com/0xinsider/0xinsider-python))
 - Go SDK: `go get github.com/0xinsider/0xinsider-go` ([0xinsider/0xinsider-go](https://github.com/0xinsider/0xinsider-go))
-- Rust SDK: `cargo add oxinsider` ([0xinsider/0xinsider-rust](https://github.com/0xinsider/0xinsider-rust))
+- Rust SDK: crate `oxinsider` ([0xinsider/0xinsider-rust](https://github.com/0xinsider/0xinsider-rust); until its first crates.io release, `cargo add oxinsider --git https://github.com/0xinsider/0xinsider-rust`)
 - CLI and MCP server: `npm install --global @0xinsider/mcp` or `brew install 0xinsider/tap/oxinsider`
 - Remote MCP server: `https://api.0xinsider.com/api/v1/mcp`
 - Agent Plugin and skills: [0xinsider/agent-plugin](https://github.com/0xinsider/agent-plugin)
