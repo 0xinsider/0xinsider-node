@@ -2,7 +2,7 @@
  * SSE consumer for `GET /api/v1/stream`.
  *
  * The endpoint forwards the platform's live feed envelopes as Server-Sent
- * Events. Source of truth: the OpenAPI document -> paths./api/v1/stream.
+ * Events. Source of truth: `web/public/api/v1/openapi.json` -> paths./api/v1/stream.
  *
  * Wire format (per the spec's response description):
  *   - Each data frame is `id: <seq>\ndata: <json-envelope>\n\n`, where the JSON
@@ -98,9 +98,17 @@ export interface StreamOptions extends StreamFilters {
   /** Invoked once for the resync marker frame, if one is emitted. */
   onResync?: (marker: ResyncMarker) => void;
   /**
-   * Optional cursor object whose `seq` is updated to the last delivered
+   * Optional cursor object whose `seq` is updated to the last DELIVERED
    * envelope `seq` as frames arrive. Pass the same object back as
    * `lastEventId: cursor.seq` on reconnect to resume from where you left off.
+   *
+   * Received, not processed (#16247). It is written before the frame reaches
+   * your code, so it says the frame arrived and nothing about whether your
+   * handling of it succeeded: resuming from it after a handler failure skips
+   * that event. When losing an event would lose work, drive the stream with
+   * `consumeStreamCheckpointed`, whose `StreamCheckpoint` advances only after
+   * the handler and your durable write resolve, and keep this cursor for
+   * transport progress.
    */
   cursor?: { seq?: number };
   /**
@@ -546,7 +554,10 @@ function assertMaxRetryAfterMs(value: number): number {
  * - No request deadline applies, as with `streamFeed`.
  *
  * `options.cursor`, when passed, tracks the last delivered seq across every
- * connection.
+ * connection -- delivered, not processed (#16247). This loop resumes from it,
+ * so a consumer whose handler can fail should drive the stream with
+ * `consumeStreamCheckpointed` instead, which resumes from an acknowledged
+ * checkpoint and replays the event it failed on.
  *
  * @example
  * const controller = new AbortController();
@@ -641,6 +652,13 @@ function toSeq(value: number | string | undefined): number | undefined {
  * Callback-style stream consumer for environments where an async iterator is
  * awkward. Returns a promise that resolves when the stream ends (or rejects on
  * error / abort). Pass a `signal` to stop it.
+ *
+ * Delivery, not processing (#16247): `options.cursor` is written by
+ * `streamFeed` BEFORE the frame is yielded, so it has already moved past an
+ * event whose `onEvent` then throws. Reconnecting from it skips that event.
+ * For a consumer that must not lose work, use `consumeStreamCheckpointed`,
+ * which advances an acknowledged checkpoint only after the handler and your
+ * own durable write have both resolved.
  */
 export async function consumeStream(
   client: OxinsiderApiClient,
@@ -655,6 +673,353 @@ export async function consumeStream(
       await handlers.onEvent?.(frame.envelope, frame.seq);
     } else {
       await handlers.onResync?.(frame.marker, frame.seq);
+    }
+  }
+}
+
+/**
+ * An acknowledged processing checkpoint (#16247): the last `seq` whose
+ * handling COMPLETED, which is not the same thing as the last `seq` that
+ * arrived. `StreamOptions.cursor` is the received cursor -- transport
+ * progress, written before the frame is handed to you. This is the processed
+ * one, written after your handler and your own durable write have resolved.
+ *
+ * Own the object if you persist the checkpoint yourself: pass it in, read
+ * `seq` after the consumer returns or throws, and pass the stored value back
+ * as `lastEventId` when you resume in a later process.
+ */
+export interface StreamCheckpoint {
+  /** The last acknowledged sequence, or `undefined` until one is acknowledged. */
+  seq?: number;
+}
+
+/** What the checkpoint advanced past: a feed envelope, or a resync refresh. */
+export type StreamCheckpointReason = "event" | "resync";
+
+/**
+ * Which awaited step rejected: your event handler, your resync refresh, or
+ * your `onCheckpoint` durable write.
+ */
+export type StreamHandlerStage = "event" | "resync" | "checkpoint";
+
+/** The recovery state around one handler failure, as it is decided. */
+export interface StreamHandlerFailure {
+  /**
+   * The sequence whose processing failed; `undefined` only for a resync
+   * marker that carried no SSE id.
+   */
+  seq: number | undefined;
+  /** Which awaited step rejected. */
+  stage: StreamHandlerStage;
+  /** 1-based consecutive failures at this sequence. Resets on any success. */
+  attempt: number;
+  /** Whether the consumer will reconnect and replay, or throw next. */
+  willRetry: boolean;
+  /**
+   * The sequence the replay resumes AFTER, so the failed frame is delivered
+   * again while the server retains it. `undefined` means the replay attaches
+   * live and the failed frame is gone: that happens only when nothing has
+   * been acknowledged, no `lastEventId` was given, and the failing sequence
+   * is not a positive integer to step back from.
+   */
+  replayFrom: number | undefined;
+  /** The acknowledged checkpoint, which this failure did NOT advance. */
+  checkpoint: number | undefined;
+}
+
+/**
+ * `consumeStreamCheckpointed` gave up after `maxHandlerRetries` consecutive
+ * failures at the same sequence (#16247). `checkpoint` is the acknowledged
+ * sequence, still behind the failing one, and `replayFrom` is the point a
+ * later resume should pass as `lastEventId` to deliver the failed frame
+ * again while the server retains it. `cause` is the last rejection your
+ * handler produced.
+ */
+export class StreamHandlerFailedError extends Error {
+  readonly seq: number | undefined;
+  readonly stage: StreamHandlerStage;
+  readonly attempts: number;
+  readonly checkpoint: number | undefined;
+  readonly replayFrom: number | undefined;
+
+  constructor(
+    detail: {
+      seq: number | undefined;
+      stage: StreamHandlerStage;
+      attempts: number;
+      checkpoint: number | undefined;
+      replayFrom: number | undefined;
+    },
+    cause: unknown,
+  ) {
+    super(
+      `0xinsider stream handler failed ${String(detail.attempts)} time(s) at ${
+        detail.seq === undefined ? "a resync marker" : `seq ${String(detail.seq)}`
+      } (${detail.stage}); the acknowledged checkpoint is ${
+        detail.checkpoint === undefined ? "unset" : String(detail.checkpoint)
+      }`,
+      { cause },
+    );
+    this.name = "StreamHandlerFailedError";
+    this.seq = detail.seq;
+    this.stage = detail.stage;
+    this.attempts = detail.attempts;
+    this.checkpoint = detail.checkpoint;
+    this.replayFrom = detail.replayFrom;
+  }
+}
+
+/** Default for `CheckpointedStreamOptions.maxHandlerRetries`. */
+export const DEFAULT_MAX_HANDLER_RETRIES = 3;
+
+export interface CheckpointedStreamOptions extends ResilientStreamOptions {
+  /**
+   * Where the acknowledged checkpoint is written. Pass your own object to
+   * read it after the consumer returns; omit it and the consumer keeps one
+   * internally, which `onCheckpoint` still reports.
+   */
+  checkpoint?: StreamCheckpoint;
+  /**
+   * Consecutive failures at the SAME sequence tolerated before the consumer
+   * throws `StreamHandlerFailedError`. Each retry closes the connection and
+   * replays from the checkpoint after a jittered backoff (1 s to 30 s). `0`
+   * gives up on the first failure. Default `DEFAULT_MAX_HANDLER_RETRIES` (3).
+   */
+  maxHandlerRetries?: number;
+  /**
+   * Called on every handler failure with the recovery state, before the
+   * backoff and before any throw. It is the visible signal that work is being
+   * replayed rather than lost; it is not awaited and must not throw.
+   */
+  onHandlerError?: (error: unknown, failure: StreamHandlerFailure) => void;
+}
+
+export interface CheckpointedStreamHandlers {
+  /**
+   * Apply one feed envelope. Awaited: the connection is not read again until
+   * it settles. Reject to leave the checkpoint before this event.
+   */
+  onEvent: (envelope: FeedEnvelope, seq: number) => void | Promise<void>;
+  /**
+   * Refresh state after a resync marker. Awaited, so it is a real barrier:
+   * the checkpoint moves to the marker only once this resolves. Reject and
+   * the refresh is retried under the same bounded policy as an event.
+   */
+  onResync?: (marker: ResyncMarker, seq: number | null) => void | Promise<void>;
+  /**
+   * Persist the checkpoint. Awaited BEFORE the in-memory checkpoint advances,
+   * so a failed write leaves the checkpoint where it was and the event is
+   * replayed rather than lost.
+   */
+  onCheckpoint?: (
+    seq: number,
+    reason: StreamCheckpointReason,
+  ) => void | Promise<void>;
+}
+
+/**
+ * The resume point that replays `seq` itself when nothing has been
+ * acknowledged yet.
+ *
+ * `Last-Event-ID` is an EXCLUSIVE lower bound on the server: the replay
+ * window is `latest - requested` entries taken from the tail of the retained
+ * history, so a resume at `S - 1` delivers `S` onward and nothing older
+ * (`shared_feed_history_since`, `backend/crates/app-core/src/feed_publisher.rs`;
+ * `backend/src/api_v1/handlers/stream.rs` builds the plan from it, read
+ * 2026-09-22). Sequences are a cluster-wide integer counter, so nothing sits
+ * between `S - 1` and `S`. A non-integer or non-positive sequence gets no
+ * step-back: there is no id we can name that is certainly below it.
+ */
+function replayPointBefore(seq: number | undefined): number | undefined {
+  return seq !== undefined && Number.isInteger(seq) && seq >= 1
+    ? seq - 1
+    : undefined;
+}
+
+/**
+ * The stream consumer for work that must not be silently dropped (#16247):
+ * it separates the received cursor from an acknowledged processing
+ * checkpoint, and only the checkpoint decides where a reconnect resumes.
+ *
+ * Ordering, per frame, for `kind: "event"`:
+ *   1. `onEvent` is awaited. Nothing is read from the connection while it
+ *      runs, so a slow handler is backpressure on the socket, never a queue:
+ *      at most one frame is ever in flight and nothing is buffered on your
+ *      behalf.
+ *   2. `onCheckpoint(seq, "event")` is awaited -- your durable write.
+ *   3. Only then does `checkpoint.seq` become `seq`, and only then does the
+ *      next reconnect resume after it.
+ * A rejection at step 1 or 2 leaves the checkpoint BEFORE the event: the
+ * connection is closed, a jittered backoff runs, and the consumer reconnects
+ * from the checkpoint, which replays the unacknowledged event while the
+ * server retains it. `onHandlerError` reports each failure with its attempt
+ * number, the replay point and whether another attempt follows. After
+ * `maxHandlerRetries` consecutive failures at the same sequence it throws
+ * `StreamHandlerFailedError`, carrying the unadvanced checkpoint.
+ *
+ * A `resync` marker is the same barrier: `onResync` is awaited, then
+ * `onCheckpoint(seq, "resync")`, and an interrupted refresh commits nothing,
+ * so the recovery is retried instead of being recorded as done. (The
+ * fire-and-forget `StreamOptions.onResync` notification is not awaited and is
+ * not a barrier -- do not use it as one.)
+ *
+ * Delivery is AT-LEAST-ONCE. A replay re-delivers every unacknowledged frame,
+ * and a handler that succeeded but whose `onCheckpoint` write failed sees its
+ * event again. Deduplicate on `seq` (it is monotonic per cluster) or make the
+ * side effect idempotent; nothing here can promise exactly-once side effects.
+ *
+ * `options.cursor` is untouched in meaning: it still tracks the last
+ * DELIVERED seq, including frames whose handler later failed, and it rewinds
+ * when a replay re-delivers them. Read it for transport progress; never as
+ * proof that the work was done.
+ *
+ * Transport recovery, `Retry-After` handling, permanent 4xx and
+ * `StreamProtocolError` behave exactly as in `streamFeedResilient`, which
+ * this drives. `StreamReconnectsExhaustedError` and
+ * `StreamRetryDeferredError` surface unchanged; their `lastSeq` is the
+ * acknowledged checkpoint, because a reconnect can only happen between
+ * handlers. Aborting `signal` ends the consumer without throwing: a handler
+ * already running is awaited (it is not cancelled for you -- pass the same
+ * signal into your own work if you want that), and if it succeeds its
+ * checkpoint is committed before the consumer returns.
+ *
+ * @example
+ * const checkpoint = { seq: await loadCheckpoint() };
+ * await consumeStreamCheckpointed(client, {
+ *   onEvent: async (envelope, seq) => { await applyOnce(seq, envelope); },
+ *   onResync: async () => { await refetchCurrentState(); },
+ *   onCheckpoint: async (seq) => { await saveCheckpoint(seq); },
+ * }, {
+ *   event: ["WhaleTradesInserted"],
+ *   lastEventId: checkpoint.seq,
+ *   checkpoint,
+ *   signal: controller.signal,
+ *   onHandlerError: (error, failure) =>
+ *     console.warn("replaying", failure.seq, failure.attempt, failure.willRetry, error),
+ * });
+ */
+export async function consumeStreamCheckpointed(
+  client: OxinsiderApiClient,
+  handlers: CheckpointedStreamHandlers,
+  options: CheckpointedStreamOptions = {},
+): Promise<void> {
+  const {
+    checkpoint = {},
+    maxHandlerRetries = DEFAULT_MAX_HANDLER_RETRIES,
+    onHandlerError,
+    ...streamOptions
+  } = options;
+  if (!Number.isInteger(maxHandlerRetries) || maxHandlerRetries < 0) {
+    throw new Error(
+      `maxHandlerRetries must be a non-negative integer, got ${String(maxHandlerRetries)}`,
+    );
+  }
+  const signal = streamOptions.signal;
+  // The caller's received cursor, if they passed one. It keeps its delivery
+  // meaning: this consumer mirrors every frame into it and never reads it
+  // back as a resume point.
+  const received = streamOptions.cursor;
+  const initialLastEventId = toSeq(streamOptions.lastEventId);
+  // Where the next connection resumes. It starts at the acknowledged
+  // checkpoint (or the caller's `lastEventId`) and only ever moves to a
+  // sequence whose processing completed.
+  let resumeAfter = checkpoint.seq ?? initialLastEventId;
+  let failingSeq: number | undefined;
+  let failures = 0;
+
+  for (;;) {
+    if (signal?.aborted) return;
+    let pending:
+      | { error: unknown; stage: StreamHandlerStage; seq: number | undefined }
+      | undefined;
+    // A cursor private to this connection: `streamFeedResilient` reads it
+    // back as its own resume point across transport reconnects, so the
+    // caller's received cursor must never be handed to it -- that cursor has
+    // already moved past an unacknowledged event, and lending it would make
+    // the replay resume after the frame it exists to redeliver.
+    const delivered: { seq?: number } = { seq: resumeAfter };
+
+    for await (const frame of streamFeedResilient(client, {
+      ...streamOptions,
+      cursor: delivered,
+      lastEventId: resumeAfter,
+    })) {
+      if (received && delivered.seq !== undefined) received.seq = delivered.seq;
+
+      if (frame.kind === "event") {
+        try {
+          await handlers.onEvent(frame.envelope, frame.seq);
+        } catch (error: unknown) {
+          pending = { error, stage: "event", seq: frame.seq };
+          break;
+        }
+        try {
+          await handlers.onCheckpoint?.(frame.seq, "event");
+        } catch (error: unknown) {
+          pending = { error, stage: "checkpoint", seq: frame.seq };
+          break;
+        }
+        checkpoint.seq = frame.seq;
+        resumeAfter = frame.seq;
+      } else {
+        try {
+          await handlers.onResync?.(frame.marker, frame.seq);
+        } catch (error: unknown) {
+          pending = { error, stage: "resync", seq: frame.seq ?? undefined };
+          break;
+        }
+        if (frame.seq !== null) {
+          try {
+            await handlers.onCheckpoint?.(frame.seq, "resync");
+          } catch (error: unknown) {
+            pending = { error, stage: "checkpoint", seq: frame.seq };
+            break;
+          }
+          checkpoint.seq = frame.seq;
+          resumeAfter = frame.seq;
+        }
+      }
+      failures = 0;
+      failingSeq = undefined;
+      if (signal?.aborted) return;
+    }
+
+    // `streamFeedResilient` only ends without throwing when the signal was
+    // aborted, so a loop that ends with nothing pending is a clean stop.
+    if (!pending) return;
+
+    const failedSeq = pending.seq;
+    if (failures > 0 && failedSeq === failingSeq) {
+      failures += 1;
+    } else {
+      failingSeq = failedSeq;
+      failures = 1;
+    }
+    resumeAfter =
+      checkpoint.seq ?? initialLastEventId ?? replayPointBefore(failedSeq);
+    const willRetry = failures <= maxHandlerRetries;
+    onHandlerError?.(pending.error, {
+      seq: failedSeq,
+      stage: pending.stage,
+      attempt: failures,
+      willRetry,
+      replayFrom: resumeAfter,
+      checkpoint: checkpoint.seq,
+    });
+    if (!willRetry) {
+      throw new StreamHandlerFailedError(
+        {
+          seq: failedSeq,
+          stage: pending.stage,
+          attempts: failures,
+          checkpoint: checkpoint.seq,
+          replayFrom: resumeAfter,
+        },
+        pending.error,
+      );
+    }
+    if (!(await waitUnlessAborted(streamBackoffMs(failures), signal))) {
+      return;
     }
   }
 }

@@ -53,7 +53,11 @@ async function main(): Promise<void> {
   }
 
   // 3. Open a filtered SSE stream: only S-grade whale-trade frames. Abort after
-  //    a short demo window. cursor.seq tracks the resume point.
+  //    a short demo window. cursor.seq tracks the last DELIVERED seq -- it says
+  //    the frame arrived, never that handling it succeeded. A consumer that
+  //    must not drop work uses consumeStreamCheckpointed, whose checkpoint
+  //    advances only after the handler and the caller's own durable write
+  //    resolve (#16247).
   console.log("\nOpening filtered live stream (Ctrl-C to stop)...");
   const cursor: { seq?: number } = {};
   const controller = new AbortController();

@@ -1,11 +1,15 @@
 /**
  * Standalone 0xinsider API V1 client.
  *
- * The `API_CLIENT_OPERATIONS` table below IS the contract surface:
- * `scripts/check-drift.mjs` (`npm run check`, and `npm run check:live` against
- * the published document) asserts it equals the set of operations with a
- * `200` response in the OpenAPI document (`openapi.json`), so this package
- * cannot silently diverge from the spec.
+ * Ported from the app's original repo-owned client (`web/src/lib/api-client`,
+ * removed in #9060; this package is now the sole client implementation). The
+ * `API_CLIENT_OPERATIONS` table below IS the contract surface:
+ * `scripts/check-sdk-openapi-drift.mjs` asserts it equals the set of operations
+ * with a `200` response in `web/public/api/v1/openapi.json`, so this package
+ * cannot silently diverge from the spec. That enforcement used to be a vitest
+ * suite, which the repository does not run -- the table shipped three
+ * operations short before #9687 replaced it with the runnable script, and
+ * #11894 deleted the suite.
  *
  * Differences from the retired app client (intentional):
  *  - No `@/lib/api-contracts` import; the operation table is inlined so the
@@ -76,8 +80,8 @@ export interface ApiClientOperation {
 
 /**
  * The full V1 operation table. One row per OpenAPI operation that returns a
- * `200`. Kept in lockstep with the OpenAPI document by
- * `scripts/check-drift.mjs`. Do not add a row without a matching
+ * `200`. Kept in lockstep with `web/public/api/v1/openapi.json` by
+ * `scripts/check-sdk-openapi-drift.mjs`. Do not add a row without a matching
  * spec operation, and do not remove a spec operation without removing its row.
  */
 export const API_CLIENT_OPERATIONS = [
@@ -136,9 +140,9 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "getTraderCategoryRecords",
     auth: "bearer",
   },
-  // Pre-existing op-table drift (#6915): these 200-returning openapi
-  // operations were never mirrored into the client table. Added so the table
-  // stays contract-complete against the spec. All
+  // Pre-existing op-table drift (surfaced by test/drift.test.ts, #6915): these
+  // 200-returning openapi operations were never mirrored into the client table.
+  // Added so the table stays contract-complete against the checked-in spec. All
   // inherit the global `bearerAuth` security (no per-op `security: []` override,
   // and none are in the backend public-path allowlist), so auth is "bearer".
   // The drift check intentionally excludes the redirect-only routes (openapi-spec
@@ -174,8 +178,8 @@ export const API_CLIENT_OPERATIONS = [
     auth: "bearer",
   },
   // Pre-existing gap, fixed here (#7209): the route has shipped in openapi.json,
-  // llms-full.txt, agents.md, and the discovery doc, but never in the SDK table,
-  // so SDK users had no typed method for it.
+  // llms-full.txt, agents.md, and the discovery doc, but never in the SDK table --
+  // so `drift.test.ts` was RED on main and SDK users had no typed method for it.
   {
     method: "GET",
     path: "/api/v1/sports-edge-signals",
@@ -462,7 +466,9 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/pick-of-the-day/ledger",
     operationId: "getPickOfTheDayLedger",
-    auth: "bearer",
+    // Keyless since #16459: the commitment ledger is published to be
+    // republished, so a client can read it with no key configured.
+    auth: "none",
   },
 ] as const satisfies readonly ApiClientOperation[];
 
@@ -473,8 +479,8 @@ export type ApiOperationId =
  * The writes the API replays under `Idempotency-Key`: a second request with
  * the same key and the same body returns the first result instead of
  * repeating the write. Source of truth: the operations declaring the
- * `Idempotency-Key` header parameter in the OpenAPI document,
- * pinned by `scripts/check-drift.mjs` (#16182). Only these are
+ * `Idempotency-Key` header parameter in `web/public/api/v1/openapi.json`,
+ * pinned by `scripts/check-sdk-openapi-drift.mjs` (#16182). Only these are
  * retried on a transport or 5xx failure, and only when a key is set; a key on
  * any other operation is refused before the request, since the server would
  * ignore it and a retry could repeat the side effect (`verifyWebhook` sends
@@ -1033,8 +1039,8 @@ export type ApiClientResponse<T> = ApiEnvelope<T> | ApiNotModifiedResponse;
 // --- Operation-bound types (#16136) ---
 //
 // Every convenience method, and `call` / `list` given a literal operation id,
-// derive their path, query, body and result from `src/schema.ts`, which
-// `scripts/generate.mjs` writes from `openapi.json`. Nothing below
+// derive their path, query, body and result from `sdk/src/schema.ts`, which
+// `scripts/generate-sdk-types.mjs` writes from `openapi.json`. Nothing below
 // restates a field the document declares: a spec change regenerates the
 // schema and the drift gate fails until it does, so an editor type can no
 // longer advertise a field the route does not serve.
@@ -1125,7 +1131,7 @@ export interface ListParams {
   [key: string]: ApiQueryValue;
 }
 
-/** `GET /api/v1/leaderboard` -> parameters -> strategy (`openapi.json`). */
+/** `GET /api/v1/leaderboard` -> parameters -> strategy (`web/public/api/v1/openapi.json`). */
 export const LEADERBOARD_STRATEGIES = [
   "accumulator",
   "algo_trader",

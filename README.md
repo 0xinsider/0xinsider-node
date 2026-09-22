@@ -224,15 +224,20 @@ if (previousEtag) {
 `OxinsiderApiClient.sandbox()` talks to `https://0xinsider.com/sandbox`, the second server in the OpenAPI document: no credential, no production data, every documented operation answered with its example or a deterministic sample, and `X-Oxi-Sandbox: true` on every response, which the client lifts to `meta.sandbox`. Every method works without a key, so you can write the integration before you have one. Add `sandbox_status` to a query to get one of the errors the operation documents, as the typed class it would be in production.
 
 ```ts
-import { OxinsiderApiClient, RateLimitedError } from "@0xinsider/sdk";
+import { OxinsiderApiClient, RateLimitedError, type Trader } from "@0xinsider/sdk";
 
 const sandbox = OxinsiderApiClient.sandbox(); // no apiKey
 
 const board = await sandbox.listLeaderboard({ limit: 5 });
-console.log(board.data, board.meta?.sandbox); // [...], true
+console.log(board.data, board.meta.sandbox); // [...], true
 
+// sandbox_status is not in the route's documented query, so this call takes
+// the loose form: an explicit type argument instead of the typed method.
 try {
-  await sandbox.getTrader("swisstony", { query: { sandbox_status: 429 } });
+  await sandbox.call<Trader>("getTrader", {
+    path: { address: "swisstony" },
+    query: { sandbox_status: 429 },
+  });
 } catch (err) {
   if (err instanceof RateLimitedError) console.log(err.retryAfterSeconds); // 60
 }
@@ -309,7 +314,7 @@ const cursor: { seq?: number } = {};
 for await (const frame of streamFeed(client, {
   event: ["WhaleTradesInserted"],
   min_grade: "S",
-  cursor, // cursor.seq tracks the last delivered seq for resume
+  cursor, // cursor.seq tracks the last DELIVERED seq: transport progress, not completed work
   onResync: (m) => console.log("resync:", m.completeness?.reason),
 })) {
   if (frame.kind === "event") {
@@ -355,6 +360,39 @@ try {
 - **No deadline:** `timeoutMs` never applies to the stream. Every connection's body reader is released when it ends.
 
 A `consumeStream(client, { onEvent, onResync }, options)` callback variant is also exported.
+
+#### Acknowledged checkpoints
+
+`cursor.seq` is written before a frame reaches your code, so it says the frame arrived and nothing about whether you finished with it. A handler that throws, then a reconnect from that cursor, resumes *after* the event you failed on. When losing an event would lose work, drive the stream with `consumeStreamCheckpointed()`: it keeps the received cursor for transport progress and adds a separate `StreamCheckpoint` that advances only after your handler and your own durable write have both resolved.
+
+```ts
+import { consumeStreamCheckpointed, StreamHandlerFailedError } from "@0xinsider/sdk";
+
+const checkpoint = { seq: await loadCheckpoint() }; // undefined on a cold start
+try {
+  await consumeStreamCheckpointed(client, {
+    onEvent: async (envelope, seq) => { await applyOnce(seq, envelope); },
+    onResync: async () => { await refetchCurrentState(); },   // awaited barrier
+    onCheckpoint: async (seq) => { await saveCheckpoint(seq); },
+  }, {
+    event: ["WhaleTradesInserted"],
+    lastEventId: checkpoint.seq,
+    checkpoint,
+    signal: controller.signal,
+    onHandlerError: (err, f) => console.warn("replaying", f.seq, f.attempt, f.willRetry, err),
+  });
+} catch (err) {
+  if (err instanceof StreamHandlerFailedError) parkForRepair(err.seq, err.replayFrom, err.cause);
+  else throw err; // the same stream errors as streamFeedResilient
+}
+```
+
+- **Order, per event:** `onEvent` is awaited, then `onCheckpoint(seq, "event")` (your durable write), and only then does `checkpoint.seq` become `seq`. A rejection at either step leaves the checkpoint *before* the event.
+- **Replay:** a failure closes the connection, waits a jittered backoff (1 s to 30 s) and reconnects from the checkpoint, so the unacknowledged event is delivered again while the server retains it. After `maxHandlerRetries` (default 3) consecutive failures at the same `seq` it throws `StreamHandlerFailedError` with `seq`, `stage`, `attempts`, the unadvanced `checkpoint` and the `replayFrom` to resume with later.
+- **Resync is a barrier:** `onResync` is awaited and the checkpoint moves to the marker only once it resolves, so an interrupted refresh is retried instead of being recorded as done. The fire-and-forget `StreamOptions.onResync` notification is not awaited and is not a barrier.
+- **Backpressure, not buffering:** nothing is read from the connection while your handler runs. At most one frame is in flight and no queue is kept on your behalf; a slow handler is backpressure on the socket, and falling far enough behind the retained window surfaces as a `resync` marker.
+- **At-least-once:** a replay re-delivers every unacknowledged frame, and a handler that succeeded but whose checkpoint write failed sees its event again. Deduplicate on `seq` or make the side effect idempotent; no client can promise exactly-once side effects.
+- **Abort:** aborting `signal` ends the consumer without throwing. A handler already running is awaited rather than cancelled (pass the same signal into your own work if you want that), and if it succeeds its checkpoint is committed first.
 
 ### Webhook verification
 
