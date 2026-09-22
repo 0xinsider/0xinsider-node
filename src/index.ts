@@ -3,8 +3,8 @@
  *
  * Analytics for Polymarket sports and esports markets: wallet grades, large
  * trades, profitable-wallet flows, market intel/candles, the live SSE feed, and
- * webhooks. Generated and drift-checked against the published OpenAPI
- * document (https://0xinsider.com/api/v1/openapi.json).
+ * webhooks. Drift-tested
+ * against the public OpenAPI contract (`web/public/api/v1/openapi.json`).
  *
  * @example
  * import { OxinsiderApiClient, paginate, streamFeed, verifySignature } from "@0xinsider/sdk";
@@ -153,13 +153,16 @@ export {
 
 // SSE stream
 export {
+  DEFAULT_MAX_HANDLER_RETRIES,
   DEFAULT_MAX_STREAM_FRAME_BYTES,
   DEFAULT_MAX_STREAM_RECONNECTS,
   DEFAULT_MAX_STREAM_RETRY_AFTER_MS,
+  StreamHandlerFailedError,
   StreamProtocolError,
   StreamReconnectsExhaustedError,
   StreamRetryDeferredError,
   consumeStream,
+  consumeStreamCheckpointed,
   decodeStreamFrame,
   isEventStreamMediaType,
   parseSseFrame,
@@ -167,12 +170,18 @@ export {
   streamFeedResilient,
 } from "./stream.js";
 export type {
+  CheckpointedStreamHandlers,
+  CheckpointedStreamOptions,
   FeedEnvelope,
   ParsedSseFrame,
   ResilientStreamOptions,
   ResyncMarker,
+  StreamCheckpoint,
+  StreamCheckpointReason,
   StreamEvent,
   StreamFilters,
+  StreamHandlerFailure,
+  StreamHandlerStage,
   StreamOptions,
   StreamProtocolErrorReason,
 } from "./stream.js";
@@ -218,12 +227,12 @@ export {
   OPERATION_COUNT,
 } from "./provenance.js";
 
-// Generated contract types (scripts/generate.mjs, #14278). Every
+// Generated contract types (scripts/generate-sdk-types.mjs, #14278). Every
 // schema the public OpenAPI document declares, plus the per-operation maps
 // (`OperationPath`, `OperationQuery`, `OperationBody`, `OperationData`,
 // `OperationResponse`) the client's `call`, `list` and every convenience
 // method are typed by (#16136). Regenerate rather than edit:
-// `npm run generate`.
+// `node scripts/generate-sdk-types.mjs`.
 export type {
   AgentRegistration,
   ApiDiscovery,

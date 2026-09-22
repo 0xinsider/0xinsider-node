@@ -2,7 +2,7 @@
  * Typed error hierarchy for the 0xinsider API V1 error envelope.
  *
  * The V1 contract returns a stable error shape on every non-2xx response
- * (the OpenAPI document -> components.schemas.ApiError):
+ * (`web/public/api/v1/openapi.json` -> components.schemas.ApiError):
  *
  *   {
  *     "object": "error",

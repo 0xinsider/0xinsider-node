@@ -22,10 +22,11 @@ Needs owner rights on the `@0xinsider` scope on npmjs.com.
 
 ## Each release
 
-1. Merge the change, including a `package.json` version bump. Regenerated types (`npm run generate`) usually mean a minor bump while the package is `0.x`.
-2. Rehearse: Actions -> Publish to npm -> Run workflow on `main` with `dry_run` checked (the default). It runs every step, including the real OIDC token exchange, and publishes nothing. It fails if the exchange did not succeed.
-3. Create a GitHub release with the tag `v<version>`. The workflow refuses a tag that does not match `package.json`, and skips a version that is already on npm.
-4. Check: `npm view @0xinsider/sdk version`, and the provenance badge on https://www.npmjs.com/package/@0xinsider/sdk.
+1. Bring the sources up to date. The hand-written files are authored in `0xinsider/0xinsider` under `sdk/`: from a checkout with read access, run `node scripts/sync-from-app.mjs --app <path>` (it copies them, takes the app's `sdk/package.json` version, and records the app commit in `.app-sdk-commit`), then `npm install`, `npm run generate`, `npm test`, and port any `sdk/README.md` change into `README.md` (`git -C <app> diff $(cat .app-sdk-commit)..origin/main -- sdk/README.md` from the previous sync shows it). `--check` exits 1 when this repository is behind.
+2. Merge the change. The version comes from the app's `sdk/package.json`; regenerated types alone (`npm run generate`) usually mean a minor bump while the package is `0.x`.
+3. Rehearse: Actions -> Publish to npm -> Run workflow on `main` with `dry_run` checked (the default). It runs every step, including the real OIDC token exchange, and publishes nothing. It fails if the exchange did not succeed.
+4. Create a GitHub release with the tag `v<version>`. The workflow refuses a tag that does not match `package.json`, and skips a version that is already on npm.
+5. Check: `npm view @0xinsider/sdk version`, and the provenance badge on https://www.npmjs.com/package/@0xinsider/sdk.
 
 ## If the publish job goes red
 

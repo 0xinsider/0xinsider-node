@@ -12,7 +12,7 @@
  *
  * Verification, the receiver side. The backend only signs; the published
  * recipe is the delivery-signing paragraph on POST /api/v1/webhooks in
- * the OpenAPI document:
+ * `web/public/api/v1/openapi.json`:
  *   1. Reject if `|now - timestamp| > 300` seconds (replay tolerance).
  *   2. Recompute the expected `v1=<hex>` over `${timestamp}.${rawBody}`.
  *   3. Constant-time compare against each candidate in the header.
@@ -150,7 +150,7 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
 
 /**
  * Webhook event types. Source of truth:
- * the OpenAPI document -> components.schemas.WebhookEventType.enum.
+ * `web/public/api/v1/openapi.json` -> components.schemas.WebhookEventType.enum.
  * `whale_trades_inserted`, `wallet_grade_changed`, `insider_radar_flag_raised`,
  * and `smart_money_flow_detected` are Pro-only: they deliver only to API keys
  * on an active Pro subscription.
