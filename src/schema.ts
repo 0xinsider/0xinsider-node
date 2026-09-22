@@ -68,7 +68,7 @@ export type ApiDiscovery = {
   openapi_url: string;
   /** Unauthenticated API health endpoint. */
   health_url: string;
-  authentication: "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.";
+  authentication: "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, the Pick of the Day commitment ledger (/api/v1/pick-of-the-day/ledger), and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.";
   /** RFC 9728 protected-resource metadata for the API origin: the document every V1 401 names in its WWW-Authenticate challenge (resource, bearer_methods_supported, resource_documentation). The remote MCP server has its own document at /.well-known/oauth-protected-resource/api/v1/mcp. */
   protected_resource_metadata_url: string;
   /** The complete authenticated route index: one entry per authenticated route this spec documents, in "<METHOD> <path>" form, not a representative subset. GET /api/v1 is the unauthenticated entrypoint an agent hits first, so it hands back the whole authenticated surface rather than a sample the caller would have to guess around. The example on GET /api/v1 is abridged for readability -- the live response returns all of them. Kept in lockstep with this spec by review: it is a hand-maintained const in backend/src/api_v1/discovery.rs and no automated check compares the two, so treat this spec as authoritative if they ever disagree. */

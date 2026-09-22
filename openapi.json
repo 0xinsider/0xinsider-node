@@ -79,7 +79,7 @@
                     "docs_url": "https://0xinsider.com/llms-full.txt",
                     "openapi_url": "https://0xinsider.com/api/v1/openapi.json",
                     "health_url": "https://api.0xinsider.com/api/v1/health",
-                    "authentication": "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.",
+                    "authentication": "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, the Pick of the Day commitment ledger (/api/v1/pick-of-the-day/ledger), and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.",
                     "protected_resource_metadata_url": "https://api.0xinsider.com/.well-known/oauth-protected-resource",
                     "authenticated_routes": [
                       "GET /api/v1/leaderboard",
@@ -7138,6 +7138,7 @@
         "summary": "Get the Pick of the Day commitment ledger",
         "description": "Returns the pre-game commitment for every published pick, so the public track record can be checked by someone who was not watching when the pick dropped.\n\nOne entry per (pick_date, pick_rank), ascending by pick_date then pick_rank, in one of three states. `sealed` is a live pick: the hash, the algorithm, the seal instant and the kickoff, and nothing that states a side or a price. `opened` is a settled pick: the nonce and the exact canonical payload the hash was taken over. `uncommitted` is a pick with no commitment -- published before the scheme existed, or one that reached kickoff unsealed -- named rather than omitted.\n\nTo verify an opened entry: serialize nothing. Take the bytes of the `payload` object exactly as received, append the `commitment_nonce` decoded from hex, and sha256 the result; it equals `commitment_hash`. The payload is canonical JSON -- keys sorted by UTF-8 byte value, no insignificant whitespace, decimals as strings at full stored precision, timestamps whole-second UTC with a literal Z -- and it is served byte for byte as it was hashed.\n\nThis is a proof contract, not the archive's display contract: nothing here is formatted for rendering, so an entry changes only when the pick does. A commitment is never written after kickoff and never rewritten by an outcome correction; `resolved_at` moving under an unchanged `commitment_hash` is a corrected market re-mapping an already-settled pick.",
         "tags": ["Pick of the Day"],
+        "security": [],
         "parameters": [
           {"name": "X-Query-Validation", "in": "header", "required": false, "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs.", "schema": {"type": "string", "enum": ["strict"]}},
           {
@@ -7448,7 +7449,7 @@
           {
             "lang": "curl",
             "label": "cURL",
-            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/pick-of-the-day/ledger'"
+            "source": "curl -sS 'https://api.0xinsider.com/api/v1/pick-of-the-day/ledger'"
           }
         ],
         "x-latency-budget": {
@@ -22593,7 +22594,7 @@
           },
           "authentication": {
             "type": "string",
-            "const": "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL."
+            "const": "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, the Pick of the Day commitment ledger (/api/v1/pick-of-the-day/ledger), and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL."
           },
           "protected_resource_metadata_url": {
             "type": "string",
