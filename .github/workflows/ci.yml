@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Generated files and drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      # src/schema.ts and src/provenance.ts are what scripts/generate.mjs renders
+      # from the committed openapi.json, and the hand-written client table,
+      # query parameters and Idempotency-Key set agree with it. Deterministic:
+      # no network. Whether the published document has moved since is the
+      # weekly regenerate workflow's question, not this gate's.
+      - run: npm run check
+      - run: npm run build
+      - run: npm run check:examples
+
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22", "24"]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      # Builds, then runs test/*.test.mjs against dist/. The sandbox suite calls
+      # https://0xinsider.com/sandbox (no credential, example data only) on one
+      # leg, so a sandbox outage cannot turn the whole matrix red.
+      - run: npm test
+        env:
+          OXINSIDER_SANDBOX_TESTS: ${{ matrix.node == '24' && '1' || '' }}

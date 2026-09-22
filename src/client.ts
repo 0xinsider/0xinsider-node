@@ -1,0 +1,2045 @@
+/**
+ * Standalone 0xinsider API V1 client.
+ *
+ * The `API_CLIENT_OPERATIONS` table below IS the contract surface:
+ * `scripts/check-drift.mjs` (`npm run check`, and `npm run check:live` against
+ * the published document) asserts it equals the set of operations with a
+ * `200` response in the OpenAPI document (`openapi.json`), so this package
+ * cannot silently diverge from the spec.
+ *
+ * Differences from the retired app client (intentional):
+ *  - No `@/lib/api-contracts` import; the operation table is inlined so the
+ *    package has zero workspace coupling.
+ *  - Errors throw the typed subclass hierarchy in `errors.ts` (the app client
+ *    threw a single `OxinsiderApiError`).
+ *  - Extra typed convenience methods for list/candle/webhook-event/stream
+ *    surfaces and a typed `Grade` enum.
+ */
+
+import { errorFromResponse, OxinsiderApiError,
+  InvalidResponseError,
+  RequestTimeoutError,
+} from "./errors.js";
+import {
+  RETRY_AFTER_CEILING_MS,
+  retryAfterSeconds,
+  sleepUnlessAborted,
+} from "./retry.js";
+import type {
+  OperationBody,
+  OperationData,
+  OperationPath,
+  OperationQuery,
+  OperationResponse,
+  ResponseMeta,
+  SportsEdgeObservation,
+} from "./schema.js";
+
+/**
+ * The envelope `meta` as THIS client hands it to a caller: everything the
+ * contract declares (`ResponseMeta`), plus `etag`.
+ *
+ * `etag` is a client-side addition, not a contract field. The server sends it
+ * as an `ETag` response HEADER and never in the body, so the OpenAPI document
+ * is right not to declare it; this client lifts it into `meta` so a caller can
+ * echo it on a conditional re-request without reaching for the raw headers
+ * (#14278 -- the hand-written `ResponseMeta` carried `etag` inline, which read
+ * as though the server sent it).
+ */
+export type ClientResponseMeta = ResponseMeta & {
+  /** Lifted from the `ETag` response header by this client. */
+  etag?: string;
+  /**
+   * `true` when the response carried `X-Oxi-Sandbox: true`, which every
+   * response of the sandbox server does and no production response does.
+   * Lifted from the header by this client (#16138); absent otherwise.
+   */
+  sandbox?: true;
+  /** Unknown query names reported by the server in compatibility mode. */
+  queryIgnored?: string;
+  /** Normalized query names and values the server actually applied. */
+  effectiveQuery?: string;
+};
+
+
+export type ApiClientMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+/** Whether an operation requires the `oxi_sk_*` Bearer key. */
+export type AuthMode = "none" | "bearer";
+
+export interface ApiClientOperation {
+  readonly method: ApiClientMethod;
+  readonly path: string;
+  readonly operationId: string;
+  readonly auth: AuthMode;
+}
+
+/**
+ * The full V1 operation table. One row per OpenAPI operation that returns a
+ * `200`. Kept in lockstep with the OpenAPI document by
+ * `scripts/check-drift.mjs`. Do not add a row without a matching
+ * spec operation, and do not remove a spec operation without removing its row.
+ */
+export const API_CLIENT_OPERATIONS = [
+  { method: "GET", path: "/api/v1/me", operationId: "getAccountIdentity", auth: "bearer" },
+  {
+    method: "GET",
+    path: "/api/v1",
+    operationId: "getApiDiscovery",
+    auth: "none",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}",
+    operationId: "getTrader",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/traders/batch",
+    operationId: "batchGetTraders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/position-timeline",
+    operationId: "getPositionTimeline",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/traders/{trader}/position-timeline",
+    operationId: "getPositionTimelineById",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/positions",
+    operationId: "listPositions",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-positions",
+    operationId: "listLargePositions",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/pnl",
+    operationId: "getTraderPnl",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/categories",
+    operationId: "getTraderCategoryRecords",
+    auth: "bearer",
+  },
+  // Pre-existing op-table drift (#6915): these 200-returning openapi
+  // operations were never mirrored into the client table. Added so the table
+  // stays contract-complete against the spec. All
+  // inherit the global `bearerAuth` security (no per-op `security: []` override,
+  // and none are in the backend public-path allowlist), so auth is "bearer".
+  // The drift check intentionally excludes the redirect-only routes (openapi-spec
+  // redirect + export/download, no 200 response), so they are NOT added here.
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/context",
+    operationId: "getTraderContext",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/context.md",
+    operationId: "getTraderContextMarkdown",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/trader/{address}/export",
+    operationId: "submitTraderExport",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/export/status",
+    operationId: "getTraderExportStatus",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/leaderboard/trending",
+    operationId: "listTrendingWallets",
+    auth: "bearer",
+  },
+  // Pre-existing gap, fixed here (#7209): the route has shipped in openapi.json,
+  // llms-full.txt, agents.md, and the discovery doc, but never in the SDK table,
+  // so SDK users had no typed method for it.
+  {
+    method: "GET",
+    path: "/api/v1/sports-edge-signals",
+    operationId: "listSportsEdgeSignals",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/sports-edge-observations",
+    operationId: "listSportsEdgeObservations",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades",
+    operationId: "listWhaleTrades",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/history",
+    operationId: "listWhaleTradeHistory",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}/counterparties/executions",
+    operationId: "listWhaleTradeCounterpartyExecutions",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}/counterparties/executions/{execution_id}/makers",
+    operationId: "listWhaleTradeCounterpartyMakers",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/content/search",
+    operationId: "searchContent",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}",
+    operationId: "getWhaleTrade",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/leaderboard",
+    operationId: "listLeaderboard",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/markets/search",
+    operationId: "searchMarkets",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/markets/explore",
+    operationId: "exploreMarkets",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/markets/smart-money-flows",
+    operationId: "listSmartMoneyFlows",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/markets/sharp-money-flows",
+    operationId: "listSharpMoneyFlows",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/platforms",
+    operationId: "getPlatforms",
+    auth: "none",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/holders",
+    operationId: "getMarketHolders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/intel",
+    operationId: "getMarketIntel",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/markets/intel/batch",
+    operationId: "batchGetMarketIntel",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/snapshot",
+    operationId: "getMarketSnapshot",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/context.md",
+    operationId: "getMarketContextMarkdown",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/candles",
+    operationId: "getMarketCandles",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/insider-radar",
+    operationId: "listInsiderRadar",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/insider-radar/{id}",
+    operationId: "getInsiderRadarFlag",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/events/feed/since",
+    operationId: "getEventReplaySince",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/stream",
+    operationId: "getStream",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/webhooks",
+    operationId: "listWebhooks",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks",
+    operationId: "createWebhook",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/webhooks/{id}",
+    operationId: "getWebhook",
+    auth: "bearer",
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/webhooks/{id}",
+    operationId: "updateWebhook",
+    auth: "bearer",
+  },
+  {
+    method: "DELETE",
+    path: "/api/v1/webhooks/{id}",
+    operationId: "deleteWebhook",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/verify",
+    operationId: "verifyWebhook",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/rotate-secret",
+    operationId: "rotateWebhookSecret",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/rotate-secret/prepare",
+    operationId: "prepareWebhookSecret",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/rotate-secret/activate",
+    operationId: "activateWebhookSecret",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/rotate-secret/retire",
+    operationId: "retireWebhookSecret",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/webhooks/events",
+    operationId: "listWebhookEvents",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/webhooks/{id}/deliveries",
+    operationId: "listWebhookDeliveries",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/webhooks/{id}/deliveries/{delivery_id}/redeliver",
+    operationId: "redeliverWebhookDelivery",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/health",
+    operationId: "getHealth",
+    auth: "none",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/mcp",
+    operationId: "createMcpJsonRpcResponse",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/reports",
+    operationId: "getReports",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/reports/daily",
+    operationId: "getDailyReportSnapshot",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/reports/weekly",
+    operationId: "getWeeklyReportSnapshot",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/reports/monthly",
+    operationId: "getMonthlyReportSnapshot",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/export",
+    operationId: "getTraderExportSnapshot",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/usage",
+    operationId: "getUsage",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day",
+    operationId: "getPickOfTheDay",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day/archive",
+    operationId: "getPickOfTheDayArchive",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day/ledger",
+    operationId: "getPickOfTheDayLedger",
+    auth: "bearer",
+  },
+] as const satisfies readonly ApiClientOperation[];
+
+export type ApiOperationId =
+  (typeof API_CLIENT_OPERATIONS)[number]["operationId"];
+
+/**
+ * The writes the API replays under `Idempotency-Key`: a second request with
+ * the same key and the same body returns the first result instead of
+ * repeating the write. Source of truth: the operations declaring the
+ * `Idempotency-Key` header parameter in the OpenAPI document,
+ * pinned by `scripts/check-drift.mjs` (#16182). Only these are
+ * retried on a transport or 5xx failure, and only when a key is set; a key on
+ * any other operation is refused before the request, since the server would
+ * ignore it and a retry could repeat the side effect (`verifyWebhook` sends
+ * a challenge to your URL each time; `submitTraderExport` starts a job).
+ */
+export const IDEMPOTENT_WRITE_OPERATIONS = [
+  "createWebhook",
+  "updateWebhook",
+  "deleteWebhook",
+  "rotateWebhookSecret",
+  "prepareWebhookSecret",
+  "activateWebhookSecret",
+  "retireWebhookSecret",
+  "redeliverWebhookDelivery",
+] as const satisfies readonly ApiOperationId[];
+export type IdempotentWriteOperationId =
+  (typeof IDEMPOTENT_WRITE_OPERATIONS)[number];
+
+/**
+ * POST operations that read and never write (#16182): the batch lookups.
+ * `POST /api/v1/traders/batch` and `POST /api/v1/markets/intel/batch` resolve
+ * their inputs and store nothing (`backend/src/api_v1/handlers/batch.rs`), so
+ * a repeat cannot duplicate a side effect. Each attempt is one request
+ * against the account's quota and one reservation of batch item units, which
+ * is exactly what a retried GET costs, so they are retried like a GET. Every
+ * other POST, PATCH or DELETE is retried only as a keyed write above.
+ */
+export const READ_ONLY_POST_OPERATIONS = [
+  "batchGetTraders",
+  "batchGetMarketIntel",
+] as const satisfies readonly ApiOperationId[];
+
+const idempotentWrites: ReadonlySet<string> = new Set(IDEMPOTENT_WRITE_OPERATIONS);
+const readOnlyPosts: ReadonlySet<string> = new Set(READ_ONLY_POST_OPERATIONS);
+
+/**
+ * How `call()` may repeat an operation that failed with 429, 502, 503, 504 or
+ * a network error before any response (#16182):
+ * - `"read"`: a GET or a read-only POST, repeated without conditions.
+ * - `"keyed"`: an `IDEMPOTENT_WRITE_OPERATIONS` member, repeated only when
+ *   the request carries an `Idempotency-Key`, with the same key and the same
+ *   bytes on every attempt.
+ * - `"never"`: any other write; the first failure is thrown.
+ */
+export type RetryEligibility = "read" | "keyed" | "never";
+
+/** The retry class of an operation; see `RetryEligibility`. */
+export function retryEligibility(
+  operation: Pick<ApiClientOperation, "method" | "operationId">,
+): RetryEligibility {
+  if (operation.method === "GET" || readOnlyPosts.has(operation.operationId)) {
+    return "read";
+  }
+  return idempotentWrites.has(operation.operationId) ? "keyed" : "never";
+}
+
+/**
+ * Trader skill grade. Source of truth:
+ * `components.schemas.Trader.properties.grade.enum` (S highest, F lowest).
+ */
+export const GRADES = ["S", "A", "B", "C", "D", "F"] as const;
+export type Grade = (typeof GRADES)[number];
+
+export type ApiQueryValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | readonly (string | number | boolean)[];
+
+export interface ApiRequestOptions {
+  path?: Record<string, string | number>;
+  query?: Record<string, ApiQueryValue>;
+  body?: unknown;
+  headers?: Record<string, string>;
+  /** Reject query names the operation does not publish before it runs. */
+  strictQuery?: boolean;
+  /** Cooperative cancellation; composed with the request deadline. */
+  signal?: AbortSignal;
+  /**
+   * Per-call deadline in ms, overriding the client default; `null` disables
+   * it for this call. The SSE stream (`streamFeed`) never has one. Retries
+   * share this one deadline: no retry is started that cannot finish inside it.
+   */
+  timeoutMs?: number | null;
+  /**
+   * Retries for this call, overriding the client's `maxRetries` (#14281).
+   * `0` sends exactly one request, which is the SDK's behaviour before retries.
+   */
+  maxRetries?: number;
+  /**
+   * Sent as the `Idempotency-Key` header. Accepted only on the
+   * `IDEMPOTENT_WRITE_OPERATIONS` (`createWebhook`, `updateWebhook`,
+   * `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`,
+   * `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`),
+   * where a replay with the same key and body returns the first result
+   * instead of repeating the write; on any other operation `call()` throws
+   * before sending, since the server would ignore the key (#16182). A keyed
+   * write is the only non-read request the SDK retries, always with the
+   * same key and the same body bytes. On `IdempotencyInProgressError`, or
+   * when the outcome is unknown after a timeout or exhausted retries, send
+   * the SAME key and body again to learn what happened; never mint a new key
+   * for the same intent.
+   */
+  idempotencyKey?: string;
+}
+
+export interface ApiClientOptions {
+  /**
+   * The server URL, one of the `servers` in the OpenAPI document:
+   * `https://api.0xinsider.com` (the default) or
+   * `https://0xinsider.com/sandbox`. A path on it is kept, so every operation
+   * path (`/api/v1/...`) is appended after it (#16138: the path used to be
+   * discarded, which sent a sandbox client to the live host). Trailing slashes
+   * are trimmed, and a trailing `/api/v1` is removed once, since the operation
+   * paths carry it.
+   */
+  baseUrl?: string;
+  /**
+   * The `oxi_sk_live_*` secret API key, or a sandbox key (`oxi_sk_test_*`)
+   * when `sandbox` is set.
+   */
+  apiKey?: string;
+  /**
+   * Explicit sandbox mode (#16138). `baseUrl` defaults to
+   * `SANDBOX_BASE_URL` (`https://0xinsider.com/sandbox`), every operation is
+   * allowed without a key, since the sandbox needs no credential, and a live
+   * key (`oxi_sk_live_*`) is refused by the constructor so it is never sent
+   * there. A sandbox key from `POST /api/v1/agents/register` is optional and
+   * is sent when given. `OxinsiderApiClient.sandbox()` builds one.
+   */
+  sandbox?: boolean;
+  /** Override the global `fetch` (e.g. for testing or a proxy agent). */
+  fetch?: typeof fetch;
+  /**
+   * Deadline for every request, connect to body, in ms. Default
+   * `DEFAULT_TIMEOUT_MS` (15 000); `null` disables it. A request that misses
+   * it rejects with `RequestTimeoutError`. Long-lived reads (`streamFeed`)
+   * are not subject to it (#11115).
+   */
+  timeoutMs?: number | null;
+  /**
+   * How many times a failed idempotent request is retried (#14281). Default
+   * `DEFAULT_MAX_RETRIES` (2); `0` disables retries.
+   *
+   * Retried: a GET, a read-only POST (`READ_ONLY_POST_OPERATIONS`), or an
+   * `IDEMPOTENT_WRITE_OPERATIONS` write carrying an `Idempotency-Key`, that
+   * failed with 408, 429, 502, 503, 504, or a network error before any
+   * response (`retryEligibility`, #16182). A 408 is the server's own timeout
+   * (`request_timeout`, #16146): it carries `Retry-After` on a GET, and a
+   * keyed write replays safely. The wait is the
+   * response's `Retry-After` (delta-seconds or an HTTP-date, `parseRetryAfter`)
+   * plus up to 250 ms of jitter when present, otherwise a jittered exponential
+   * backoff from 500 ms capped at 8 s. A `Retry-After` longer than
+   * `RETRY_AFTER_CEILING_MS` (60 s) is not waited out; the error is thrown so
+   * the caller can schedule it from `retryAfterSeconds` or `retryAt`. Never retried: 400, 401, 402, 403, 404, 409, 500, a write
+   * without a key, this client's own timeout, or a caller abort. A retry never starts unless it
+   * can finish inside `timeoutMs`, and a caller `AbortSignal` ends a backoff at
+   * once.
+   */
+  maxRetries?: number;
+}
+
+/** Default production API base used when `baseUrl` is omitted. */
+export const DEFAULT_BASE_URL = "https://api.0xinsider.com";
+
+/**
+ * The sandbox server, the second `servers` entry of the OpenAPI document: no
+ * credential, no production data, every documented operation answered with
+ * its example or a deterministic sample, `?sandbox_status=<code>` for a
+ * documented error, and `X-Oxi-Sandbox: true` on every response. Streams and
+ * file downloads are not simulated there and answer 400.
+ */
+export const SANDBOX_BASE_URL = "https://0xinsider.com/sandbox";
+
+/** A live secret key starts with this; the sandbox never needs one. */
+const LIVE_KEY_PREFIX = "oxi_sk_live_";
+
+/** Default per-request deadline; see `ApiClientOptions.timeoutMs`. */
+export const DEFAULT_TIMEOUT_MS = 15_000;
+
+/** Default retry budget; see `ApiClientOptions.maxRetries`. */
+export const DEFAULT_MAX_RETRIES = 2;
+
+/** Statuses a retry can fix: rate limited, or a gateway/availability failure. */
+const RETRYABLE_STATUSES: ReadonlySet<number> = new Set([408, 429, 502, 503, 504]);
+const RETRY_BASE_DELAY_MS = 500;
+const RETRY_MAX_BACKOFF_MS = 8_000;
+const RETRY_JITTER_MS = 250;
+
+function assertRetryCount(value: number, source: string): number {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${source} must be a non-negative integer, got ${String(value)}`);
+  }
+  return value;
+}
+
+/**
+ * Milliseconds to wait before retry `attempt` (0-based), or `null` when the
+ * server asked for a wait a retry loop should not hold. The ceiling check
+ * runs on the server's number before jitter is added, so the value handed to
+ * the timer is at most `RETRY_AFTER_CEILING_MS + RETRY_JITTER_MS`, far inside
+ * the timer range (`MAX_TIMER_DELAY_MS`, `retry.ts`).
+ */
+function retryDelayMs(attempt: number, retryAfter: number | null): number | null {
+  if (retryAfter !== null) {
+    const requested = retryAfter * 1000;
+    if (requested > RETRY_AFTER_CEILING_MS) return null;
+    return requested + Math.random() * RETRY_JITTER_MS;
+  }
+  const ceiling = Math.min(RETRY_MAX_BACKOFF_MS, RETRY_BASE_DELAY_MS * 2 ** attempt);
+  return ceiling / 2 + Math.random() * (ceiling / 2);
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  return (
+    host === "localhost" ||
+    host === "::1" ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)
+  );
+}
+
+/**
+ * The API key travels as a bearer header on every request, so the base URL
+ * decides who receives it. Only `https:` is accepted, with `http:` allowed for
+ * a loopback host (a local backend on `localhost` or `127.0.0.1`). Anything
+ * else throws from the constructor, before any request is sent (#11115).
+ */
+export function assertTrustedBaseUrl(baseUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new Error(`0xinsider API baseUrl is not a valid URL: ${baseUrl}`);
+  }
+  if (url.protocol === "https:") return url;
+  if (url.protocol === "http:" && isLoopbackHost(url.hostname)) return url;
+  throw new Error(
+    `Refusing to send the API key to ${url.origin}: baseUrl must use https: (http: is accepted only for a loopback host such as localhost or 127.0.0.1).`,
+  );
+}
+
+/**
+ * The server URL as this client stores it: origin plus path, trailing slashes
+ * trimmed, and a trailing `/api/v1` removed once. Every operation path starts
+ * with `/api/v1/`, so a base that already ends in it would double the prefix;
+ * before #16138 such a base worked only because the path was discarded, and
+ * this keeps it working.
+ */
+function normalizeBaseUrl(base: URL): string {
+  const trimmed = base.toString().replace(/\/+$/, "");
+  return trimmed.replace(/\/api\/v1$/, "");
+}
+
+/**
+ * Join an `/api/v1/...` path onto the server URL, keeping the server's own
+ * path (`/sandbox`) exactly once. REST (`buildUrl`) and the SSE stream
+ * (`stream.ts`) both resolve through this, so the two cannot disagree about
+ * where a path-bearing base points (#16138: `new URL("/api/v1/...", base)`
+ * resolved against the origin and dropped `/sandbox`).
+ */
+export function resolveApiUrl(baseUrl: string, path: string): URL {
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return new URL(`${baseUrl}${suffix}`);
+}
+
+/**
+ * One signal that aborts on the deadline OR when the caller's signal aborts.
+ * Uses native composition where available. The manual fallback removes both
+ * source listeners when either source aborts.
+ */
+export function composeSignals(
+  timeoutMs: number | null,
+  caller?: AbortSignal,
+): AbortSignal | undefined {
+  return composeRequestSignal(timeoutMs, caller).signal;
+}
+
+interface RequestSignal {
+  signal: AbortSignal | undefined;
+  dispose?: () => void;
+}
+
+/** Keep cancellation live through body consumption, then release its listeners. */
+function composeRequestSignal(
+  timeoutMs: number | null,
+  caller?: AbortSignal,
+): RequestSignal {
+  const timeout =
+    timeoutMs === null ? undefined : AbortSignal.timeout(timeoutMs);
+  if (!timeout) return { signal: caller };
+  if (!caller) return { signal: timeout };
+  if (typeof AbortSignal.any === "function") {
+    return { signal: AbortSignal.any([caller, timeout]) };
+  }
+  const controller = new AbortController();
+  const dispose = () => {
+    caller.removeEventListener("abort", onCallerAbort);
+    timeout.removeEventListener("abort", onTimeoutAbort);
+  };
+  const onCallerAbort = () => {
+    dispose();
+    controller.abort(caller.reason);
+  };
+  const onTimeoutAbort = () => {
+    dispose();
+    controller.abort(timeout.reason);
+  };
+  if (caller.aborted) {
+    onCallerAbort();
+  } else if (timeout.aborted) {
+    onTimeoutAbort();
+  } else {
+    caller.addEventListener("abort", onCallerAbort, { once: true });
+    timeout.addEventListener("abort", onTimeoutAbort, { once: true });
+  }
+  return { signal: controller.signal, dispose };
+}
+
+function isTimeoutAbort(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name: unknown }).name === "TimeoutError"
+  );
+}
+
+/** Standard single-resource envelope: `{ object, data, meta }`. */
+export interface ApiEnvelope<T> {
+  object: string;
+  data: T;
+  meta?: ClientResponseMeta;
+}
+
+/** Stripe-style list envelope: `{ object: "list", data, has_more, next_cursor, total?, meta }`. */
+export interface ApiListEnvelope<T> {
+  object: "list";
+  data: T[];
+  has_more: boolean;
+  next_cursor?: string | null;
+  total?: number | null;
+  meta?: ClientResponseMeta;
+  /**
+   * When this body was computed, on endpoints that publish a freshness envelope
+   * (`markets/explore` today). Absent elsewhere.
+   *
+   * Pair it with `fresh_for_seconds` to bound how long you reuse the body:
+   * `fresh_for_seconds - age(computed_at)`. The remainder is deliberately not
+   * pre-subtracted, because a cached body cannot carry a number that changes
+   * while it sits in a cache. Both are excluded from the `ETag` validator, so a
+   * body recomputed with identical data keeps its validator.
+   */
+  computed_at?: string;
+  /** How long the body computed at `computed_at` is good for, in seconds. */
+  fresh_for_seconds?: number;
+}
+
+export type CategorySkillStatus =
+  "live" | "insufficient" | "stale" | "unknown" | "degraded";
+
+export interface CategorySkillStatusCounts {
+  live: number;
+  insufficient: number;
+  stale: number;
+  unknown: number;
+  degraded: number;
+}
+
+export type SportsEdgeSignalsParams = OperationQuery["listSportsEdgeSignals"];
+
+/** Observation cohorts exposed by `listSportsEdgeObservations`. */
+export type SportsEdgeObservationCohort =
+  | "wider_holder"
+  | "in_play"
+  | "emerging_pile";
+
+/** Source of the provider holder snapshot used to build an observation. */
+export type SportsEdgeObservationProviderSource = "cached" | "live";
+
+/** Why a sport's upcoming-board source is (un)available in the funnel report. */
+export type SportsEdgeObservationBoardUpcomingStatus =
+  | "unknown"
+  | "not_configured"
+  | "available"
+  | "capacity_limited"
+  | "source_unavailable"
+  | "cold_unavailable"
+  | "deadline_unavailable";
+
+/** Scope attribution for an unavailable upcoming-board union. */
+export type SportsEdgeObservationBoardUnavailableScope =
+  | "category"
+  | "nfl"
+  | "cfb"
+  | "nba"
+  | "wnba"
+  | "nhl"
+  | "mls"
+  | "valorant"
+  | "league-of-legends"
+  | "counter-strike-2"
+  | "dota-2"
+  | "registry"
+  | "union"
+  | "wave";
+
+/** Truthful state of the cross-market directional read. */
+export type SportsEdgeObservationDirectionalStatus =
+  "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
+
+/**
+ * Provider binary-column selector for observation markets: 0 selects
+ * outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. Use piled_side,
+ * not this index, for participant identity.
+ */
+export type SportsEdgeObservationOutcomeIndex = 0 | 1;
+
+/** Closed grade vocabulary for the best holder grade on an observation. */
+export type SportsEdgeObservationTopGrade = "S" | "A" | "B";
+
+/** Canonical sports emitted by observation responses. */
+export type SportsEdgeObservationSport =
+  | "Basketball"
+  | "Football"
+  | "Baseball"
+  | "Hockey"
+  | "MMA"
+  | "Boxing"
+  | "Soccer"
+  | "Cricket"
+  | "Golf"
+  | "Tennis"
+  | "Esports"
+  | "Racing"
+  | "Table Tennis"
+  | "Pickleball";
+
+/**
+ * Full list response, including the observation snapshot and accountable
+ * funnel: the operation's own envelope (#16136). `degraded` is the
+ * snapshot-wide verdict; fully accounted `capacity_limited` rows alone do
+ * not set it.
+ */
+export type SportsEdgeObservationsResponse = OperationEnvelope<"listSportsEdgeObservations">;
+
+export type SportsEdgeObservationsParams = OperationQuery["listSportsEdgeObservations"];
+
+/**
+ * One qualifying category expert on a Pick of the Day's backed side.
+ *
+ * Every threshold below holds BY CONSTRUCTION -- the selector only ever freezes a wallet that
+ * cleared all of them -- so a consumer can render the numbers without re-checking them.
+ */
+export interface PickQualifyingExpert {
+  /** Policy 6 admission exception; absent on earlier frozen policies. */
+  lane?: "standard" | "longshot_specialist";
+  /** Answered, index-scoped provider probability, present only on specialist lanes. */
+  lane_probability?: number;
+  lane_probability_source?: "p";
+  address: string;
+  name?: string | null;
+  /** Public V1 exposes `S` or `A`; internal policy v2 also admits B. */
+  grade?: string | null;
+  /**
+   * The canonical sport BUCKET the rate below was measured over (for example `Basketball`).
+   *
+   * Label `win_rate` with THIS field, never with the pick's `display_category`: that names an
+   * exact league (NBA/WNBA/NFL/NHL/MLB/UFC) which folds into a broader bucket, so rendering
+   * "68% of their NBA markets" for a Basketball-wide rate publishes a false quantified claim.
+   */
+  canonical_category: string;
+  /**
+   * Share of this wallet's resolved markets in `canonical_category` whose realized P&L came out
+   * positive, as a 0..1 fraction. Above 0.60. Scale x100 at the display edge. `null` for an
+   * expert who qualified on the category-skill v2 definition only (`source` = `v2`).
+   */
+  win_rate: number | null;
+  /** Resolved markets in `canonical_category` behind `win_rate`. At least 10. `null` with it. */
+  n_resolved: number | null;
+  /**
+   * Which definition qualified the wallet: `v1` (the profitability rate above) or `v2` (the
+   * forward-only category-skill calibration edge below). Absent on picks frozen before the v2
+   * definition existed; read absence as `v1`. A Tennis pick frozen under gate policy v4 or later
+   * carries `v2` only: a v1 rate stopped qualifying a tennis expert at v4. A Tennis pick frozen
+   * under an earlier policy can still carry `v1` with a win rate.
+   */
+  source?: "v1" | "v2";
+  /**
+   * 95% lower bound of the wallet's mean calibration edge over the market price in
+   * `canonical_category`, in probability units (0.08 = 8 points). Positive by construction for
+   * a `v2` expert; present on a `v1` expert only when the wallet also has a live v2 row.
+   */
+  edge_lower_95?: number | null;
+  /** Point estimate behind `edge_lower_95`. */
+  edge_mean?: number | null;
+  /**
+   * Independent canonical events behind the edge. Clears the v2 sample floor for a `v2`
+   * expert; the floor is the selector's and is not published.
+   */
+  independent_event_count?: number | null;
+  /**
+   * Polymarket's own `currentValue` for this wallet on the backed outcome, in USD, as of
+   * selection. Clears the lane's net-position floor at selection; the floor is the selector's,
+   * has changed between gate policies, and is not published.
+   */
+  position_usd: number;
+  /**
+   * The same wallet's `currentValue` on the OTHER outcome of this market, in USD, as of
+   * selection. From gate policy v5 the floor is read on the net: `position_usd` minus this
+   * value clears the lane's floor, so a wallet long both sides does not qualify. Absent on picks
+   * frozen before v5, which never read the leg; 0 is a measured one-way position.
+   */
+  opposite_position_usd?: number | null;
+  /**
+   * When the skill read model behind the evidence was last rebuilt: `trader_category_stats`
+   * for a `source: v1` expert, `category_skill_v2_current.as_of` for a `source: v2` expert.
+   */
+  stats_computed_at: string;
+}
+
+/**
+ * Tennis tour a competitor belongs to. Only `atp` and `wta` name a gender: the
+ * ITF World Tennis Tour runs men's and women's events and the provider does not
+ * say which, so `itf` means tennis with gender unknown.
+ */
+export type TennisTour = "atp" | "wta" | "itf";
+
+/**
+ * The daily editorial Pick of the Day. Single-object envelope for
+ * `getPickOfTheDay` (`GET /api/v1/pick-of-the-day`). Field names mirror the
+ * JSON wire shape (snake_case); the backend omits null/absent optional fields.
+ * The outer object retains the historical first-pick fields and `picks` carries
+ * the ordered daily picks, normally three to six items and never more than six.
+ * A published pick whose holder proof is not readable yet is listed in
+ * `proof_pending_picks` instead of `picks` (#10698).
+ */
+/** Typed 304 result returned for a matching `If-None-Match` conditional GET. */
+export interface ApiNotModifiedResponse {
+  object: "not_modified";
+  data: null;
+  meta: {
+    status: 304;
+    etag?: string;
+    request_id?: string;
+    queryIgnored?: string;
+    effectiveQuery?: string;
+    [key: string]: unknown;
+  };
+}
+
+export type ApiClientResponse<T> = ApiEnvelope<T> | ApiNotModifiedResponse;
+
+// --- Operation-bound types (#16136) ---
+//
+// Every convenience method, and `call` / `list` given a literal operation id,
+// derive their path, query, body and result from `src/schema.ts`, which
+// `scripts/generate.mjs` writes from `openapi.json`. Nothing below
+// restates a field the document declares: a spec change regenerates the
+// schema and the drift gate fails until it does, so an editor type can no
+// longer advertise a field the route does not serve.
+
+/** `etag` and `sandbox`, lifted from headers by this client onto whichever `meta` the operation declares. */
+export type ClientMeta<M> = M & {
+  /** Lifted from the `ETag` response header by this client. */
+  etag?: string;
+  /** `true` when the response carried `X-Oxi-Sandbox: true` (#16138). */
+  sandbox?: true;
+};
+
+/** Operations whose 200 is the JSON envelope (`object`, `data`, `meta`); the two text bodies and the JSON-RPC post are not. */
+export type EnvelopeOperationId = {
+  [K in ApiOperationId]: OperationResponse[K] extends {
+    object: string;
+    data: unknown;
+    meta: unknown;
+  }
+    ? K
+    : never;
+}[ApiOperationId];
+
+/** Envelope operations that page: `data` is an array and `has_more` is declared. */
+export type ListOperationId = {
+  [K in EnvelopeOperationId]: OperationResponse[K] extends {
+    has_more: boolean;
+    data: readonly unknown[];
+  }
+    ? K
+    : never;
+}[EnvelopeOperationId];
+
+/** The operation's documented `meta` type. */
+export type OperationMeta<K extends ApiOperationId> = OperationResponse[K] extends {
+  meta: infer M;
+}
+  ? M
+  : never;
+
+/**
+ * What a 200 resolves to: the operation's own envelope (`object` literal,
+ * `data`, every top-level field such as `has_more` or a list's `totals`) with
+ * its own `meta` type (`BatchResponseMeta` on a batch, `EventReplayMeta` on
+ * the replay, `ResponseMeta` elsewhere) plus this client's lifted `etag` and
+ * `sandbox`.
+ */
+export type OperationEnvelope<K extends EnvelopeOperationId> = Omit<
+  OperationResponse[K],
+  "meta"
+> & { meta: ClientMeta<OperationMeta<K>> };
+
+/** A `call()` result: the envelope, or the typed 304 when `If-None-Match` matched. */
+export type OperationResult<K extends EnvelopeOperationId> =
+  | OperationEnvelope<K>
+  | ApiNotModifiedResponse;
+
+/** One item of a list operation's `data`. */
+export type OperationItem<K extends ListOperationId> =
+  OperationData[K] extends readonly (infer I)[] ? I : never;
+
+/**
+ * `call()` options bound to one operation: `path` is required exactly when
+ * the route has path parameters, `query` is the documented query, `body` is
+ * required exactly when the operation declares a request body, and the
+ * transport options (`signal`, `timeoutMs`, `maxRetries`, `headers`,
+ * `idempotencyKey`) are the shared ones.
+ */
+export type OperationRequestOptions<K extends ApiOperationId> = Omit<
+  ApiRequestOptions,
+  "path" | "query" | "body"
+> &
+  (OperationPath[K] extends Record<string, never>
+    ? { path?: OperationPath[K] }
+    : { path: OperationPath[K] }) & { query?: OperationQuery[K] } & ([
+    OperationBody[K],
+  ] extends [never]
+    ? { body?: never }
+    : { body: OperationBody[K] });
+
+/** The transport options a convenience method forwards: everything but the parts it fills itself. */
+export type ConvenienceOptions = Omit<ApiRequestOptions, "path" | "query" | "body">;
+
+/** Shared paging params accepted by Stripe-style list endpoints. */
+export interface ListParams {
+  limit?: number;
+  cursor?: string;
+  [key: string]: ApiQueryValue;
+}
+
+/** `GET /api/v1/leaderboard` -> parameters -> strategy (`openapi.json`). */
+export const LEADERBOARD_STRATEGIES = [
+  "accumulator",
+  "algo_trader",
+  "arbitrageur",
+  "directional",
+  "event_driven",
+  "market_maker",
+  "momentum",
+  "scalper",
+  "speculator",
+  "swing_trader",
+] as const;
+export type LeaderboardStrategy = (typeof LEADERBOARD_STRATEGIES)[number];
+
+/**
+ * Query parameters for `GET /api/v1/leaderboard`, from the operation
+ * (#16136). The board has no `min_grade`: it only holds S, A, and B traders,
+ * and the backend drops an unknown query key instead of rejecting it
+ * (#10642), which is why the type now refuses one.
+ */
+export type LeaderboardListParams = OperationQuery["listLeaderboard"];
+
+/** Query parameters for `GET /api/v1/leaderboard/trending`. */
+export type TrendingWalletsParams = OperationQuery["listTrendingWallets"];
+
+/** Query parameters of the V1 whale-trade list. */
+export type WhaleTradeListParams = OperationQuery["listWhaleTrades"];
+
+/** Query parameters of the V1 historical whale-trade replay. */
+export type WhaleTradeHistoryParams = OperationQuery["listWhaleTradeHistory"];
+
+/** Query parameters of `GET /api/v1/positions`. */
+export type PositionsListParams = OperationQuery["listPositions"];
+
+/** Query parameters of `GET /api/v1/large-positions`. */
+export type LargePositionsListParams = OperationQuery["listLargePositions"];
+
+/** Query parameters of the sharp-money flows read and its legacy alias. */
+export type SharpMoneyFlowsParams = OperationQuery["listSharpMoneyFlows"];
+
+/** Query parameters of `GET /api/v1/insider-radar`: `min_suspicion` and `severity`, not a grade. */
+export type InsiderRadarListParams = OperationQuery["listInsiderRadar"];
+
+/** Query parameters of `GET /api/v1/markets/explore`. */
+export type ExploreMarketsParams = OperationQuery["exploreMarkets"];
+
+/**
+ * Body-level `expand` values of `POST /api/v1/traders/batch`. The type is the
+ * operation's own body (`OperationBody["batchGetTraders"]["expand"]`); the
+ * const is the same list as a runtime value for a caller that iterates it.
+ */
+export const BATCH_TRADER_EXPANSIONS = [
+  "strategy",
+  "categories",
+  "quant_metrics",
+  "trust",
+] as const satisfies readonly BatchTraderExpand[];
+export type BatchTraderExpand = NonNullable<OperationBody["batchGetTraders"]["expand"]>[number];
+
+/**
+ * Options for `batchGetTraders`. The body is built from the positional
+ * `traders` array and `expand`, so `body` is not accepted here.
+ */
+export interface BatchGetTradersOptions extends ConvenienceOptions {
+  /** Shared expand flags applied to every trader item; sent as the body's `expand`. */
+  expand?: OperationBody["batchGetTraders"]["expand"];
+}
+
+const operationsById = new Map<ApiOperationId, ApiClientOperation>(
+  API_CLIENT_OPERATIONS.map((operation) => [operation.operationId, operation]),
+);
+
+export class OxinsiderApiClient {
+  private readonly baseUrl: string;
+  private readonly apiKey?: string;
+  private readonly sandbox: boolean;
+  private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number | null;
+  private readonly maxRetries: number;
+
+  /**
+   * A client for the sandbox server (#16138): `SANDBOX_BASE_URL`, no
+   * credential needed, example data only, never production data. The same
+   * as `new OxinsiderApiClient({ ...options, sandbox: true })`; pass a
+   * sandbox key (`oxi_sk_test_*`) as `apiKey` to have it checked.
+   *
+   * @example
+   * const sandbox = OxinsiderApiClient.sandbox();
+   * const board = await sandbox.listLeaderboard({ limit: 5 }); // no key
+   * board.meta?.sandbox; // true
+   */
+  static sandbox(
+    options: Omit<ApiClientOptions, "sandbox"> = {},
+  ): OxinsiderApiClient {
+    return new OxinsiderApiClient({ ...options, sandbox: true });
+  }
+
+  constructor(options: ApiClientOptions = {}) {
+    this.sandbox = options.sandbox === true;
+    const base = assertTrustedBaseUrl(
+      options.baseUrl ?? (this.sandbox ? SANDBOX_BASE_URL : DEFAULT_BASE_URL),
+    );
+    this.baseUrl = normalizeBaseUrl(base);
+    if (this.sandbox && options.apiKey?.startsWith(LIVE_KEY_PREFIX)) {
+      // The sandbox needs no credential and ignores a live key, so the only
+      // effect of sending one is a secret on the wire for nothing.
+      throw new Error(
+        "Refusing to send a live API key (oxi_sk_live_*) to the sandbox: omit apiKey, or pass a sandbox key (oxi_sk_test_*) from POST /api/v1/agents/register.",
+      );
+    }
+    this.apiKey = options.apiKey;
+    this.timeoutMs =
+      options.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : options.timeoutMs;
+    this.maxRetries = assertRetryCount(
+      options.maxRetries ?? DEFAULT_MAX_RETRIES,
+      "maxRetries",
+    );
+    const fetchImpl = options.fetch ?? globalThis.fetch;
+    if (typeof fetchImpl !== "function") {
+      throw new Error(
+        "No fetch implementation available. Pass `fetch` in OxinsiderApiClient options or run on Node 18+ / a fetch-capable runtime.",
+      );
+    }
+    // Bind so a passed-through `globalThis.fetch` keeps its receiver.
+    this.fetchImpl = fetchImpl.bind(globalThis);
+  }
+
+  /**
+   * Execute an envelope operation by id. Throws the matching
+   * `OxinsiderApiError` subclass on a non-2xx response, returns a typed
+   * `not_modified` result for a 304, and otherwise returns the operation's
+   * own `{ object, data, meta, ... }` envelope (#16136): `path` is required
+   * exactly when the route has path parameters, `query` and `body` are the
+   * documented ones, and `data` and `meta` are the operation's types.
+   *
+   * @example
+   * const trader = await client.call("getTrader", { path: { address } });
+   * if (trader.object === "trader") trader.data.grade; // typed
+   */
+  call<K extends EnvelopeOperationId>(
+    operationId: K,
+    options?: OperationRequestOptions<K>,
+  ): Promise<OperationResult<K>>;
+  /**
+   * The untyped form, for an operation chosen at runtime or a caller that
+   * asserts the shape itself with `T`: loose `path`, `query` and `body`, and
+   * the generic `{ object, data, meta? }` envelope back. Every convenience
+   * method uses the typed form above; reach for this one only when the
+   * operation id is not a literal.
+   */
+  call<T = unknown>(
+    operationId: ApiOperationId,
+    options?: ApiRequestOptions,
+  ): Promise<ApiClientResponse<T>>;
+  // The implementation signature is what both overloads narrow; `unknown`
+  // here is the widest return both can refine, not a shape a caller sees.
+  async call(
+    operationId: ApiOperationId,
+    options: ApiRequestOptions = {},
+  ): Promise<unknown> {
+    const operation = operationsById.get(operationId);
+    if (!operation) {
+      throw new Error(`Unknown 0xinsider API operation: ${operationId}`);
+    }
+    // The sandbox answers every operation without a credential; production
+    // does not, and the local check saves a round trip that can only be 401.
+    if (operation.auth === "bearer" && !this.apiKey && !this.sandbox) {
+      throw new Error(`${operationId} requires an API key (oxi_sk_*)`);
+    }
+
+    const timeoutMs =
+      options.timeoutMs === undefined ? this.timeoutMs : options.timeoutMs;
+    const maxRetries =
+      options.maxRetries === undefined
+        ? this.maxRetries
+        : assertRetryCount(options.maxRetries, "maxRetries");
+    const url = this.buildUrl(operation, options);
+    const headers = this.buildHeaders(operation, options);
+    const body =
+      options.body === undefined ? undefined : JSON.stringify(options.body);
+    // A key the server does not read is a false promise of safety: the
+    // request would be retried as though replayable while the route repeats
+    // its effect (#16182). Refuse it here, before anything is sent.
+    const eligibility = retryEligibility(operation);
+    const keyed = headers.has("idempotency-key");
+    if (keyed && eligibility !== "keyed") {
+      throw new Error(
+        `${operationId} does not honour Idempotency-Key; the API replays only ${IDEMPOTENT_WRITE_OPERATIONS.join(", ")}. Remove idempotencyKey: a retry of this request could repeat its side effect.`,
+      );
+    }
+    // Replaying a write without a key could repeat it (a second webhook
+    // endpoint, say), so only a read or a keyed write is retried (#14281).
+    // `headers` and `body` are built once, above, so every attempt carries
+    // the same key and the same bytes.
+    const retryable =
+      eligibility === "read" || (eligibility === "keyed" && keyed);
+    // One deadline for every attempt: a retry that cannot finish before it is
+    // not started, so the caller sees the real failure, not a timeout.
+    const deadlineAt = timeoutMs === null ? null : Date.now() + timeoutMs;
+    const retryDelayWithinBudget = (attempt: number, retryAfter: number | null) => {
+      if (!retryable || attempt >= maxRetries) return null;
+      const delay = retryDelayMs(attempt, retryAfter);
+      if (delay === null) return null;
+      if (deadlineAt !== null && Date.now() + delay >= deadlineAt) return null;
+      return delay;
+    };
+    const requestSignal = composeRequestSignal(timeoutMs, options.signal);
+    try {
+      let response: Response;
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          response = await this.fetchImpl(url, {
+            method: operation.method,
+            headers,
+            body,
+            signal: requestSignal.signal,
+          });
+        } catch (error: unknown) {
+          // A timeout or caller abort is final; the handler below maps it.
+          if (requestSignal.signal?.aborted || isTimeoutAbort(error)) throw error;
+          const delay = retryDelayWithinBudget(attempt, null);
+          if (delay === null) throw error;
+          await sleepUnlessAborted(delay, requestSignal.signal);
+          continue;
+        }
+        if (response.ok || response.status === 304) break;
+        const errorBody = await parseJson(response);
+        const retryAfter = retryAfterSeconds(response);
+        const delay = RETRYABLE_STATUSES.has(response.status)
+          ? retryDelayWithinBudget(attempt, retryAfter)
+          : null;
+        if (delay === null) {
+          throw errorFromResponse(response.status, errorBody, retryAfter);
+        }
+        await sleepUnlessAborted(delay, requestSignal.signal);
+      }
+      if (response.status === 304) {
+        return notModifiedResponse(response);
+      }
+
+      const envelope = await parseJson(response);
+      if (isApiEnvelope<unknown>(envelope)) {
+        const etag = response.headers.get("etag");
+        const sandbox = response.headers.get("x-oxi-sandbox") === "true";
+        const queryIgnored = response.headers.get("x-query-ignored");
+        const effectiveQuery = response.headers.get("x-effective-query");
+        // Only ADD to a meta the server actually sent. The contract makes
+        // `meta` required on every envelope, so synthesizing one from `?? {}`
+        // would hand a caller a `ResponseMeta` missing its required fields --
+        // which is what the hand-written type hid before #14278.
+        if (envelope.meta && (etag || sandbox || queryIgnored || effectiveQuery)) {
+          envelope.meta = {
+            ...envelope.meta,
+            ...(etag ? { etag } : {}),
+            ...(sandbox ? { sandbox: true as const } : {}),
+            ...(queryIgnored ? { queryIgnored } : {}),
+            ...(effectiveQuery ? { effectiveQuery } : {}),
+          };
+        }
+        return envelope;
+      }
+      throw new OxinsiderApiError(response.status, envelope);
+    } catch (error: unknown) {
+      if (
+        timeoutMs !== null &&
+        (isTimeoutAbort(error) ||
+          (requestSignal.signal?.aborted &&
+            isTimeoutAbort(requestSignal.signal.reason)))
+      ) {
+        throw new RequestTimeoutError(operationId, timeoutMs);
+      }
+      if (requestSignal.signal?.aborted) {
+        throw requestSignal.signal.reason;
+      }
+      throw error;
+    } finally {
+      requestSignal.dispose?.();
+    }
+  }
+
+  /**
+   * Execute a Stripe-style list operation and return its own list envelope
+   * (`data`, `has_more`, `next_cursor`, and the route's extra fields such as
+   * `facets` or `totals`). Use `paginate()` (in `pagination.ts`) to
+   * auto-follow `next_cursor`.
+   */
+  list<K extends ListOperationId>(
+    operationId: K,
+    options?: OperationRequestOptions<K>,
+  ): Promise<OperationEnvelope<K>>;
+  /** The untyped form; see the second `call` signature. */
+  list<T = unknown>(
+    operationId: ApiOperationId,
+    options?: ApiRequestOptions,
+  ): Promise<ApiListEnvelope<T>>;
+  async list(
+    operationId: ApiOperationId,
+    options: ApiRequestOptions = {},
+  ): Promise<unknown> {
+    const result = await this.call<unknown>(operationId, options);
+    if (isNotModified(result)) {
+      throw new OxinsiderApiError(
+        304,
+        "list() received a 304 not_modified; use call() if you send If-None-Match on a list endpoint",
+      );
+    }
+    if (!isListEnvelope<unknown>(result)) {
+      throw new InvalidResponseError(
+        200,
+        `Operation ${operationId} did not return a list envelope: expected object "list", an array data, a boolean has_more and a string or absent next_cursor`,
+        result,
+      );
+    }
+    return result;
+  }
+
+  // --- Typed convenience methods (key surfaces) ---
+  //
+  // Each takes the route's path parameters positionally, its documented
+  // query as `params` (list reads) or `options.query` (single reads), and
+  // the shared transport options: `signal`, `timeoutMs`, `maxRetries`,
+  // `headers` (`If-None-Match` for a conditional read) and `idempotencyKey`
+  // on a keyed write. The result is the operation's own envelope; no method
+  // takes a type argument any more (#16136).
+
+  getTrader(
+    address: OperationPath["getTrader"]["address"],
+    options: Omit<OperationRequestOptions<"getTrader">, "path"> = {},
+  ) {
+    return this.call("getTrader", { ...options, path: { address } });
+  }
+
+  getTraderPnl(
+    address: OperationPath["getTraderPnl"]["address"],
+    options: Omit<OperationRequestOptions<"getTraderPnl">, "path"> = {},
+  ) {
+    return this.call("getTraderPnl", { ...options, path: { address } });
+  }
+
+  /**
+   * Fetch one wallet's win record per canonical category.
+   *
+   * Counts every settled market at any position size, so it can differ from
+   * `category_strengths` on `getTrader`, which reads the floored calibration
+   * sample. A category under `min_decided_for_win_rate` keeps its `wins` and
+   * `decided` with `win_rate: null` and `status: "not_enough_data"`; a category
+   * the wallet has no settled market in is absent, which means no record rather
+   * than a 0% record. The `Esports` record carries `games`: the wallet's record
+   * per esports title (`LoL`, `CS2`, `Dota 2`, ...) under the same rule, named
+   * as the holder chips name them in `category_win_rate_game`. Pass
+   * `params.category` to filter to one bucket; a filter that reaches Esports
+   * returns its games too.
+   */
+  getTraderCategoryRecords(
+    address: OperationPath["getTraderCategoryRecords"]["address"],
+    params: OperationQuery["getTraderCategoryRecords"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getTraderCategoryRecords", {
+      ...options,
+      path: { address },
+      query: params,
+    });
+  }
+
+  /**
+   * Resolve 1 to 25 traders in one request (`POST /api/v1/traders/batch`).
+   *
+   * `traders` is sent as the request body's `traders` array, the field the
+   * route requires: wallet addresses, usernames, `trd_` ids or integer trader
+   * ids, resolved in input order. Until #16135 this method sent the array as
+   * `identifiers`, a field the route does not declare, so every call was
+   * refused for a missing `traders`. `options.expand` is sent as the body's
+   * `expand` array and applies to every item.
+   *
+   * The response `data` keeps request order and one row per input, duplicates
+   * included; a row is `status: "ok"` with `data`, or `status: "error"` with
+   * the item's own `error` (an unknown identity is a per-item `not_found`, not
+   * a request failure). `meta` is the batch's `BatchResponseMeta`:
+   * `request_cost` and `rate_limit` follow the batch item quota, not the
+   * per-request one.
+   */
+  batchGetTraders(
+    traders: OperationBody["batchGetTraders"]["traders"],
+    options: BatchGetTradersOptions = {},
+  ) {
+    const { expand, ...request } = options;
+    return this.call("batchGetTraders", {
+      ...request,
+      body: expand === undefined ? { traders } : { traders, expand },
+    });
+  }
+
+  /**
+   * Resolve up to 25 markets' intel in one request
+   * (`POST /api/v1/markets/intel/batch`); `meta` is the batch's own.
+   */
+  batchGetMarketIntel(
+    body: OperationBody["batchGetMarketIntel"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("batchGetMarketIntel", { ...options, body });
+  }
+
+  listLeaderboard(params: LeaderboardListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listLeaderboard", { ...options, query: params });
+  }
+
+  listTrendingWallets(params: TrendingWalletsParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listTrendingWallets", { ...options, query: params });
+  }
+
+  listWhaleTrades(params: WhaleTradeListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listWhaleTrades", { ...options, query: params });
+  }
+
+  listWhaleTradeHistory(
+    params: WhaleTradeHistoryParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listWhaleTradeHistory", { ...options, query: params });
+  }
+
+  listPositions(params: PositionsListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listPositions", { ...options, query: params });
+  }
+
+  listLargePositions(
+    params: LargePositionsListParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listLargePositions", { ...options, query: params });
+  }
+
+  listSmartMoneyFlows(
+    params: OperationQuery["listSmartMoneyFlows"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listSmartMoneyFlows", { ...options, query: params });
+  }
+
+  /** Canonical alias of {@link listSmartMoneyFlows} (epic #6912). */
+  listSharpMoneyFlows(params: SharpMoneyFlowsParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listSharpMoneyFlows", { ...options, query: params });
+  }
+
+  /**
+   * List the funded-primary sports signals with additive, shadow-only category
+   * evidence. `category_skill` never changes membership, ordering, or sizing.
+   */
+  listSportsEdgeSignals(params: SportsEdgeSignalsParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listSportsEdgeSignals", { ...options, query: params });
+  }
+
+  /**
+   * Read an explicitly observation-only sports cohort and its accountable
+   * per-sport funnel. This surface is isolated from the funded signals route.
+   * Healthy wider-holder and emerging-pile snapshots may be served for about
+   * 180 seconds; in-play cached snapshots are capped at about 30 seconds and
+   * stale provider live-board evidence fails closed. emerging-pile is an
+   * additive wider-holder projection, not an arrival-history or independent
+   * denominator view.
+   */
+  async listSportsEdgeObservations(
+    params: SportsEdgeObservationsParams,
+    options: ConvenienceOptions = {},
+  ): Promise<SportsEdgeObservationsResponse> {
+    const response = await this.list("listSportsEdgeObservations", {
+      ...options,
+      query: params,
+    });
+    return sportsEdgeObservationsResponse(response);
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listSportsEdgeObservations}.
+   * Returns the full observation response on 200 or a typed `not_modified`
+   * envelope on 304 instead of routing the latter through generic `call()`.
+   * The endpoint emits a weak semantic ETag over the stable response payload;
+   * request-specific `meta` is excluded. For emerging-pile, the opaque
+   * projection cutoff inside `next_cursor` is excluded while its stable page
+   * position remains covered.
+   */
+  async listSportsEdgeObservationsConditional(
+    params: SportsEdgeObservationsParams,
+    options: ConvenienceOptions = {},
+  ): Promise<SportsEdgeObservationsResponse | ApiNotModifiedResponse> {
+    const response = await this.call("listSportsEdgeObservations", {
+      ...options,
+      query: params,
+    });
+    if (isNotModified(response)) {
+      return response;
+    }
+    return sportsEdgeObservationsResponse(response);
+  }
+
+  searchMarkets(
+    q: OperationQuery["searchMarkets"]["q"],
+    options: ConvenienceOptions & { query?: Omit<OperationQuery["searchMarkets"], "q"> } = {},
+  ) {
+    const { query, ...request } = options;
+    return this.list("searchMarkets", { ...request, query: { ...query, q } });
+  }
+
+  searchContent(
+    q: OperationQuery["searchContent"]["q"],
+    options: ConvenienceOptions & { query?: Omit<OperationQuery["searchContent"], "q"> } = {},
+  ) {
+    const { query, ...request } = options;
+    return this.list("searchContent", { ...request, query: { ...query, q } });
+  }
+
+  exploreMarkets(params: ExploreMarketsParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("exploreMarkets", { ...options, query: params });
+  }
+
+  getMarketIntel(
+    conditionId: OperationPath["getMarketIntel"]["condition_id"],
+    options: Omit<OperationRequestOptions<"getMarketIntel">, "path"> = {},
+  ) {
+    return this.call("getMarketIntel", {
+      ...options,
+      path: { condition_id: conditionId },
+    });
+  }
+
+  getMarketSnapshot(
+    conditionId: OperationPath["getMarketSnapshot"]["condition_id"],
+    options: Omit<OperationRequestOptions<"getMarketSnapshot">, "path"> = {},
+  ) {
+    return this.call("getMarketSnapshot", {
+      ...options,
+      path: { condition_id: conditionId },
+    });
+  }
+
+  /**
+   * One page of a market's graded (S/A/B) holder roster from a complete
+   * provider holder scan: the list a Pick of the Day shows, for any market.
+   * `params.outcome` (`yes` | `no` | `all`), `params.min_grade` (`S` | `A` |
+   * `B`), `params.limit` and `params.cursor` (`mh_` prefix). The page carries
+   * the `market`, `scan` and roster `totals` beside `data`; `total` is the
+   * count matching the filters across every page.
+   */
+  getMarketHolders(
+    conditionId: OperationPath["getMarketHolders"]["condition_id"],
+    params: OperationQuery["getMarketHolders"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("getMarketHolders", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * Fetch bucketed OHLC candles for a market's outcome tokens.
+   * Resolution defaults to the server default; pass `params.resolution` as
+   * `"1d"` or `"1w"` to override. `params.from` is exclusive and `params.to`
+   * is inclusive; when both are present, `from` must be less than or equal to
+   * `to`.
+   */
+  getMarketCandles(
+    conditionId: OperationPath["getMarketCandles"]["condition_id"],
+    params: OperationQuery["getMarketCandles"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getMarketCandles", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  getInsiderRadarFlag(
+    id: OperationPath["getInsiderRadarFlag"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getInsiderRadarFlag", { ...options, path: { id } });
+  }
+
+  listInsiderRadar(params: InsiderRadarListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listInsiderRadar", { ...options, query: params });
+  }
+
+  getWhaleTrade(
+    id: OperationPath["getWhaleTrade"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getWhaleTrade", { ...options, path: { id } });
+  }
+
+  // --- Webhooks ---
+
+  listWebhooks(options: ConvenienceOptions = {}) {
+    return this.list("listWebhooks", options);
+  }
+
+  getWebhook(
+    id: OperationPath["getWebhook"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getWebhook", { ...options, path: { id } });
+  }
+
+  createWebhook(
+    body: OperationBody["createWebhook"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("createWebhook", { ...options, body });
+  }
+
+  updateWebhook(
+    id: OperationPath["updateWebhook"]["id"],
+    body: OperationBody["updateWebhook"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("updateWebhook", { ...options, path: { id }, body });
+  }
+
+  deleteWebhook(
+    id: OperationPath["deleteWebhook"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("deleteWebhook", { ...options, path: { id } });
+  }
+
+  /**
+   * Fetch the self-describing webhook event catalog (each entry's `id`,
+   * description, payload shape, and active/dormant status).
+   */
+  listWebhookEvents(options: ConvenienceOptions = {}) {
+    return this.list("listWebhookEvents", options);
+  }
+
+  /** List delivery attempts for one webhook endpoint (Stripe-style list). */
+  listWebhookDeliveries(
+    webhookId: OperationPath["listWebhookDeliveries"]["id"],
+    params: OperationQuery["listWebhookDeliveries"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listWebhookDeliveries", {
+      ...options,
+      path: { id: webhookId },
+      query: params,
+    });
+  }
+
+  /**
+   * Requeue one `dead_letter` delivery with a fresh attempt budget and return
+   * the delivery row. Re-enabling a disabled endpoint resends nothing, so this
+   * is how its dead-lettered deliveries are recovered. The API answers 409 when
+   * the delivery is already delivered or still queued, or when the endpoint is
+   * disabled, unverified, or no longer subscribed to the delivery's event type;
+   * the error message names the fix. Pass `idempotencyKey` to make a retry safe.
+   */
+  redeliverWebhookDelivery(
+    webhookId: OperationPath["redeliverWebhookDelivery"]["id"],
+    deliveryId: OperationPath["redeliverWebhookDelivery"]["delivery_id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("redeliverWebhookDelivery", {
+      ...options,
+      path: { id: webhookId, delivery_id: deliveryId },
+    });
+  }
+
+  // --- System ---
+
+  getHealth(options: ConvenienceOptions = {}) {
+    return this.call("getHealth", options);
+  }
+
+  getApiDiscovery(options: ConvenienceOptions = {}) {
+    return this.call("getApiDiscovery", options);
+  }
+
+  getPlatforms(options: ConvenienceOptions = {}) {
+    return this.call("getPlatforms", options);
+  }
+
+  getAccountIdentity(options: ConvenienceOptions = {}) {
+    return this.call("getAccountIdentity", options);
+  }
+
+  getUsage(options: ConvenienceOptions = {}) {
+    return this.call("getUsage", options);
+  }
+
+  /** Fetch today's editorial Pick of the Day (single-object envelope). */
+  getPickOfTheDay(options: ConvenienceOptions = {}) {
+    return this.call("getPickOfTheDay", options);
+  }
+
+  /** Fetch the Pick of the Day archive with hit-rate (single-object envelope). */
+  getPickOfTheDayArchive(options: ConvenienceOptions = {}) {
+    return this.call("getPickOfTheDayArchive", options);
+  }
+
+  /**
+   * Fetch the Pick of the Day commitment ledger (single-object envelope).
+   *
+   * Every entry is `sealed` (a live pick: the hash, no side and no price),
+   * `opened` (a settled pick: the nonce and the exact hashed payload) or
+   * `uncommitted` (no commitment; once settled, its unhashed side and price
+   * under `payload`). Verify an opened entry by
+   * appending the hex-decoded `commitment_nonce` to the `payload` bytes as
+   * received and hashing with sha256; do not reserialize the payload, since it
+   * is served byte for byte as it was hashed.
+   */
+  getPickOfTheDayLedger(options: ConvenienceOptions = {}) {
+    return this.call("getPickOfTheDayLedger", options);
+  }
+
+  // --- Internals ---
+
+  /** Resolve the base URL (used by the SSE stream consumer). */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  /** The configured API key, if any (used by the SSE stream consumer). */
+  getApiKey(): string | undefined {
+    return this.apiKey;
+  }
+
+  /** Whether this client was built in sandbox mode (#16138). */
+  isSandbox(): boolean {
+    return this.sandbox;
+  }
+
+  /** The resolved fetch implementation (used by the SSE stream consumer). */
+  getFetch(): typeof fetch {
+    return this.fetchImpl;
+  }
+
+  buildUrl(operation: ApiClientOperation, options: ApiRequestOptions): string {
+    const url = resolveApiUrl(
+      this.baseUrl,
+      interpolatePath(operation.path, options.path ?? {}),
+    );
+    for (const [key, value] of Object.entries(options.query ?? {})) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          url.searchParams.append(key, String(item));
+        }
+      } else {
+        url.searchParams.set(key, String(value));
+      }
+    }
+    return url.toString();
+  }
+
+  private buildHeaders(
+    operation: ApiClientOperation,
+    options: ApiRequestOptions,
+  ): Headers {
+    const headers = new Headers(options.headers);
+    headers.set("accept", "application/json");
+    if (options.body !== undefined && !headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
+    if (operation.auth === "bearer" && this.apiKey) {
+      headers.set("authorization", `Bearer ${this.apiKey}`);
+    }
+    if (options.idempotencyKey !== undefined) {
+      headers.set("idempotency-key", options.idempotencyKey);
+    }
+    if (options.strictQuery) {
+      headers.set("x-query-validation", "strict");
+    }
+    return headers;
+  }
+}
+
+/**
+ * Narrow a `call()` result to the typed 304. Takes any envelope-shaped
+ * value, so it works on an `OperationResult<K>` (whose `meta` is the
+ * operation's own type) as well as the loose `ApiClientResponse<T>`
+ * (#16136).
+ */
+export function isApiNotModifiedResponse<R extends { object: string }>(
+  response: R,
+): response is Extract<R, ApiNotModifiedResponse> {
+  return response.object === "not_modified";
+}
+
+function isNotModified<R extends { object: string }>(
+  response: R,
+): response is Extract<R, ApiNotModifiedResponse> {
+  return response.object === "not_modified";
+}
+
+export function interpolatePath(
+  path: string,
+  params: Partial<Record<string, string | number>>,
+): string {
+  return path.replace(/\{([^}]+)\}/g, (_, name: string) => {
+    const value = params[name];
+    if (value === undefined) {
+      throw new Error(`Missing path parameter: ${name}`);
+    }
+    return encodeURIComponent(String(value));
+  });
+}
+
+async function parseJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (text === "") {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function notModifiedResponse(response: Response): ApiNotModifiedResponse {
+  const meta: ApiNotModifiedResponse["meta"] = { status: 304 };
+  const etag = response.headers.get("etag");
+  if (etag) {
+    meta.etag = etag;
+  }
+  const requestId = response.headers.get("x-request-id");
+  if (requestId) {
+    meta.request_id = requestId;
+  }
+  const queryIgnored = response.headers.get("x-query-ignored");
+  if (queryIgnored) {
+    meta.queryIgnored = queryIgnored;
+  }
+  const effectiveQuery = response.headers.get("x-effective-query");
+  if (effectiveQuery) {
+    meta.effectiveQuery = effectiveQuery;
+  }
+  return { object: "not_modified", data: null, meta };
+}
+
+function isApiEnvelope<T>(body: unknown): body is ApiEnvelope<T> {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "object" in body &&
+    "data" in body
+  );
+}
+
+/**
+ * Whether `body` is a list envelope whose control fields the walker can act
+ * on: `object: "list"`, an array `data`, a BOOLEAN `has_more`, and a
+ * `next_cursor` that is a string, `null` or absent (#16246: the check used to
+ * accept any `has_more` that was merely present, so a malformed value could
+ * be coerced into "no more pages" or "more pages" by truthiness).
+ */
+export function isListEnvelope<T>(body: unknown): body is ApiListEnvelope<T> {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as {
+    object?: unknown;
+    data?: unknown;
+    has_more?: unknown;
+    next_cursor?: unknown;
+  };
+  return (
+    candidate.object === "list" &&
+    Array.isArray(candidate.data) &&
+    typeof candidate.has_more === "boolean" &&
+    (candidate.next_cursor === undefined ||
+      candidate.next_cursor === null ||
+      typeof candidate.next_cursor === "string")
+  );
+}
+
+function sportsEdgeObservationsResponse(
+  response: OperationEnvelope<"listSportsEdgeObservations">,
+): SportsEdgeObservationsResponse {
+  const candidate = response as unknown as Record<string, unknown>;
+  const funnel = candidate.funnel as Record<string, unknown> | null | undefined;
+  const meta = candidate.meta as Record<string, unknown> | null | undefined;
+  if (
+    candidate.object !== "list" ||
+    !Array.isArray(candidate.data) ||
+    typeof candidate.has_more !== "boolean" ||
+    !(
+      candidate.next_cursor === null ||
+      typeof candidate.next_cursor === "string"
+    ) ||
+    typeof candidate.snapshot_as_of !== "string" ||
+    typeof candidate.degraded !== "boolean" ||
+    typeof funnel !== "object" ||
+    funnel === null ||
+    Array.isArray(funnel) ||
+    !Array.isArray(funnel.sports) ||
+    typeof meta !== "object" ||
+    meta === null ||
+    Array.isArray(meta) ||
+    typeof meta.request_id !== "string" ||
+    typeof meta.cached !== "boolean" ||
+    typeof meta.cost !== "number" ||
+    !Number.isInteger(meta.cost)
+  ) {
+    throw new OxinsiderApiError(200, {
+      object: "error",
+      error: {
+        code: "invalid_response",
+        message:
+          "listSportsEdgeObservations returned an invalid required response envelope",
+      },
+    });
+  }
+  return response as SportsEdgeObservationsResponse;
+}

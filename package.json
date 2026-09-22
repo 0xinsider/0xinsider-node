@@ -1,0 +1,64 @@
+{
+  "name": "@0xinsider/sdk",
+  "version": "0.3.0",
+  "description": "Official TypeScript SDK for the 0xinsider API - analytics for Polymarket sports and esports markets (REST, cursor pagination, SSE stream, webhook verification)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "generate": "node scripts/generate.mjs",
+    "check": "node scripts/check-drift.mjs --spec openapi.json",
+    "check:live": "node scripts/check-drift.mjs",
+    "check:examples": "tsc --ignoreConfig --noEmit --strict --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --types node examples/sdk-list-s-grade-wallets.ts",
+    "pretest": "npm run build",
+    "test": "node --test test/*.test.mjs",
+    "test:sandbox": "OXINSIDER_SANDBOX_TESTS=1 node --test test/sandbox.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "0xinsider",
+    "prediction-markets",
+    "polymarket",
+    "sdk",
+    "api-client",
+    "sports-analytics",
+    "esports",
+    "large-trades",
+    "webhooks",
+    "sse"
+  ],
+  "author": "0xinsider",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xinsider/0xinsider-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xinsider/0xinsider-node/issues"
+  },
+  "homepage": "https://0xinsider.com/developers",
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  }
+}
