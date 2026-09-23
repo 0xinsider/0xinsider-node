@@ -219,6 +219,46 @@ if (previousEtag) {
 }
 ```
 
+### Beyond the JSON envelope
+
+Most operations answer `{ object, data, meta }` and `call()` reads them. Four do not, and each has its own method, because parsing a Markdown document as JSON only ever produced a confusing error about an invalid `200`:
+
+| The route answers | Method | Returns |
+| --- | --- | --- |
+| `text/markdown` (`context.md`) | `text()`, or `getTraderContextMarkdown` / `getMarketContextMarkdown` | the document as a `string` |
+| JSON-RPC 2.0 (`POST /api/v1/mcp`) | `mcp()` | `{ status, response, sessionId? }` |
+| `201` (`POST /api/v1/agents/register`) | `registerAgent()` | the envelope, `meta.status` `201` |
+| `302` (export download) | `getTraderExportDownloadUrl()` / `downloadTraderExport()` | the presigned URL, or the object response |
+
+```ts
+// Markdown, ready to paste into a prompt.
+const context = await client.getTraderContextMarkdown("0x9d84...1344");
+
+// One MCP JSON-RPC message. A JSON-RPC `error` is RETURNED, not thrown:
+// an unknown tool is an answer, a revoked credential is not.
+const listed = await client.mcp({ method: "tools/list", id: 1 });
+listed.response?.result;          // 200
+const ack = await client.mcp({ method: "notifications/initialized" });
+ack.status;                        // 202, ack.response is null
+
+// A sandbox key, with no account and no credential.
+const registered = await new OxinsiderApiClient().registerAgent();
+registered.meta.status;            // 201
+const sandbox = OxinsiderApiClient.sandbox({ apiKey: registered.data.api_key });
+
+// A finished export. The second request carries no headers at all, so your
+// live key never reaches the object store; the presigned URL authorizes
+// itself and expires in about an hour.
+const { response, filename, expiresAt } = await client.downloadTraderExport(address, jobId);
+await pipeline(Readable.fromWeb(response.body), createWriteStream(filename ?? "export.json"));
+```
+
+`meta.status` is on every envelope: `201` on `registerAgent`, `202` on a `submitTraderExport` that queued a new job and `200` on one that returned a job already running, `200` everywhere else. The body is identical either way, so this is the only way to tell them apart.
+
+The object fetch in `downloadTraderExport` has no deadline by default, the way the SSE stream has none: pass `signal` to cancel it or `downloadTimeoutMs` for one of your own, and read `response.body` as a stream rather than buffering a multi-gigabyte file. `getTraderExportDownloadUrl` reads the redirect with `redirect: "manual"`, which browsers answer with an opaque redirect no script can read; it says so rather than guessing, so run downloads from a server runtime.
+
+`REDIRECT_OPERATIONS` and `UNSUPPORTED_OPERATIONS` are exported so you can see what is not wrapped and why. Today that is the public `GET /api/v1/openapi.json` redirect (fetch it directly) and `GET /api/v1/mcp`, which answers `405` by design because the endpoint offers no server-to-client stream.
+
 ### Sandbox
 
 `OxinsiderApiClient.sandbox()` talks to `https://0xinsider.com/sandbox`, the second server in the OpenAPI document: no credential, no production data, every documented operation answered with its example or a deterministic sample, and `X-Oxi-Sandbox: true` on every response, which the client lifts to `meta.sandbox`. Every method works without a key, so you can write the integration before you have one. Add `sandbox_status` to a query to get one of the errors the operation documents, as the typed class it would be in production.
@@ -502,7 +542,7 @@ Each error exposes `status`, `code`, `error` (the `{ code, message, doc_url, par
 
 ## Authentication
 
-Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getPlatforms`, `getHealth`) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
+Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getPlatforms`, `getHealth`, `getPickOfTheDayLedger`, and `registerAgent`, which mints the sandbox key) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
 
 ## Examples
 
@@ -511,7 +551,7 @@ Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `
 
 ## How it is built
 
-`src/schema.ts` is generated from the published [OpenAPI document](https://0xinsider.com/api/v1/openapi.json) by `scripts/generate.mjs`, which keeps the exact bytes it read in `openapi.json`. The client itself (`src/client.ts`, `src/stream.ts`, `src/pagination.ts`, `src/retry.ts`, `src/webhooks.ts`, `src/errors.ts`) is hand-written against those types.
+`src/schema.ts` is generated from the published [OpenAPI document](https://0xinsider.com/api/v1/openapi.json) by `scripts/generate.mjs`, which keeps the exact bytes it read in `openapi.json` and renders the types with the same generator the 0xinsider app runs (vendored in `scripts/app/`), so they are byte-identical to the app's for the same document. The client itself (`src/client.ts`, `src/stream.ts`, `src/pagination.ts`, `src/retry.ts`, `src/webhooks.ts`, `src/errors.ts`) is hand-written against those types.
 
 ```bash
 npm run generate     # fetch the published document; rewrite openapi.json, src/schema.ts, src/provenance.ts

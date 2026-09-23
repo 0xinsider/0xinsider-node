@@ -9,13 +9,14 @@
 //   APP_COMMIT=<sha> node scripts/generate.mjs       # the 0xinsider/0xinsider commit the document belongs to
 //   node scripts/generate.mjs --check [--spec ...]   # exit 1 if the committed files are stale
 //
-// WHY A HAND-ROLLED GENERATOR. The document is small and regular: nearly every
-// schema is `type` + `properties` + `required`, with a handful of enums and
-// `allOf` / `oneOf` / `additionalProperties`. A dependency such as
-// openapi-typescript would add a supply chain for a job the standard library
-// does. The tradeoff is that this file must understand every construct the
-// document uses, so it THROWS on one it does not rather than emitting
-// `unknown` and hiding the gap.
+// THE GENERATOR IS THE APP'S. src/schema.ts is rendered by
+// scripts/app/generate-sdk-types.mjs, a verbatim copy of the generator the app
+// repository (0xinsider/0xinsider) runs on sdk/src/schema.ts, kept current by
+// scripts/sync-from-app.mjs and run through scripts/app-shim.mjs. So this
+// package's types are byte-identical to the app's for the same document, and a
+// generator change needs no port. This file owns only what the app does not
+// do here: fetching the published document, keeping its bytes in openapi.json,
+// and src/provenance.ts.
 //
 // PROVENANCE. src/provenance.ts records the SHA-256 of the document bytes as
 // fetched, its info.version, the operation count, and the 0xinsider/0xinsider
@@ -37,13 +38,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { runAppScript } from "./app-shim.mjs";
+
 export const DEFAULT_SOURCE = "https://0xinsider.com/api/v1/openapi.json";
 export const APP_REPOSITORY = "0xinsider/0xinsider";
 export const APP_SPEC_PATH = "web/public/api/v1/openapi.json";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const snapshotPath = resolve(repoRoot, "openapi.json");
-const schemaPath = resolve(repoRoot, "src/schema.ts");
 const provenancePath = resolve(repoRoot, "src/provenance.ts");
 
 const HTTP_METHODS = new Set(["get", "post", "patch", "delete", "put"]);
@@ -97,345 +99,6 @@ export function documentOperationCount(spec) {
 
 function quote(value) {
   return JSON.stringify(value);
-}
-
-/** A property name that is not a bare identifier has to be quoted. */
-function propertyKey(name) {
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : quote(name);
-}
-
-/** Render src/schema.ts for one parsed document. Throws on a construct it cannot type. */
-export function renderSchema(spec) {
-  const schemas = spec.components?.schemas ?? {};
-
-  /** `#/components/schemas/Trader` -> `Trader`, and nothing else resolves. */
-  function refName(ref) {
-    const prefix = "#/components/schemas/";
-    if (!ref.startsWith(prefix)) {
-      throw new Error(`unsupported $ref outside components.schemas: ${ref}`);
-    }
-    const name = ref.slice(prefix.length);
-    if (!(name in schemas)) {
-      throw new Error(`$ref names a schema the document does not define: ${ref}`);
-    }
-    return name;
-  }
-
-  /**
-   * One schema as a TypeScript type expression.
-   *
-   * `depth` only shapes indentation. Every branch either produces a type or
-   * throws: an unhandled construct is a generator gap to fix, never an
-   * `unknown` to ship.
-   */
-  function typeOf(schema, depth, path) {
-    if (schema === true) return "unknown";
-    if (!schema || typeof schema !== "object") {
-      throw new Error(`${path}: not a schema object`);
-    }
-    if (schema.$ref) return refName(schema.$ref);
-
-    // `const` is how the document spells a discriminant ("object": "trader").
-    if (schema.const !== undefined) return quote(schema.const);
-
-    if (schema.enum) {
-      if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
-        throw new Error(`${path}: empty enum`);
-      }
-      const type = schema.enum.map(quote).join(" | ");
-      // Enum schemas take this branch before scalar nullability is handled.
-      return schema.nullable === true ? `${type} | null` : type;
-    }
-
-    if (schema.oneOf || schema.anyOf) {
-      const members = schema.oneOf ?? schema.anyOf;
-      return members
-        .map((member, index) => typeOf(member, depth, `${path}/${index}`))
-        .join(" | ");
-    }
-
-    if (schema.allOf) {
-      return schema.allOf
-        .map((member, index) => typeOf(member, depth, `${path}/${index}`))
-        .join(" & ");
-    }
-
-    // OpenAPI 3.1 spells nullability as a type ARRAY (`["integer","null"]`);
-    // 3.0 spells it `nullable: true`. The document uses both, so both are read
-    // and normalized to one `| null` here.
-    let type = schema.type;
-    let nullable = schema.nullable === true;
-    if (Array.isArray(type)) {
-      const members = type.filter((member) => member !== "null");
-      if (members.length !== type.length) nullable = true;
-      if (members.length !== 1) {
-        throw new Error(`${path}: type array with ${members.length} non-null members`);
-      }
-      [type] = members;
-    }
-    const wrap = (inner) => (nullable ? `${inner} | null` : inner);
-
-    switch (type) {
-      case "string":
-        return wrap("string");
-      case "integer":
-      case "number":
-        return wrap("number");
-      case "boolean":
-        return wrap("boolean");
-      case "null":
-        return "null";
-      case "array": {
-        // `{"type": "array"}` with no `items` is how the document spells "any
-        // JSON array", in the JSON-RPC error payload. It is a real declaration,
-        // not an omission, so it types as an open array rather than throwing.
-        if (!schema.items) return wrap("unknown[]");
-        const item = typeOf(schema.items, depth, `${path}/items`);
-        // Parenthesize a union so `A | B[]` cannot be read as `A | (B[])`.
-        const needsParens = /[|&]/.test(item);
-        return wrap(needsParens ? `(${item})[]` : `${item}[]`);
-      }
-      case "object":
-      case undefined: {
-        if (schema.properties) return wrap(objectBody(schema, depth, path));
-        if (schema.additionalProperties) {
-          const value =
-            schema.additionalProperties === true
-              ? "unknown"
-              : typeOf(schema.additionalProperties, depth, `${path}/additionalProperties`);
-          return wrap(`Record<string, ${value}>`);
-        }
-        // A bare `{"type": "object"}` really is an open object here.
-        if (type === "object") return wrap("Record<string, unknown>");
-        // A schema carrying only annotations is JSON Schema's "any value", and
-        // the document uses it deliberately for pass-through provider payloads
-        // (`RadarFlag.evidence`). `unknown` is the honest spelling, and it is
-        // reached only here, by an explicit decision -- everything else throws.
-        const ANNOTATION_KEYS = new Set(["description", "title", "example", "examples", "deprecated", "default"]);
-        if (Object.keys(schema).every((key) => ANNOTATION_KEYS.has(key))) {
-          return wrap("unknown");
-        }
-        throw new Error(`${path}: schema with no type, properties, $ref or composition`);
-      }
-      default:
-        throw new Error(`${path}: unhandled type ${quote(type)}`);
-    }
-  }
-
-  function objectBody(schema, depth, path) {
-    const required = new Set(schema.required ?? []);
-    const pad = "  ".repeat(depth + 1);
-    const closePad = "  ".repeat(depth);
-    const lines = [];
-    for (const [name, property] of Object.entries(schema.properties)) {
-      const optional = required.has(name) ? "" : "?";
-      const type = typeOf(property, depth + 1, `${path}/${name}`);
-      if (property.description) {
-        lines.push(`${pad}/** ${property.description.replace(/\s+/g, " ").trim()} */`);
-      }
-      lines.push(`${pad}${propertyKey(name)}${optional}: ${type};`);
-    }
-    return `{\n${lines.join("\n")}\n${closePad}}`;
-  }
-
-  /**
-   * The type of an operation's `data`, which is what `ApiClient.call<T>` returns.
-   *
-   * A 200 that is not a JSON envelope (the document has none today) throws
-   * rather than degrading to `unknown`.
-   */
-  function dataType({ operation }) {
-    const content = operation.responses["200"].content;
-    const json = content?.["application/json"];
-    if (!json?.schema) {
-      // Two operations answer a non-JSON body and are not envelopes at all:
-      // the Markdown context documents (text/markdown) and the SSE stream
-      // `getStream` (text/event-stream). A caller reads those through
-      // `stream.ts` or as text, so `string` is the payload, and saying so beats
-      // both `unknown` and a throw.
-      const mediaTypes = Object.keys(content ?? {});
-      const textual = mediaTypes.every(
-        (media) => media.startsWith("text/") || media === "application/x-ndjson",
-      );
-      if (mediaTypes.length > 0 && textual) return "string";
-      throw new Error(
-        `${operation.operationId}: 200 has no application/json schema and is not a text body (${mediaTypes.join(", ") || "no content"})`,
-      );
-    }
-    const schema = json.schema.$ref ? schemas[refName(json.schema.$ref)] : json.schema;
-    const data = schema.properties?.data;
-    if (!data) {
-      // Not an envelope: the payload IS the body.
-      return typeOf(json.schema, 1, `${operation.operationId}/200`);
-    }
-    return typeOf(data, 1, `${operation.operationId}/200/data`);
-  }
-
-  /** Path parameters, typed as the document declares them (a webhook `id` is an integer). */
-  function pathType({ operation }) {
-    const params = (operation.parameters ?? []).filter((p) => p.in === "path");
-    if (params.length === 0) return "Record<string, never>";
-    const lines = params.map((p) => {
-      const type = typeOf(p.schema, 2, `${operation.operationId}/path/${p.name}`);
-      const doc = p.description
-        ? `    /** ${p.description.replace(/\s+/g, " ").trim()} */\n`
-        : "";
-      return `${doc}    ${propertyKey(p.name)}: ${type};`;
-    });
-    return `{\n${lines.join("\n")}\n  }`;
-  }
-
-  /**
-   * The JSON request body, or `never` for an operation that takes none. Every
-   * body the document declares is `required: true`, so a declared body is a
-   * required argument; a `required: false` body would need a second marker
-   * here, and the throw says so rather than guessing.
-   */
-  function bodyType({ operation }) {
-    const body = operation.requestBody;
-    if (!body) return "never";
-    if (body.required !== true) {
-      throw new Error(
-        `${operation.operationId}: requestBody is not required: true; OperationBody has no spelling for an optional body`,
-      );
-    }
-    const json = body.content?.["application/json"];
-    if (!json?.schema) {
-      throw new Error(`${operation.operationId}: requestBody has no application/json schema`);
-    }
-    return typeOf(json.schema, 1, `${operation.operationId}/requestBody`);
-  }
-
-  /**
-   * The whole 200 body: the envelope with its own `object` literal, `meta`
-   * type and any extra top-level fields (`has_more`, `next_cursor`,
-   * `computed_at`, a list's `market` and `totals`), with `data` spelled as
-   * `OperationData[id]` so the two interfaces cannot disagree. A text body is
-   * `string`, as in `OperationData`.
-   */
-  function responseType({ operation }) {
-    const content = operation.responses["200"].content;
-    const json = content?.["application/json"];
-    if (!json?.schema) return dataType({ operation });
-    if (json.schema.$ref) return refName(json.schema.$ref);
-    const schema = json.schema;
-    if (!schema.properties?.data) {
-      return typeOf(schema, 1, `${operation.operationId}/200`);
-    }
-    const required = new Set(schema.required ?? []);
-    const lines = [];
-    for (const [name, property] of Object.entries(schema.properties)) {
-      const optional = required.has(name) ? "" : "?";
-      const type =
-        name === "data"
-          ? `OperationData[${quote(operation.operationId)}]`
-          : typeOf(property, 2, `${operation.operationId}/200/${name}`);
-      if (property.description) {
-        lines.push(`    /** ${property.description.replace(/\s+/g, " ").trim()} */`);
-      }
-      lines.push(`    ${propertyKey(name)}${optional}: ${type};`);
-    }
-    return `{\n${lines.join("\n")}\n  }`;
-  }
-
-  /** Query parameters only. Path and header parameters are the caller's other arguments. */
-  function queryType({ operation }) {
-    const params = (operation.parameters ?? []).filter((p) => p.in === "query");
-    if (params.length === 0) return "Record<string, never>";
-    const lines = params.map((p) => {
-      const optional = p.required ? "" : "?";
-      const type = typeOf(p.schema, 2, `${operation.operationId}/query/${p.name}`);
-      const doc = p.description
-        ? `    /** ${p.description.replace(/\s+/g, " ").trim()} */\n`
-        : "";
-      return `${doc}    ${propertyKey(p.name)}${optional}: ${type};`;
-    });
-    return `{\n${lines.join("\n")}\n  }`;
-  }
-
-  const out = [];
-  out.push("// GENERATED by scripts/generate.mjs from the published 0xinsider OpenAPI");
-  out.push("// document (https://0xinsider.com/api/v1/openapi.json, snapshot in");
-  out.push("// openapi.json). Do not edit by hand: `npm run check` regenerates this file");
-  out.push("// and fails on a difference.");
-  out.push("//");
-  out.push(`// Source contract version: ${spec.info?.version ?? "unknown"}`);
-  out.push("");
-
-  for (const [name, schema] of Object.entries(schemas).sort(([a], [b]) => a.localeCompare(b))) {
-    if (schema.description) {
-      out.push(`/** ${schema.description.replace(/\s+/g, " ").trim()} */`);
-    }
-    out.push(`export type ${name} = ${typeOf(schema, 0, `#/components/schemas/${name}`)};`);
-    out.push("");
-  }
-
-  const ops = envelopeOperations(spec);
-
-  out.push("/**");
-  out.push(" * The `data` payload each operation answers with: what");
-  out.push(" * `ApiClient.call<T>` resolves to, and the default `T` of every");
-  out.push(" * convenience method.");
-  out.push(" */");
-  out.push("export interface OperationData {");
-  for (const op of ops) {
-    out.push(`  ${propertyKey(op.operation.operationId)}: ${dataType(op)};`);
-  }
-  out.push("}");
-  out.push("");
-
-  out.push("/** Each operation's documented query parameters. */");
-  out.push("export interface OperationQuery {");
-  for (const op of ops) {
-    out.push(`  ${propertyKey(op.operation.operationId)}: ${queryType(op)};`);
-  }
-  out.push("}");
-  out.push("");
-
-  out.push("/** Each operation's path parameters; `Record<string, never>` when the path has none. */");
-  out.push("export interface OperationPath {");
-  for (const op of ops) {
-    out.push(`  ${propertyKey(op.operation.operationId)}: ${pathType(op)};`);
-  }
-  out.push("}");
-  out.push("");
-
-  out.push("/** Each operation's JSON request body; `never` when it takes none. */");
-  out.push("export interface OperationBody {");
-  for (const op of ops) {
-    out.push(`  ${propertyKey(op.operation.operationId)}: ${bodyType(op)};`);
-  }
-  out.push("}");
-  out.push("");
-
-  out.push("/**");
-  out.push(" * The whole 200 body of each operation: the envelope with its own `object`");
-  out.push(" * literal, `meta` type and top-level fields, `data` as `OperationData[id]`;");
-  out.push(" * `string` for a text body. What `ApiClient.call(id)` resolves to.");
-  out.push(" */");
-  out.push("export interface OperationResponse {");
-  for (const op of ops) {
-    out.push(`  ${propertyKey(op.operation.operationId)}: ${responseType(op)};`);
-  }
-  out.push("}");
-  out.push("");
-
-  return out.join("\n");
-}
-
-/** Every operation with a documented 200, sorted by operationId: the SDK's table. */
-export function envelopeOperations(spec) {
-  const found = [];
-  for (const [path, methods] of Object.entries(spec.paths ?? {})) {
-    for (const [method, operation] of Object.entries(methods ?? {})) {
-      if (!HTTP_METHODS.has(method)) continue;
-      if (!operation?.responses?.["200"]) continue;
-      if (!operation.operationId) continue;
-      found.push({ path, method, operation });
-    }
-  }
-  found.sort((a, b) => a.operation.operationId.localeCompare(b.operation.operationId));
-  return found;
 }
 
 /** The identity fields of a rendered or committed src/provenance.ts. */
@@ -509,13 +172,12 @@ async function main() {
   const digest = sha256(raw);
   const version = spec.info?.version ?? "unknown";
   const operationCount = documentOperationCount(spec);
-  const rendered = renderSchema(spec);
   const schemaCount = Object.keys(spec.components?.schemas ?? {}).length;
   const label = fetched ? DEFAULT_SOURCE : path;
 
   if (check) {
     const problems = [];
-    if (readIfExists(schemaPath) !== rendered) {
+    if (runAppScript("generate-sdk-types.mjs", raw, ["--check"]) !== 0) {
       problems.push("src/schema.ts is stale");
     }
     const committed = readProvenance(readIfExists(provenancePath) ?? "");
@@ -564,7 +226,9 @@ async function main() {
     writeFileSync(snapshotPath, raw);
     written.unshift("openapi.json");
   }
-  writeFileSync(schemaPath, rendered, "utf-8");
+  if (runAppScript("generate-sdk-types.mjs", raw) !== 0) {
+    throw new Error("scripts/app/generate-sdk-types.mjs failed; src/schema.ts was not written");
+  }
   writeFileSync(
     provenancePath,
     renderProvenance({ source, sha256: digest, version, operationCount, appCommit }),
