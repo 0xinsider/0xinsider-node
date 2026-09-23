@@ -6,10 +6,12 @@
 // request, and the 0xinsider CLI and MCP server compile that directory. This
 // repository is where the package is built, tested and published. This script
 // copies every hand-written `sdk/src/*.ts` file (everything but the generated
-// `schema.ts`), the example, and the package version from an app checkout, then
+// `schema.ts`), the example, the app's SDK generator and drift gate (into
+// `scripts/app/`), and the package version from an app checkout, then
 // re-adds the one thing this repository has that the app does not: the
-// provenance export in `src/index.ts`. `scripts/generate.mjs` owns `schema.ts`
-// and `provenance.ts`, from the published document.
+// provenance export in `src/index.ts`. `scripts/generate.mjs` renders
+// `schema.ts` with the synced generator and writes `provenance.ts`, from the
+// published document.
 //
 // Usage:
 //   node scripts/sync-from-app.mjs                     # ../0xinsider at origin/main
@@ -21,9 +23,11 @@
 // <that commit>..origin/main -- sdk` lists what changed since.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { APP_SCRIPTS } from "./app-shim.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -85,6 +89,10 @@ for (const name of appSources) {
   wanted.set(`src/${name}`, text);
 }
 wanted.set(EXAMPLE, git("show", `${ref}:sdk/${EXAMPLE}`));
+// The app's generator and drift gate, run here through scripts/app-shim.mjs.
+for (const name of APP_SCRIPTS) {
+  wanted.set(`scripts/app/${name}`, git("show", `${ref}:scripts/${name}`));
+}
 
 const appPackage = JSON.parse(git("show", `${ref}:sdk/package.json`));
 const ourPackagePath = resolve(root, "package.json");
@@ -99,7 +107,10 @@ for (const [path, text] of wanted) {
   const current = existsSync(target) ? readFileSync(target, "utf8") : null;
   if (current === text) continue;
   stale.push(path);
-  if (!check) writeFileSync(target, text);
+  if (!check) {
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, text);
+  }
 }
 // A hand-written file the app removed is reported, never deleted silently.
 const orphans = readdirSync(resolve(root, "src"))

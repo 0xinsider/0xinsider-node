@@ -59,6 +59,12 @@ export type ClientResponseMeta = ResponseMeta & {
    * Lifted from the header by this client (#16138); absent otherwise.
    */
   sandbox?: true;
+  /**
+   * HTTP status of the success response, set by this client (#16137).
+   * `201` on `registerAgent`, `202` on a `submitTraderExport` that queued a
+   * new job, `200` everywhere else.
+   */
+  status?: number;
   /** Unknown query names reported by the server in compatibility mode. */
   queryIgnored?: string;
   /** Normalized query names and values the server actually applied. */
@@ -71,18 +77,72 @@ export type ApiClientMethod = "GET" | "POST" | "PATCH" | "DELETE";
 /** Whether an operation requires the `oxi_sk_*` Bearer key. */
 export type AuthMode = "none" | "bearer";
 
+/**
+ * How an operation carries its success body, which decides the method that
+ * can read it (#16137). Before this, every row was assumed to answer the
+ * JSON envelope, so `call()` parsed Markdown as JSON and then rejected it as
+ * a bad 200.
+ *
+ *  - `envelope` (the default, and every row that omits `kind`): a JSON
+ *    `{ object, data, meta }` body -> `call()` and `list()`.
+ *  - `text`: a `text/*` body -> `text()`. The two `context.md` reads.
+ *  - `jsonrpc`: a JSON-RPC 2.0 response, or an empty `202` for a
+ *    notification -> `mcp()`. `POST /api/v1/mcp`.
+ *  - `sse`: an open-ended `text/event-stream` -> `streamFeed()` and the
+ *    other consumers in `stream.ts`. Buffering one with `call()` or `text()`
+ *    would never return, so both refuse it.
+ *
+ * `scripts/check-sdk-openapi-drift.mjs` derives the same kind from each
+ * operation's documented success media type and schema and fails on a row
+ * that disagrees, so a route that changes shape cannot keep a stale kind.
+ */
+export type ResponseKind = "envelope" | "text" | "jsonrpc" | "sse";
+
 export interface ApiClientOperation {
   readonly method: ApiClientMethod;
   readonly path: string;
   readonly operationId: string;
   readonly auth: AuthMode;
+  /** How the success body is carried; absent means `"envelope"`. */
+  readonly kind?: ResponseKind;
 }
 
 /**
- * The full V1 operation table. One row per OpenAPI operation that returns a
- * `200`. Kept in lockstep with `web/public/api/v1/openapi.json` by
- * `scripts/check-sdk-openapi-drift.mjs`. Do not add a row without a matching
- * spec operation, and do not remove a spec operation without removing its row.
+ * A published operation whose success is a REDIRECT, so it has no success
+ * body and cannot go through `call()` (#16137). Declared here rather than
+ * omitted in silence: the drift check requires every redirect-only spec
+ * operation to appear in `REDIRECT_OPERATIONS` with the method that follows
+ * it, so "the SDK cannot do this" is never the same as "nobody noticed".
+ */
+export interface ApiRedirectOperation {
+  readonly method: ApiClientMethod;
+  readonly path: string;
+  readonly operationId: string;
+  readonly auth: AuthMode;
+  /** The documented redirect status. */
+  readonly status: number;
+  /** How a caller reaches it through this package. */
+  readonly handledBy: string;
+}
+
+/** A published operation this client deliberately does not wrap. */
+export interface ApiUnsupportedOperation {
+  readonly method: ApiClientMethod;
+  readonly path: string;
+  readonly operationId: string;
+  /** Why there is no method, and what to use instead. */
+  readonly reason: string;
+}
+
+/**
+ * The full V1 operation table. One row per OpenAPI operation with a
+ * documented 2xx, which since #16137 includes the `201`-only
+ * `registerAgent`; `kind` says which method reads its body. Kept in lockstep
+ * with `web/public/api/v1/openapi.json` by
+ * `scripts/check-sdk-openapi-drift.mjs`, which also checks every row's kind
+ * against the spec. Do not add a row without a matching spec operation, and
+ * do not remove a spec operation without removing its row. A redirect-only
+ * operation belongs in `REDIRECT_OPERATIONS` below, not here.
  */
 export const API_CLIENT_OPERATIONS = [
   { method: "GET", path: "/api/v1/me", operationId: "getAccountIdentity", auth: "bearer" },
@@ -158,6 +218,7 @@ export const API_CLIENT_OPERATIONS = [
     path: "/api/v1/trader/{address}/context.md",
     operationId: "getTraderContextMarkdown",
     auth: "bearer",
+    kind: "text",
   },
   {
     method: "POST",
@@ -293,6 +354,7 @@ export const API_CLIENT_OPERATIONS = [
     path: "/api/v1/market/{condition_id}/context.md",
     operationId: "getMarketContextMarkdown",
     auth: "bearer",
+    kind: "text",
   },
   {
     method: "GET",
@@ -323,6 +385,7 @@ export const API_CLIENT_OPERATIONS = [
     path: "/api/v1/stream",
     operationId: "getStream",
     auth: "bearer",
+    kind: "sse",
   },
   {
     method: "GET",
@@ -413,6 +476,7 @@ export const API_CLIENT_OPERATIONS = [
     path: "/api/v1/mcp",
     operationId: "createMcpJsonRpcResponse",
     auth: "bearer",
+    kind: "jsonrpc",
   },
   {
     method: "GET",
@@ -470,10 +534,79 @@ export const API_CLIENT_OPERATIONS = [
     // republished, so a client can read it with no key configured.
     auth: "none",
   },
+  {
+    method: "POST",
+    path: "/api/v1/agents/register",
+    operationId: "registerAgent",
+    // `security: []` in the document: minting a sandbox key is the one write
+    // that must work before a caller has any credential.
+    auth: "none",
+  },
 ] as const satisfies readonly ApiClientOperation[];
 
 export type ApiOperationId =
   (typeof API_CLIENT_OPERATIONS)[number]["operationId"];
+
+/** Operations whose success body is a `text/*` document; read with `text()`. */
+export type TextOperationId = Extract<
+  (typeof API_CLIENT_OPERATIONS)[number],
+  { kind: "text" }
+>["operationId"];
+
+/** Operations whose success body is JSON-RPC 2.0; read with `mcp()`. */
+export type JsonRpcOperationId = Extract<
+  (typeof API_CLIENT_OPERATIONS)[number],
+  { kind: "jsonrpc" }
+>["operationId"];
+
+/** Operations whose success body is an open SSE stream; read through `stream.ts`. */
+export type SseOperationId = Extract<
+  (typeof API_CLIENT_OPERATIONS)[number],
+  { kind: "sse" }
+>["operationId"];
+
+/**
+ * Published operations whose success is a redirect, with the method that
+ * follows it (#16137). These have no 2xx body, so they are absent from
+ * `API_CLIENT_OPERATIONS` and from the generated `schema.ts`;
+ * `scripts/check-sdk-openapi-drift.mjs` requires every redirect-only spec
+ * operation to be declared here, so one cannot go missing in silence again.
+ */
+export const REDIRECT_OPERATIONS = [
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/export/download",
+    operationId: "downloadTraderExport",
+    auth: "bearer",
+    status: 302,
+    handledBy:
+      "getTraderExportDownloadUrl() resolves the Location; downloadTraderExport() then fetches the object with no Authorization header.",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/openapi.json",
+    operationId: "redirectApiOpenapiSpec",
+    auth: "none",
+    status: 307,
+    handledBy:
+      "No method: the document is public and static, so fetch the URL directly and let your runtime follow the redirect. This package ships the same contract as generated types in schema.ts.",
+  },
+] as const satisfies readonly ApiRedirectOperation[];
+
+/**
+ * Published operations this client deliberately does not wrap, with the
+ * reason. The drift check requires every remaining spec operation to be
+ * accounted for here, so "unsupported" is always a stated decision.
+ */
+export const UNSUPPORTED_OPERATIONS = [
+  {
+    method: "GET",
+    path: "/api/v1/mcp",
+    operationId: "openMcpEventStream",
+    reason:
+      "The MCP endpoint offers no server-to-client stream: GET answers 405 by design, so a client that reconnects to it would loop (#16354). Post JSON-RPC with mcp() instead.",
+  },
+] as const satisfies readonly ApiUnsupportedOperation[];
 
 /**
  * The writes the API replays under `Idempotency-Key`: a second request with
@@ -1045,12 +1178,22 @@ export type ApiClientResponse<T> = ApiEnvelope<T> | ApiNotModifiedResponse;
 // schema and the drift gate fails until it does, so an editor type can no
 // longer advertise a field the route does not serve.
 
-/** `etag` and `sandbox`, lifted from headers by this client onto whichever `meta` the operation declares. */
+/** `etag`, `sandbox` and `status`, lifted by this client onto whichever `meta` the operation declares. */
 export type ClientMeta<M> = M & {
   /** Lifted from the `ETag` response header by this client. */
   etag?: string;
   /** `true` when the response carried `X-Oxi-Sandbox: true` (#16138). */
   sandbox?: true;
+  /**
+   * The HTTP status of the success response, set by this client (#16137).
+   *
+   * Not every operation answers `200`, and the difference is the answer:
+   * `registerAgent` answers `201`, and `submitTraderExport` answers `202`
+   * when it queued a new job and `200` when it returned one that already
+   * existed. The envelope body is the same shape either way, so without this
+   * a caller could not tell a fresh job from a replayed one.
+   */
+  status?: number;
 };
 
 /** Operations whose 200 is the JSON envelope (`object`, `data`, `meta`); the two text bodies and the JSON-RPC post are not. */
@@ -1123,6 +1266,189 @@ export type OperationRequestOptions<K extends ApiOperationId> = Omit<
 
 /** The transport options a convenience method forwards: everything but the parts it fills itself. */
 export type ConvenienceOptions = Omit<ApiRequestOptions, "path" | "query" | "body">;
+
+/** Per-transport knobs `request()` accepts; none of them are a caller's business. */
+interface RequestTransport {
+  /** Which responses end the retry loop as a success. Default: `ok` or `304`. */
+  isSuccess?: (response: Response) => boolean;
+  /** The `Accept` header. Default: `application/json`. */
+  accept?: string;
+  /** Passed to `fetch`; `"manual"` keeps a redirect for the caller to read. */
+  redirect?: RequestRedirect;
+}
+
+/** Which method reads each kind of success body, named in the error that refuses the wrong one. */
+const READER_FOR_KIND: Record<ResponseKind, string> = {
+  envelope: "call() or list()",
+  text: "text()",
+  jsonrpc: "mcp()",
+  sse: "streamFeed(), streamFeedResilient() or consumeStreamCheckpointed()",
+};
+
+// --- MCP JSON-RPC (#16137) ---
+
+/** The MCP methods `POST /api/v1/mcp` accepts, from the operation's request body. */
+export const MCP_METHODS = [
+  "initialize",
+  "notifications/initialized",
+  "notifications/cancelled",
+  "ping",
+  "tools/list",
+  "tools/call",
+] as const;
+export type McpMethod = (typeof MCP_METHODS)[number];
+
+/**
+ * One JSON-RPC 2.0 message for `POST /api/v1/mcp`. `jsonrpc` defaults to
+ * `"2.0"`. Omit `id` for a notification, which answers an empty `202`.
+ */
+export interface McpJsonRpcRequest {
+  jsonrpc?: "2.0";
+  /** Echoed exactly in the response. Omit it on a notification. */
+  id?: string | number | null;
+  method: McpMethod;
+  params?: Record<string, unknown>;
+}
+
+/** The JSON-RPC 2.0 response body, as the operation declares it. */
+export type McpJsonRpcResponse = OperationResponse["createMcpJsonRpcResponse"];
+
+/** Options for `mcp()`: the shared transport options plus the two MCP headers. */
+export interface McpOptions extends ConvenienceOptions {
+  /** Sent as `Mcp-Session-Id`; use the value a previous response returned. */
+  sessionId?: string;
+  /**
+   * Sent as `MCP-Protocol-Version`. Omit it and the server serves
+   * `2025-03-26`; an unsupported revision is a `400`.
+   */
+  protocolVersion?: string;
+}
+
+/** What `mcp()` returns: the JSON-RPC response, or the accepted notification. */
+export interface McpResult {
+  /** `200` for a JSON-RPC response, `202` for an accepted notification. */
+  status: 200 | 202;
+  /** The JSON-RPC body, or `null` for the empty `202` a notification receives. */
+  response: McpJsonRpcResponse | null;
+  /** `Mcp-Session-Id`, when the server issued or echoed one. */
+  sessionId?: string;
+}
+
+function isMcpJsonRpcResponse(body: unknown): body is McpJsonRpcResponse {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as { jsonrpc?: unknown; id?: unknown };
+  return (
+    candidate.jsonrpc === "2.0" &&
+    (typeof candidate.id === "string" ||
+      typeof candidate.id === "number" ||
+      candidate.id === null)
+  );
+}
+
+// --- Export download (#16137) ---
+
+/** The `downloadTraderExport` row of `REDIRECT_OPERATIONS`, as a request target. */
+const exportDownloadOperation: ApiClientOperation = {
+  method: REDIRECT_OPERATIONS[0].method,
+  path: REDIRECT_OPERATIONS[0].path,
+  operationId: REDIRECT_OPERATIONS[0].operationId,
+  auth: REDIRECT_OPERATIONS[0].auth,
+};
+
+/** Where a finished export actually lives, from the `302`'s `Location`. */
+export interface TraderExportDownloadTarget {
+  /**
+   * The presigned object URL. It authorizes itself, so treat it as a
+   * credential: never log it and never share it.
+   */
+  url: string;
+  /**
+   * When the link stops working, read from the URL's own SigV4
+   * `X-Amz-Date` and `X-Amz-Expires`. Absent when the URL does not carry
+   * them; the API signs a one-hour link today.
+   */
+  expiresAt?: string;
+}
+
+/** The object response, with what its headers said about the file. */
+export interface TraderExportDownload extends TraderExportDownloadTarget {
+  /** Not buffered: read `response.body` as a stream. */
+  response: Response;
+  /** `Content-Length` of the object, or `null` when the store sent none. */
+  contentLength: number | null;
+  contentType: string | null;
+  /** The filename from `Content-Disposition`, or `null`. */
+  filename: string | null;
+}
+
+export interface TraderExportDownloadOptions extends ConvenienceOptions {
+  /**
+   * A deadline in ms for the OBJECT fetch, which has none by default: an
+   * export can be far larger than a REST read and the 15-second default
+   * would cut it off mid-file. `timeoutMs` still bounds the redirect.
+   */
+  downloadTimeoutMs?: number | null;
+}
+
+/**
+ * Read a presigned URL's own expiry, and refuse a destination that would
+ * downgrade the transport. The backend already validates the redirect
+ * against its expected R2 origin; this is the client-side half, so a
+ * redirect can never move a download onto plain `http:`.
+ */
+function presignedTarget(location: string): TraderExportDownloadTarget {
+  let url: URL;
+  try {
+    url = new URL(location);
+  } catch {
+    throw new InvalidResponseError(
+      302,
+      `The export download redirect is not an absolute URL: ${location}`,
+      null,
+    );
+  }
+  if (url.protocol !== "https:" && !isLoopbackHost(url.hostname)) {
+    throw new InvalidResponseError(
+      302,
+      `Refusing to follow the export download redirect to ${url.origin}: it must use https: (http: is accepted only for a loopback host).`,
+      null,
+    );
+  }
+  const signedAt = url.searchParams.get("X-Amz-Date");
+  const lifetime = url.searchParams.get("X-Amz-Expires");
+  const expiresAt = presignExpiry(signedAt, lifetime);
+  return { url: url.toString(), ...(expiresAt ? { expiresAt } : {}) };
+}
+
+/** `20260922T101500Z` plus `3600` seconds, as an ISO instant; `null` if either is unreadable. */
+function presignExpiry(
+  signedAt: string | null,
+  lifetimeSeconds: string | null,
+): string | null {
+  if (!signedAt || !lifetimeSeconds) return null;
+  const parsed = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(signedAt);
+  const seconds = Number(lifetimeSeconds);
+  if (!parsed || !Number.isFinite(seconds)) return null;
+  const [, year, month, day, hour, minute, second] = parsed;
+  const signed = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  );
+  return new Date(signed + seconds * 1000).toISOString();
+}
+
+/** The `filename="..."` of a `Content-Disposition`, or `null`. */
+function filenameFromDisposition(disposition: string | null): string | null {
+  if (!disposition) return null;
+  const quoted = /filename\*?=(?:UTF-8'')?"([^"]+)"/i.exec(disposition);
+  if (quoted) return decodeURIComponent(quoted[1]);
+  const bare = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition);
+  return bare ? decodeURIComponent(bare[1].trim()) : null;
+}
 
 /** Shared paging params accepted by Stripe-style list endpoints. */
 export interface ListParams {
@@ -1292,16 +1618,284 @@ export class OxinsiderApiClient {
     operationId: ApiOperationId,
     options: ApiRequestOptions = {},
   ): Promise<unknown> {
+    const operation = this.resolveOperation(operationId, "envelope");
+    return this.request(operation, options, async (response) => {
+      if (response.status === 304) {
+        return notModifiedResponse(response);
+      }
+      const envelope = await parseJson(response);
+      if (isApiEnvelope<unknown>(envelope)) {
+        const etag = response.headers.get("etag");
+        const sandbox = response.headers.get("x-oxi-sandbox") === "true";
+        const queryIgnored = response.headers.get("x-query-ignored");
+        const effectiveQuery = response.headers.get("x-effective-query");
+        // Only ADD to a meta the server actually sent. The contract makes
+        // `meta` required on every envelope, so synthesizing one from `?? {}`
+        // would hand a caller a `ResponseMeta` missing its required fields --
+        // which is what the hand-written type hid before #14278. `status` is
+        // always lifted (#16137): `201` and `202` are load-bearing on
+        // `registerAgent` and `submitTraderExport`, and a caller cannot read
+        // them off a body that looks identical to a 200.
+        if (envelope.meta) {
+          envelope.meta = {
+            ...envelope.meta,
+            status: response.status,
+            ...(etag ? { etag } : {}),
+            ...(sandbox ? { sandbox: true as const } : {}),
+            ...(queryIgnored ? { queryIgnored } : {}),
+            ...(effectiveQuery ? { effectiveQuery } : {}),
+          };
+        }
+        return envelope;
+      }
+      throw new OxinsiderApiError(response.status, envelope);
+    });
+  }
+
+  /**
+   * Read a `text/*` operation's body as a string (#16137).
+   *
+   * `getTraderContextMarkdown` and `getMarketContextMarkdown` answer
+   * `text/markdown`, which `call()` used to parse as JSON and then reject as
+   * an invalid 200. Authentication, the request deadline, retries and the
+   * typed error hierarchy are the same as `call()`; only the body differs.
+   *
+   * @example
+   * const md = await client.text("getTraderContextMarkdown", { path: { address } });
+   */
+  text<K extends TextOperationId>(
+    operationId: K,
+    options?: OperationRequestOptions<K>,
+  ): Promise<string>;
+  /** The untyped form, for an operation id chosen at runtime. */
+  text(operationId: ApiOperationId, options?: ApiRequestOptions): Promise<string>;
+  async text(
+    operationId: ApiOperationId,
+    options: ApiRequestOptions = {},
+  ): Promise<string> {
+    const operation = this.resolveOperation(operationId, "text");
+    return this.request(
+      operation,
+      options,
+      async (response) => response.text(),
+      { accept: "text/markdown, text/plain;q=0.9, */*;q=0.1" },
+    );
+  }
+
+  /**
+   * Post one MCP JSON-RPC 2.0 message to `POST /api/v1/mcp` (#16137).
+   *
+   * The endpoint answers a JSON-RPC envelope, not the `{ object, data, meta }`
+   * envelope every other operation uses, so `call()` refuses it. A request
+   * (one carrying `id`) comes back as `status: 200` with `response` set; a
+   * supported notification (no `id`) comes back as `status: 202` with
+   * `response: null`, which is the empty body the server sends. A JSON-RPC
+   * `error` member is a protocol-level failure and is RETURNED, not thrown:
+   * only a non-2xx HTTP status throws, because an unknown tool is an answer
+   * and a revoked credential is not.
+   *
+   * The request is never retried: `tools/call` can have an effect, and the
+   * endpoint honours no `Idempotency-Key`.
+   *
+   * @example
+   * const listed = await client.mcp({ method: "tools/list", id: 1 });
+   * listed.response?.result;
+   */
+  async mcp(
+    request: McpJsonRpcRequest,
+    options: McpOptions = {},
+  ): Promise<McpResult> {
+    const operation = this.resolveOperation(
+      "createMcpJsonRpcResponse",
+      "jsonrpc",
+    );
+    const { sessionId, protocolVersion, ...transportOptions } = options;
+    const headers: Record<string, string> = { ...options.headers };
+    if (sessionId !== undefined) {
+      headers["mcp-session-id"] = sessionId;
+    }
+    if (protocolVersion !== undefined) {
+      headers["mcp-protocol-version"] = protocolVersion;
+    }
+    const body: McpJsonRpcRequest = { jsonrpc: "2.0", ...request };
+    return this.request(
+      operation,
+      { ...transportOptions, headers, body, maxRetries: 0 },
+      async (response) => {
+        const sessionId = response.headers.get("mcp-session-id");
+        const result: McpResult = {
+          status: response.status === 202 ? 202 : 200,
+          response: null,
+          ...(sessionId ? { sessionId } : {}),
+        };
+        if (response.status === 202) return result;
+        const parsed = await parseJson(response);
+        if (!isMcpJsonRpcResponse(parsed)) {
+          throw new InvalidResponseError(
+            response.status,
+            "POST /api/v1/mcp returned a body that is not a JSON-RPC 2.0 response: expected an object with jsonrpc \"2.0\" and an id.",
+            parsed,
+          );
+        }
+        result.response = parsed;
+        return result;
+      },
+    );
+  }
+
+  /**
+   * Resolve the presigned object URL behind `GET /api/v1/trader/{address}/export/download`
+   * without downloading anything (#16137).
+   *
+   * The route answers `302` with a `Location`, which `call()` treats as an
+   * error. This reads the redirect target and stops there, so a caller can
+   * hand the URL to a download manager or a browser. The returned URL is a
+   * bearer credential in itself: anyone holding it can read the file until it
+   * expires, so do not log it.
+   *
+   * Browser caveat: `fetch` with `redirect: "manual"` yields an opaque
+   * redirect whose `Location` no script can read. The method says so rather
+   * than guessing a URL; run the download from a server runtime.
+   */
+  async getTraderExportDownloadUrl(
+    address: OperationPath["getTraderExportStatus"]["address"],
+    jobId: OperationQuery["getTraderExportStatus"]["job_id"],
+    options: ConvenienceOptions = {},
+  ): Promise<TraderExportDownloadTarget> {
+    const operation = exportDownloadOperation;
+    if (!this.apiKey && !this.sandbox) {
+      throw new Error("downloadTraderExport requires an API key (oxi_sk_*)");
+    }
+    return this.request(
+      operation,
+      { ...options, path: { address }, query: { job_id: jobId } },
+      async (response) => {
+        if (response.type === "opaqueredirect" || response.status === 0) {
+          throw new InvalidResponseError(
+            302,
+            "This runtime hides redirect targets: fetch with redirect: \"manual\" returned an opaque redirect, so the presigned download URL cannot be read. Run the export download from a server runtime (Node 18+, Deno, Bun, a Worker).",
+            null,
+          );
+        }
+        const location = response.headers.get("location");
+        if (!location) {
+          throw new InvalidResponseError(
+            response.status,
+            "GET /api/v1/trader/{address}/export/download answered a redirect with no Location header.",
+            null,
+          );
+        }
+        return presignedTarget(location);
+      },
+      {
+        // The 302 IS the success here, so it must not enter the error path.
+        isSuccess: (response) =>
+          response.status === 302 || response.type === "opaqueredirect",
+        redirect: "manual",
+      },
+    );
+  }
+
+  /**
+   * Download a finished export (#16137): resolve the `302`, then fetch the
+   * object store directly.
+   *
+   * The second request carries NO headers at all, so the live API key never
+   * reaches the object store; the presigned URL is its own credential. The
+   * body is not buffered -- read `response.body` as a stream and write it
+   * where it belongs.
+   *
+   * There is no default deadline on the object fetch, the way `streamFeed`
+   * has none: a multi-gigabyte export would fail the 15-second REST default
+   * halfway through. Pass `signal` to cancel it, or `downloadTimeoutMs` for
+   * a deadline of your own. `timeoutMs` still bounds the redirect request.
+   *
+   * @example
+   * const { response, filename } = await client.downloadTraderExport(address, jobId);
+   * await pipeline(Readable.fromWeb(response.body), createWriteStream(filename ?? "export.json"));
+   */
+  async downloadTraderExport(
+    address: OperationPath["getTraderExportStatus"]["address"],
+    jobId: OperationQuery["getTraderExportStatus"]["job_id"],
+    options: TraderExportDownloadOptions = {},
+  ): Promise<TraderExportDownload> {
+    const target = await this.getTraderExportDownloadUrl(address, jobId, options);
+    const downloadSignal = composeRequestSignal(
+      options.downloadTimeoutMs ?? null,
+      options.signal,
+    );
+    let response: Response;
+    try {
+      // No headers, and no credentials: the presigned URL authorizes itself,
+      // and forwarding the bearer would hand the live API key to the object
+      // store on every download.
+      response = await this.fetchImpl(target.url, {
+        method: "GET",
+        signal: downloadSignal.signal,
+      });
+    } finally {
+      downloadSignal.dispose?.();
+    }
+    if (!response.ok) {
+      throw new InvalidResponseError(
+        response.status,
+        `The presigned export URL answered ${response.status}. A presigned link is valid for about an hour; request a fresh one with getTraderExportDownloadUrl.`,
+        null,
+      );
+    }
+    const contentLength = response.headers.get("content-length");
+    return {
+      ...target,
+      response,
+      contentLength:
+        contentLength === null ? null : Number.parseInt(contentLength, 10),
+      contentType: response.headers.get("content-type"),
+      filename: filenameFromDisposition(
+        response.headers.get("content-disposition"),
+      ),
+    };
+  }
+
+  /**
+   * Look up an operation and refuse it when the caller reached for the wrong
+   * reader (#16137): `call()` on a Markdown route used to fail as a bad 200.
+   */
+  private resolveOperation(
+    operationId: ApiOperationId,
+    expected: ResponseKind,
+  ): ApiClientOperation {
     const operation = operationsById.get(operationId);
     if (!operation) {
       throw new Error(`Unknown 0xinsider API operation: ${operationId}`);
+    }
+    const kind = operation.kind ?? "envelope";
+    if (kind !== expected) {
+      throw new Error(
+        `${operationId} answers a "${kind}" body, not "${expected}": use ${READER_FOR_KIND[kind]}.`,
+      );
     }
     // The sandbox answers every operation without a credential; production
     // does not, and the local check saves a round trip that can only be 401.
     if (operation.auth === "bearer" && !this.apiKey && !this.sandbox) {
       throw new Error(`${operationId} requires an API key (oxi_sk_*)`);
     }
+    return operation;
+  }
 
+  /**
+   * One request pipeline for every transport: URL and headers, the retry
+   * policy, one deadline shared by every attempt, the typed error hierarchy,
+   * and cancellation held live through body consumption. `consume` runs
+   * inside that window, so a slow body is still covered by the deadline and
+   * by the caller's `signal`.
+   */
+  private async request<T>(
+    operation: ApiClientOperation,
+    options: ApiRequestOptions,
+    consume: (response: Response) => Promise<T>,
+    transport: RequestTransport = {},
+  ): Promise<T> {
+    const operationId = operation.operationId;
     const timeoutMs =
       options.timeoutMs === undefined ? this.timeoutMs : options.timeoutMs;
     const maxRetries =
@@ -1309,9 +1903,12 @@ export class OxinsiderApiClient {
         ? this.maxRetries
         : assertRetryCount(options.maxRetries, "maxRetries");
     const url = this.buildUrl(operation, options);
-    const headers = this.buildHeaders(operation, options);
+    const headers = this.buildHeaders(operation, options, transport.accept);
     const body =
       options.body === undefined ? undefined : JSON.stringify(options.body);
+    const isSuccess =
+      transport.isSuccess ??
+      ((response: Response) => response.ok || response.status === 304);
     // A key the server does not read is a false promise of safety: the
     // request would be retried as though replayable while the route repeats
     // its effect (#16182). Refuse it here, before anything is sent.
@@ -1348,6 +1945,7 @@ export class OxinsiderApiClient {
             headers,
             body,
             signal: requestSignal.signal,
+            ...(transport.redirect ? { redirect: transport.redirect } : {}),
           });
         } catch (error: unknown) {
           // A timeout or caller abort is final; the handler below maps it.
@@ -1357,7 +1955,7 @@ export class OxinsiderApiClient {
           await sleepUnlessAborted(delay, requestSignal.signal);
           continue;
         }
-        if (response.ok || response.status === 304) break;
+        if (isSuccess(response)) break;
         const errorBody = await parseJson(response);
         const retryAfter = retryAfterSeconds(response);
         const delay = RETRYABLE_STATUSES.has(response.status)
@@ -1368,32 +1966,7 @@ export class OxinsiderApiClient {
         }
         await sleepUnlessAborted(delay, requestSignal.signal);
       }
-      if (response.status === 304) {
-        return notModifiedResponse(response);
-      }
-
-      const envelope = await parseJson(response);
-      if (isApiEnvelope<unknown>(envelope)) {
-        const etag = response.headers.get("etag");
-        const sandbox = response.headers.get("x-oxi-sandbox") === "true";
-        const queryIgnored = response.headers.get("x-query-ignored");
-        const effectiveQuery = response.headers.get("x-effective-query");
-        // Only ADD to a meta the server actually sent. The contract makes
-        // `meta` required on every envelope, so synthesizing one from `?? {}`
-        // would hand a caller a `ResponseMeta` missing its required fields --
-        // which is what the hand-written type hid before #14278.
-        if (envelope.meta && (etag || sandbox || queryIgnored || effectiveQuery)) {
-          envelope.meta = {
-            ...envelope.meta,
-            ...(etag ? { etag } : {}),
-            ...(sandbox ? { sandbox: true as const } : {}),
-            ...(queryIgnored ? { queryIgnored } : {}),
-            ...(effectiveQuery ? { effectiveQuery } : {}),
-          };
-        }
-        return envelope;
-      }
-      throw new OxinsiderApiError(response.status, envelope);
+      return await consume(response);
     } catch (error: unknown) {
       if (
         timeoutMs !== null &&
@@ -1819,6 +2392,53 @@ export class OxinsiderApiClient {
     return this.call("getAccountIdentity", options);
   }
 
+  /**
+   * One wallet's context as Markdown, ready to paste into a model prompt
+   * (`GET /api/v1/trader/{address}/context.md`). The JSON form of the same
+   * read is `getTraderContext`.
+   */
+  getTraderContextMarkdown(
+    address: OperationPath["getTraderContextMarkdown"]["address"],
+    options: Omit<
+      OperationRequestOptions<"getTraderContextMarkdown">,
+      "path"
+    > = {},
+  ): Promise<string> {
+    return this.text("getTraderContextMarkdown", { ...options, path: { address } });
+  }
+
+  /**
+   * One market's context as Markdown
+   * (`GET /api/v1/market/{condition_id}/context.md`). The JSON form is
+   * `getMarketIntel`.
+   */
+  getMarketContextMarkdown(
+    conditionId: OperationPath["getMarketContextMarkdown"]["condition_id"],
+    options: Omit<
+      OperationRequestOptions<"getMarketContextMarkdown">,
+      "path"
+    > = {},
+  ): Promise<string> {
+    return this.text("getMarketContextMarkdown", {
+      ...options,
+      path: { condition_id: conditionId },
+    });
+  }
+
+  /**
+   * Mint a sandbox key (`POST /api/v1/agents/register`), the one write that
+   * needs no credential. Answers `201`, which is why the SDK had no method
+   * for it until #16137: the drift gate counted only operations with a
+   * documented `200`. `meta.status` is `201`; `data.api_key` is the
+   * `oxi_sk_test_*` key to pass to `OxinsiderApiClient.sandbox()`.
+   *
+   * Nothing is stored: the key cannot be listed or revoked and does not
+   * expire. Register again for another one.
+   */
+  registerAgent(options: ConvenienceOptions = {}) {
+    return this.call("registerAgent", options);
+  }
+
   getUsage(options: ConvenienceOptions = {}) {
     return this.call("getUsage", options);
   }
@@ -1893,9 +2513,10 @@ export class OxinsiderApiClient {
   private buildHeaders(
     operation: ApiClientOperation,
     options: ApiRequestOptions,
+    accept = "application/json",
   ): Headers {
     const headers = new Headers(options.headers);
-    headers.set("accept", "application/json");
+    headers.set("accept", accept);
     if (options.body !== undefined && !headers.has("content-type")) {
       headers.set("content-type", "application/json");
     }
