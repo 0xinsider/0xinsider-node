@@ -20,7 +20,9 @@
  *    surfaces and a typed `Grade` enum.
  */
 
-import { errorFromResponse, OxinsiderApiError,
+import { createHash } from "node:crypto";
+
+import { errorFromResponse, ExportIntegrityError, OxinsiderApiError,
   InvalidResponseError,
   RequestTimeoutError,
 } from "./errors.js";
@@ -36,7 +38,8 @@ import type {
   OperationQuery,
   OperationResponse,
   ResponseMeta,
-  SportsEdgeObservation,
+  PreGameSideObservation,
+  TraderExportArtifactManifest,
 } from "./schema.js";
 
 /**
@@ -200,6 +203,12 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "getTraderCategoryRecords",
     auth: "bearer",
   },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/grade-at",
+    operationId: "getTraderGradeAt",
+    auth: "bearer",
+  },
   // Pre-existing op-table drift (surfaced by test/drift.test.ts, #6915): these
   // 200-returning openapi operations were never mirrored into the client table.
   // Added so the table stays contract-complete against the checked-in spec. All
@@ -233,6 +242,12 @@ export const API_CLIENT_OPERATIONS = [
     auth: "bearer",
   },
   {
+    method: "POST",
+    path: "/api/v1/trader/{address}/export/cancel",
+    operationId: "cancelTraderExport",
+    auth: "bearer",
+  },
+  {
     method: "GET",
     path: "/api/v1/leaderboard/trending",
     operationId: "listTrendingWallets",
@@ -243,6 +258,18 @@ export const API_CLIENT_OPERATIONS = [
   // so `drift.test.ts` was RED on main and SDK users had no typed method for it.
   {
     method: "GET",
+    path: "/api/v1/sports/pre-game-sides",
+    operationId: "listPreGameSides",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/sports/pre-game-side-observations",
+    operationId: "listPreGameSideObservations",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/sports-edge-signals",
     operationId: "listSportsEdgeSignals",
     auth: "bearer",
@@ -251,6 +278,48 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/sports-edge-observations",
     operationId: "listSportsEdgeObservations",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/games",
+    operationId: "listGames",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/games/{event_slug}",
+    operationId: "getGame",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-trades",
+    operationId: "listLargeTrades",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-trades/history",
+    operationId: "listLargeTradeHistory",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-trades/{id}/counterparties/executions",
+    operationId: "listLargeTradeCounterpartyExecutions",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-trades/{id}/counterparties/executions/{execution_id}/makers",
+    operationId: "listLargeTradeCounterpartyMakers",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/large-trades/{id}",
+    operationId: "getLargeTrade",
     auth: "bearer",
   },
   {
@@ -321,6 +390,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/coverage",
+    operationId: "getCoverage",
+    auth: "none",
+  },
+  {
+    method: "GET",
     path: "/api/v1/platforms",
     operationId: "getPlatforms",
     auth: "none",
@@ -333,8 +408,20 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/market/{condition_id}/flow",
+    operationId: "getMarketFlow",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/market/{condition_id}/intel",
     operationId: "getMarketIntel",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/markets/flow/batch",
+    operationId: "batchGetMarketFlow",
     auth: "bearer",
   },
   {
@@ -362,6 +449,22 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "getMarketCandles",
     auth: "bearer",
   },
+  {
+    method: "GET",
+    path: "/api/v1/suspicious-trades",
+    operationId: "listSuspiciousTrades",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/suspicious-trades/{id}",
+    operationId: "getSuspiciousTrade",
+    auth: "bearer",
+  },
+  // Deprecated aliases (#16301). Both paths stay live with no retirement
+  // date; responses carry Deprecation and a Link rel="successor-version".
+  // `/api/v1/insider-radar/{id}` also keeps answering `object: "radar_flag"`,
+  // so these entries are what an existing integration must keep exercising.
   {
     method: "GET",
     path: "/api/v1/insider-radar",
@@ -634,7 +737,8 @@ export type IdempotentWriteOperationId =
 
 /**
  * POST operations that read and never write (#16182): the batch lookups.
- * `POST /api/v1/traders/batch` and `POST /api/v1/markets/intel/batch` resolve
+ * `POST /api/v1/traders/batch` and `POST /api/v1/markets/flow/batch` (with its
+ * deprecated alias `POST /api/v1/markets/intel/batch`) resolve
  * their inputs and store nothing (`backend/src/api_v1/handlers/batch.rs`), so
  * a repeat cannot duplicate a side effect. Each attempt is one request
  * against the account's quota and one reservation of batch item units, which
@@ -643,16 +747,32 @@ export type IdempotentWriteOperationId =
  */
 export const READ_ONLY_POST_OPERATIONS = [
   "batchGetTraders",
+  "batchGetMarketFlow",
   "batchGetMarketIntel",
+] as const satisfies readonly ApiOperationId[];
+
+/**
+ * Writes whose repeat converges on the state the first one reached, so a
+ * retry cannot repeat a side effect and needs no `Idempotency-Key` (#16254).
+ * `POST /api/v1/trader/{address}/export/cancel` moves a job at most once and
+ * answers its current state every time: a second cancel of a cancelled job
+ * returns it unchanged, and a cancel that lost the race to a finished file
+ * returns the ready job. They are retried like a read; the API does not read
+ * an `Idempotency-Key` on them, so one is refused like on any other write.
+ */
+export const CONVERGENT_WRITE_OPERATIONS = [
+  "cancelTraderExport",
 ] as const satisfies readonly ApiOperationId[];
 
 const idempotentWrites: ReadonlySet<string> = new Set(IDEMPOTENT_WRITE_OPERATIONS);
 const readOnlyPosts: ReadonlySet<string> = new Set(READ_ONLY_POST_OPERATIONS);
+const convergentWrites: ReadonlySet<string> = new Set(CONVERGENT_WRITE_OPERATIONS);
 
 /**
  * How `call()` may repeat an operation that failed with 429, 502, 503, 504 or
  * a network error before any response (#16182):
- * - `"read"`: a GET or a read-only POST, repeated without conditions.
+ * - `"read"`: a GET, a read-only POST or a convergent write, repeated
+ *   without conditions.
  * - `"keyed"`: an `IDEMPOTENT_WRITE_OPERATIONS` member, repeated only when
  *   the request carries an `Idempotency-Key`, with the same key and the same
  *   bytes on every attempt.
@@ -664,7 +784,11 @@ export type RetryEligibility = "read" | "keyed" | "never";
 export function retryEligibility(
   operation: Pick<ApiClientOperation, "method" | "operationId">,
 ): RetryEligibility {
-  if (operation.method === "GET" || readOnlyPosts.has(operation.operationId)) {
+  if (
+    operation.method === "GET" ||
+    readOnlyPosts.has(operation.operationId) ||
+    convergentWrites.has(operation.operationId)
+  ) {
     return "read";
   }
   return idempotentWrites.has(operation.operationId) ? "keyed" : "never";
@@ -785,8 +909,11 @@ export const DEFAULT_BASE_URL = "https://api.0xinsider.com";
  * The sandbox server, the second `servers` entry of the OpenAPI document: no
  * credential, no production data, every documented operation answered with
  * its example or a deterministic sample, `?sandbox_status=<code>` for a
- * documented error, and `X-Oxi-Sandbox: true` on every response. Streams and
- * file downloads are not simulated there and answer 400.
+ * documented error, and `X-Oxi-Sandbox: true` on every response. The two
+ * Markdown documents answer `200 text/markdown` there and the export download
+ * answers its `302` to a sample file the sandbox serves itself. `GET
+ * /api/v1/stream` is the one operation it does not simulate and answers 400,
+ * because an SSE stream is a live connection rather than a body.
  */
 export const SANDBOX_BASE_URL = "https://0xinsider.com/sandbox";
 
@@ -935,6 +1062,141 @@ function composeRequestSignal(
   return { signal: controller.signal, dispose };
 }
 
+/**
+ * `response` with `dispose` deferred to the end of its body: the stream's
+ * close, error or cancellation (#16686). Without a `dispose` (a runtime with
+ * `AbortSignal.any`, or no composition) the response is returned as is.
+ */
+function releaseWhenBodySettles(response: Response, dispose?: () => void): Response {
+  if (!dispose) return response;
+  if (!response.body) {
+    dispose();
+    return response;
+  }
+  const reader = response.body.getReader();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          dispose();
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error: unknown) {
+        dispose();
+        controller.error(error);
+      }
+    },
+    cancel(reason: unknown) {
+      dispose();
+      return reader.cancel(reason);
+    },
+  });
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+/**
+ * Hash the bytes a caller actually receives while preserving streaming. The
+ * object is gzip encoded at rest, but fetch exposes the decoded content stream
+ * to Node callers, which is the byte domain covered by content_sha256.
+ */
+function verifyExportBody(
+  response: Response,
+  jobId: number,
+  expectedSha256: string,
+  expectedSizeBytes: number,
+): Response {
+  if (!response.body) {
+    throw new ExportIntegrityError(
+      jobId,
+      expectedSha256,
+      null,
+      expectedSizeBytes,
+      0,
+    );
+  }
+  const reader = response.body.getReader();
+  const hasher = createHash("sha256");
+  let actualSizeBytes = 0;
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          const actualSha256 = hasher.digest("hex");
+          if (
+            actualSizeBytes !== expectedSizeBytes ||
+            actualSha256 !== expectedSha256
+          ) {
+            controller.error(
+              new ExportIntegrityError(
+                jobId,
+                expectedSha256,
+                actualSha256,
+                expectedSizeBytes,
+                actualSizeBytes,
+              ),
+            );
+            return;
+          }
+          controller.close();
+          return;
+        }
+        if (value === undefined) {
+          controller.error(
+            new ExportIntegrityError(
+              jobId,
+              expectedSha256,
+              null,
+              expectedSizeBytes,
+              actualSizeBytes,
+            ),
+          );
+          return;
+        }
+        hasher.update(value);
+        actualSizeBytes += value.byteLength;
+        controller.enqueue(value);
+      } catch (error: unknown) {
+        controller.error(
+          new ExportIntegrityError(
+            jobId,
+            expectedSha256,
+            null,
+            expectedSizeBytes,
+            actualSizeBytes,
+            error,
+          ),
+        );
+      }
+    },
+    cancel(reason: unknown) {
+      return reader.cancel(reason);
+    },
+  });
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+/** JSON-RPC methods `POST /api/v1/mcp` answers without a credential. */
+function isKeylessMcpMethod(method: string): boolean {
+  return (
+    method === "initialize" ||
+    method === "ping" ||
+    method === "tools/list" ||
+    method.startsWith("notifications/")
+  );
+}
+
 function isTimeoutAbort(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -985,9 +1247,19 @@ export interface CategorySkillStatusCounts {
   degraded: number;
 }
 
-export type SportsEdgeSignalsParams = OperationQuery["listSportsEdgeSignals"];
+/** Query parameters accepted by {@link OxinsiderApiClient.listGames}. */
+export type GamesListParams = OperationQuery["listGames"];
 
-/** Observation cohorts exposed by `listSportsEdgeObservations`. */
+/** One game: both sides, its schedule, its provider status and its markets. */
+export type { Game } from "./schema.js";
+
+/** Query parameters of `GET /api/v1/sports/pre-game-sides` (#16310). */
+export type PreGameSidesParams = OperationQuery["listPreGameSides"];
+
+/** @deprecated Use {@link PreGameSidesParams} (#16310). */
+export type SportsEdgeSignalsParams = PreGameSidesParams;
+
+/** Observation cohorts exposed by `listPreGameSideObservations`. */
 export type SportsEdgeObservationCohort =
   | "wider_holder"
   | "in_play"
@@ -1060,9 +1332,17 @@ export type SportsEdgeObservationSport =
  * snapshot-wide verdict; fully accounted `capacity_limited` rows alone do
  * not set it.
  */
-export type SportsEdgeObservationsResponse = OperationEnvelope<"listSportsEdgeObservations">;
+export type PreGameSideObservationsResponse =
+  OperationEnvelope<"listPreGameSideObservations">;
 
-export type SportsEdgeObservationsParams = OperationQuery["listSportsEdgeObservations"];
+/** @deprecated Use {@link PreGameSideObservationsResponse} (#16310). */
+export type SportsEdgeObservationsResponse = PreGameSideObservationsResponse;
+
+/** Query parameters of `GET /api/v1/sports/pre-game-side-observations` (#16310). */
+export type PreGameSideObservationsParams = OperationQuery["listPreGameSideObservations"];
+
+/** @deprecated Use {@link PreGameSideObservationsParams} (#16310). */
+export type SportsEdgeObservationsParams = PreGameSideObservationsParams;
 
 /**
  * One qualifying category expert on a Pick of the Day's backed side.
@@ -1149,7 +1429,7 @@ export type TennisTour = "atp" | "wta" | "itf";
  * `getPickOfTheDay` (`GET /api/v1/pick-of-the-day`). Field names mirror the
  * JSON wire shape (snake_case); the backend omits null/absent optional fields.
  * The outer object retains the historical first-pick fields and `picks` carries
- * the ordered daily picks, normally three to six items and never more than six.
+ * the ordered daily picks, normally three to ten items and never more than ten.
  * A published pick whose holder proof is not readable yet is listed in
  * `proof_pending_picks` instead of `picks` (#10698).
  */
@@ -1264,6 +1544,49 @@ export type OperationRequestOptions<K extends ApiOperationId> = Omit<
     ? { body?: never }
     : { body: OperationBody[K] });
 
+/**
+ * Whether operation `K` cannot be called without options: it has path
+ * parameters or a request body (#16643). For a union of operations it is
+ * `true` when any member needs them.
+ */
+export type OperationRequiresOptions<K extends ApiOperationId> = true extends (
+  K extends ApiOperationId
+    ? OperationPath[K] extends Record<string, never>
+      ? [OperationBody[K]] extends [never]
+        ? false
+        : true
+      : true
+    : never
+)
+  ? true
+  : false;
+
+/** The operations that can be called with no options at all. */
+export type OptionalInputOperationId = {
+  [K in ApiOperationId]: OperationRequiresOptions<K> extends true ? never : K;
+}[ApiOperationId];
+
+/**
+ * The options argument of a typed overload (#16643): required when the
+ * operation has path parameters or a body, optional otherwise, so
+ * `client.call("createWebhook")` and `client.list("listWebhookDeliveries")`
+ * fail to compile instead of failing at the API.
+ */
+export type OperationOptionsArgs<K extends ApiOperationId, O> =
+  OperationRequiresOptions<K> extends true ? [options: O] : [options?: O];
+
+/**
+ * The operation id a LOOSE overload accepts (#16643). A value typed as the
+ * whole `ApiOperationId` union (an id chosen at runtime) passes; a literal
+ * passes only when the operation needs no options, so a literal with a
+ * mandatory path or body cannot fall through to the loose form without them.
+ * A caller that names the result type explicitly (`call<T>(...)`) skips the
+ * inference this relies on; the runtime still refuses a missing path
+ * parameter before any request.
+ */
+export type RuntimeOperationId<I extends ApiOperationId> = I &
+  (ApiOperationId extends I ? unknown : OptionalInputOperationId);
+
 /** The transport options a convenience method forwards: everything but the parts it fills itself. */
 export type ConvenienceOptions = Omit<ApiRequestOptions, "path" | "query" | "body">;
 
@@ -1370,6 +1693,13 @@ export interface TraderExportDownloadTarget {
   expiresAt?: string;
 }
 
+/** The manifest field used by `downloadTraderExport` when verification is enabled. */
+export interface TraderExportDownloadIntegrity {
+  algorithm: "sha256";
+  expectedSha256: string;
+  expectedSizeBytes: number;
+}
+
 /** The object response, with what its headers said about the file. */
 export interface TraderExportDownload extends TraderExportDownloadTarget {
   /** Not buffered: read `response.body` as a stream. */
@@ -1379,6 +1709,8 @@ export interface TraderExportDownload extends TraderExportDownloadTarget {
   contentType: string | null;
   /** The filename from `Content-Disposition`, or `null`. */
   filename: string | null;
+  /** The expected content checksum, or `null` when `verifyChecksum` was not requested. */
+  integrity: TraderExportDownloadIntegrity | null;
 }
 
 export interface TraderExportDownloadOptions extends ConvenienceOptions {
@@ -1388,6 +1720,8 @@ export interface TraderExportDownloadOptions extends ConvenienceOptions {
    * would cut it off mid-file. `timeoutMs` still bounds the redirect.
    */
   downloadTimeoutMs?: number | null;
+  /** Fetch the owner-authorized manifest and verify the streamed content before it is consumed. */
+  verifyChecksum?: boolean;
 }
 
 /**
@@ -1483,10 +1817,16 @@ export type LeaderboardListParams = OperationQuery["listLeaderboard"];
 /** Query parameters for `GET /api/v1/leaderboard/trending`. */
 export type TrendingWalletsParams = OperationQuery["listTrendingWallets"];
 
-/** Query parameters of the V1 whale-trade list. */
+/** Query parameters of the V1 large-trade list (#16304). */
+export type LargeTradeListParams = OperationQuery["listLargeTrades"];
+
+/** Query parameters of the V1 historical large-trade replay (#16304). */
+export type LargeTradeHistoryParams = OperationQuery["listLargeTradeHistory"];
+
+/** @deprecated Use {@link LargeTradeListParams} (#16304). */
 export type WhaleTradeListParams = OperationQuery["listWhaleTrades"];
 
-/** Query parameters of the V1 historical whale-trade replay. */
+/** @deprecated Use {@link LargeTradeHistoryParams} (#16304). */
 export type WhaleTradeHistoryParams = OperationQuery["listWhaleTradeHistory"];
 
 /** Query parameters of `GET /api/v1/positions`. */
@@ -1498,8 +1838,16 @@ export type LargePositionsListParams = OperationQuery["listLargePositions"];
 /** Query parameters of the sharp-money flows read and its legacy alias. */
 export type SharpMoneyFlowsParams = OperationQuery["listSharpMoneyFlows"];
 
-/** Query parameters of `GET /api/v1/insider-radar`: `min_suspicion` and `severity`, not a grade. */
-export type InsiderRadarListParams = OperationQuery["listInsiderRadar"];
+/** Query parameters of `GET /api/v1/suspicious-trades`: `min_suspicion` and `severity`, not a grade. */
+export type SuspiciousTradesListParams = OperationQuery["listSuspiciousTrades"];
+
+/**
+ * @deprecated Use `SuspiciousTradesListParams`; the Insider Radar spelling of
+ * this contract was renamed to suspicious trades in #16301. The deprecated
+ * `GET /api/v1/insider-radar` takes the same parameters, so this stays an
+ * alias with no retirement date.
+ */
+export type InsiderRadarListParams = SuspiciousTradesListParams;
 
 /** Query parameters of `GET /api/v1/markets/explore`. */
 export type ExploreMarketsParams = OperationQuery["exploreMarkets"];
@@ -1599,7 +1947,7 @@ export class OxinsiderApiClient {
    */
   call<K extends EnvelopeOperationId>(
     operationId: K,
-    options?: OperationRequestOptions<K>,
+    ...options: OperationOptionsArgs<K, OperationRequestOptions<K>>
   ): Promise<OperationResult<K>>;
   /**
    * The untyped form, for an operation chosen at runtime or a caller that
@@ -1608,8 +1956,8 @@ export class OxinsiderApiClient {
    * method uses the typed form above; reach for this one only when the
    * operation id is not a literal.
    */
-  call<T = unknown>(
-    operationId: ApiOperationId,
+  call<T = unknown, I extends ApiOperationId = ApiOperationId>(
+    operationId: RuntimeOperationId<I>,
     options?: ApiRequestOptions,
   ): Promise<ApiClientResponse<T>>;
   // The implementation signature is what both overloads narrow; `unknown`
@@ -1665,10 +2013,13 @@ export class OxinsiderApiClient {
    */
   text<K extends TextOperationId>(
     operationId: K,
-    options?: OperationRequestOptions<K>,
+    ...options: OperationOptionsArgs<K, OperationRequestOptions<K>>
   ): Promise<string>;
   /** The untyped form, for an operation id chosen at runtime. */
-  text(operationId: ApiOperationId, options?: ApiRequestOptions): Promise<string>;
+  text<I extends ApiOperationId = ApiOperationId>(
+    operationId: RuntimeOperationId<I>,
+    options?: ApiRequestOptions,
+  ): Promise<string>;
   async text(
     operationId: ApiOperationId,
     options: ApiRequestOptions = {},
@@ -1705,9 +2056,14 @@ export class OxinsiderApiClient {
     request: McpJsonRpcRequest,
     options: McpOptions = {},
   ): Promise<McpResult> {
+    // `initialize`, `ping`, `tools/list` and the notifications need no
+    // credential (`backend/src/mcp/mod.rs`); only `tools/call` does, so the
+    // local credential check is per method (#16686). A configured key is
+    // still sent on every method.
     const operation = this.resolveOperation(
       "createMcpJsonRpcResponse",
       "jsonrpc",
+      !isKeylessMcpMethod(request.method),
     );
     const { sessionId, protocolVersion, ...transportOptions } = options;
     const headers: Record<string, string> = { ...options.headers };
@@ -1717,7 +2073,9 @@ export class OxinsiderApiClient {
     if (protocolVersion !== undefined) {
       headers["mcp-protocol-version"] = protocolVersion;
     }
-    const body: McpJsonRpcRequest = { jsonrpc: "2.0", ...request };
+    // Set after the spread: an explicit `jsonrpc: undefined` would otherwise
+    // drop the field and the server would answer 400 (#16686).
+    const body: McpJsonRpcRequest = { ...request, jsonrpc: "2.0" };
     return this.request(
       operation,
       { ...transportOptions, headers, body, maxRetries: 0 },
@@ -1741,6 +2099,23 @@ export class OxinsiderApiClient {
         return result;
       },
     );
+  }
+
+  /**
+   * Read the owner-authorized lifecycle and artifact manifest for one export
+   * job. The manifest is immutable for the artifact; the download URL remains
+   * temporary and is resolved separately.
+   */
+  getTraderExportStatus(
+    address: OperationPath["getTraderExportStatus"]["address"],
+    jobId: OperationQuery["getTraderExportStatus"]["job_id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getTraderExportStatus", {
+      ...options,
+      path: { address },
+      query: { job_id: jobId },
+    });
   }
 
   /**
@@ -1819,9 +2194,41 @@ export class OxinsiderApiClient {
     jobId: OperationQuery["getTraderExportStatus"]["job_id"],
     options: TraderExportDownloadOptions = {},
   ): Promise<TraderExportDownload> {
-    const target = await this.getTraderExportDownloadUrl(address, jobId, options);
+    const {
+      verifyChecksum = false,
+      downloadTimeoutMs,
+      ...requestOptions
+    } = options;
+    let manifest: TraderExportArtifactManifest | null = null;
+    if (verifyChecksum) {
+      const status = await this.getTraderExportStatus(
+        address,
+        jobId,
+        requestOptions,
+      );
+      if (isApiNotModifiedResponse(status)) {
+        throw new InvalidResponseError(
+          304,
+          `Export job ${String(jobId)} status was not modified, so its manifest could not be verified. Omit If-None-Match when verifyChecksum is enabled.`,
+          status,
+        );
+      }
+      if (status.data.status !== "ready" || !status.data.artifact?.manifest) {
+        throw new InvalidResponseError(
+          200,
+          `Export job ${String(jobId)} did not return a ready artifact manifest, so verifyChecksum cannot verify the download. Wait for status=ready or request a fresh export.`,
+          status,
+        );
+      }
+      manifest = status.data.artifact.manifest;
+    }
+    const target = await this.getTraderExportDownloadUrl(
+      address,
+      jobId,
+      requestOptions,
+    );
     const downloadSignal = composeRequestSignal(
-      options.downloadTimeoutMs ?? null,
+      downloadTimeoutMs ?? null,
       options.signal,
     );
     let response: Response;
@@ -1833,14 +2240,28 @@ export class OxinsiderApiClient {
         method: "GET",
         signal: downloadSignal.signal,
       });
-    } finally {
+    } catch (error: unknown) {
       downloadSignal.dispose?.();
+      throw error;
     }
     if (!response.ok) {
+      downloadSignal.dispose?.();
       throw new InvalidResponseError(
         response.status,
         `The presigned export URL answered ${response.status}. A presigned link is valid for about an hour; request a fresh one with getTraderExportDownloadUrl.`,
         null,
+      );
+    }
+    // The caller reads the body after this returns, so the composed signal
+    // (caller abort plus `downloadTimeoutMs`) stays wired until the body ends
+    // or is cancelled, not only until the headers arrive (#16686).
+    response = releaseWhenBodySettles(response, downloadSignal.dispose);
+    if (manifest) {
+      response = verifyExportBody(
+        response,
+        jobId,
+        manifest.content_sha256,
+        manifest.content_size_bytes,
       );
     }
     const contentLength = response.headers.get("content-length");
@@ -1853,6 +2274,13 @@ export class OxinsiderApiClient {
       filename: filenameFromDisposition(
         response.headers.get("content-disposition"),
       ),
+      integrity: manifest
+        ? {
+            algorithm: "sha256",
+            expectedSha256: manifest.content_sha256,
+            expectedSizeBytes: manifest.content_size_bytes,
+          }
+        : null,
     };
   }
 
@@ -1863,6 +2291,7 @@ export class OxinsiderApiClient {
   private resolveOperation(
     operationId: ApiOperationId,
     expected: ResponseKind,
+    requireCredential = true,
   ): ApiClientOperation {
     const operation = operationsById.get(operationId);
     if (!operation) {
@@ -1876,7 +2305,7 @@ export class OxinsiderApiClient {
     }
     // The sandbox answers every operation without a credential; production
     // does not, and the local check saves a round trip that can only be 401.
-    if (operation.auth === "bearer" && !this.apiKey && !this.sandbox) {
+    if (requireCredential && operation.auth === "bearer" && !this.apiKey && !this.sandbox) {
       throw new Error(`${operationId} requires an API key (oxi_sk_*)`);
     }
     return operation;
@@ -1993,11 +2422,11 @@ export class OxinsiderApiClient {
    */
   list<K extends ListOperationId>(
     operationId: K,
-    options?: OperationRequestOptions<K>,
+    ...options: OperationOptionsArgs<K, OperationRequestOptions<K>>
   ): Promise<OperationEnvelope<K>>;
   /** The untyped form; see the second `call` signature. */
-  list<T = unknown>(
-    operationId: ApiOperationId,
+  list<T = unknown, I extends ApiOperationId = ApiOperationId>(
+    operationId: RuntimeOperationId<I>,
     options?: ApiRequestOptions,
   ): Promise<ApiListEnvelope<T>>;
   async list(
@@ -2070,6 +2499,19 @@ export class OxinsiderApiClient {
     });
   }
 
+  /** Read the grade proven visible at one past decision time. */
+  getTraderGradeAt(
+    address: OperationPath["getTraderGradeAt"]["address"],
+    params: OperationQuery["getTraderGradeAt"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getTraderGradeAt", {
+      ...options,
+      path: { address },
+      query: params,
+    });
+  }
+
   /**
    * Resolve 1 to 25 traders in one request (`POST /api/v1/traders/batch`).
    *
@@ -2099,8 +2541,20 @@ export class OxinsiderApiClient {
   }
 
   /**
-   * Resolve up to 25 markets' intel in one request
-   * (`POST /api/v1/markets/intel/batch`); `meta` is the batch's own.
+   * Resolve up to 25 markets' flow and top positions in one request
+   * (`POST /api/v1/markets/flow/batch`); `meta` is the batch's own.
+   */
+  batchGetMarketFlow(
+    body: OperationBody["batchGetMarketFlow"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("batchGetMarketFlow", { ...options, body });
+  }
+
+  /**
+   * @deprecated Use {@link batchGetMarketFlow} (#16312); calls the deprecated
+   * `POST /api/v1/markets/intel/batch`, whose envelope keeps
+   * `object: "market_intel_batch"`.
    */
   batchGetMarketIntel(
     body: OperationBody["batchGetMarketIntel"],
@@ -2117,10 +2571,23 @@ export class OxinsiderApiClient {
     return this.list("listTrendingWallets", { ...options, query: params });
   }
 
+  listLargeTrades(params: LargeTradeListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listLargeTrades", { ...options, query: params });
+  }
+
+  listLargeTradeHistory(
+    params: LargeTradeHistoryParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listLargeTradeHistory", { ...options, query: params });
+  }
+
+  /** @deprecated Use {@link listLargeTrades} (#16304); calls the deprecated `/api/v1/whale-trades`. */
   listWhaleTrades(params: WhaleTradeListParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listWhaleTrades", { ...options, query: params });
   }
 
+  /** @deprecated Use {@link listLargeTradeHistory} (#16304); calls the deprecated `/api/v1/whale-trades/history`. */
   listWhaleTradeHistory(
     params: WhaleTradeHistoryParams = {},
     options: ConvenienceOptions = {},
@@ -2139,6 +2606,19 @@ export class OxinsiderApiClient {
     return this.list("listLargePositions", { ...options, query: params });
   }
 
+  /**
+   * List ranked sharp-money flows. Canonical since #16308 ("sharp money" is
+   * the pinned product term); it calls `/api/v1/markets/sharp-money-flows`.
+   */
+  listSharpMoneyFlows(params: SharpMoneyFlowsParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listSharpMoneyFlows", { ...options, query: params });
+  }
+
+  /**
+   * @deprecated Use {@link listSharpMoneyFlows} (#16308). Kept live; it calls
+   * the deprecated `/api/v1/markets/smart-money-flows`, whose responses carry
+   * `Deprecation` and a `Link rel="successor-version"`.
+   */
   listSmartMoneyFlows(
     params: OperationQuery["listSmartMoneyFlows"] = {},
     options: ConvenienceOptions = {},
@@ -2146,14 +2626,45 @@ export class OxinsiderApiClient {
     return this.list("listSmartMoneyFlows", { ...options, query: params });
   }
 
-  /** Canonical alias of {@link listSmartMoneyFlows} (epic #6912). */
-  listSharpMoneyFlows(params: SharpMoneyFlowsParams = {}, options: ConvenienceOptions = {}) {
-    return this.list("listSharpMoneyFlows", { ...options, query: params });
+  /**
+   * List covered games: both sides with their provider ids and live scores, the
+   * UTC kickoff, the provider's own status, and every linked Polymarket market
+   * with its condition id and outcome token ids. Ordered by kickoff, then by
+   * `event_slug`, with unscheduled games last. An unknown `sport` or `status`
+   * returns an empty page rather than an error, and the response's `coverage`
+   * names what this deployment serves.
+   */
+  listGames(params: GamesListParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listGames", { ...options, query: params });
   }
 
   /**
-   * List the funded-primary sports signals with additive, shadow-only category
-   * evidence. `category_skill` never changes membership, ordering, or sizing.
+   * Read one game by its `event_slug`, the identity the `live_sports_updated`
+   * webhook pulse carries. A slug outside the published coverage returns 404.
+   */
+  getGame(
+    eventSlug: OperationPath["getGame"]["event_slug"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getGame", { ...options, path: { event_slug: eventSlug } });
+  }
+
+  /**
+   * List upcoming games ranked by the side profitable wallets hold, with
+   * additive, shadow-only category evidence. `category_skill` never changes
+   * membership, ordering, or sizing. Rows carry `side`, `ranked_at`,
+   * `backing_score` and `side_share`; the older `piled_side`,
+   * `signal_created_at`, `conviction_score` and `smart_score` keys carry the
+   * same values and stay on the wire.
+   */
+  listPreGameSides(params: PreGameSidesParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listPreGameSides", { ...options, query: params });
+  }
+
+  /**
+   * @deprecated Use {@link listPreGameSides} (#16310). Kept live; it calls the
+   * deprecated `/api/v1/sports-edge-signals` path, which answers with
+   * `Deprecation` and successor `Link` headers and the same body.
    */
   listSportsEdgeSignals(params: SportsEdgeSignalsParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listSportsEdgeSignals", { ...options, query: params });
@@ -2167,6 +2678,22 @@ export class OxinsiderApiClient {
    * stale provider live-board evidence fails closed. emerging-pile is an
    * additive wider-holder projection, not an arrival-history or independent
    * denominator view.
+   */
+  async listPreGameSideObservations(
+    params: PreGameSideObservationsParams,
+    options: ConvenienceOptions = {},
+  ): Promise<PreGameSideObservationsResponse> {
+    const response = await this.list("listPreGameSideObservations", {
+      ...options,
+      query: params,
+    });
+    return sportsEdgeObservationsResponse(response);
+  }
+
+  /**
+   * @deprecated Use {@link listPreGameSideObservations} (#16310). Kept live; it
+   * calls the deprecated `/api/v1/sports-edge-observations` path, which answers
+   * with `Deprecation` and successor `Link` headers and the same body.
    */
   async listSportsEdgeObservations(
     params: SportsEdgeObservationsParams,
@@ -2187,6 +2714,24 @@ export class OxinsiderApiClient {
    * request-specific `meta` is excluded. For emerging-pile, the opaque
    * projection cutoff inside `next_cursor` is excluded while its stable page
    * position remains covered.
+   */
+  async listPreGameSideObservationsConditional(
+    params: PreGameSideObservationsParams,
+    options: ConvenienceOptions = {},
+  ): Promise<PreGameSideObservationsResponse | ApiNotModifiedResponse> {
+    const response = await this.call("listPreGameSideObservations", {
+      ...options,
+      query: params,
+    });
+    if (isNotModified(response)) {
+      return response;
+    }
+    return sportsEdgeObservationsResponse(response);
+  }
+
+  /**
+   * @deprecated Use {@link listPreGameSideObservationsConditional} (#16310).
+   * Kept live on the deprecated `/api/v1/sports-edge-observations` path.
    */
   async listSportsEdgeObservationsConditional(
     params: SportsEdgeObservationsParams,
@@ -2222,6 +2767,22 @@ export class OxinsiderApiClient {
     return this.list("exploreMarkets", { ...options, query: params });
   }
 
+  /** One market's flow and top positions (`GET /api/v1/market/{condition_id}/flow`). */
+  getMarketFlow(
+    conditionId: OperationPath["getMarketFlow"]["condition_id"],
+    options: Omit<OperationRequestOptions<"getMarketFlow">, "path"> = {},
+  ) {
+    return this.call("getMarketFlow", {
+      ...options,
+      path: { condition_id: conditionId },
+    });
+  }
+
+  /**
+   * @deprecated Use {@link getMarketFlow} (#16312); calls the deprecated
+   * `GET /api/v1/market/{condition_id}/intel`, whose envelope keeps
+   * `object: "market_intel"`.
+   */
   getMarketIntel(
     conditionId: OperationPath["getMarketIntel"]["condition_id"],
     options: Omit<OperationRequestOptions<"getMarketIntel">, "path"> = {},
@@ -2281,6 +2842,31 @@ export class OxinsiderApiClient {
     });
   }
 
+  /**
+   * Fetch one suspicious trade by raw `whale_alerts.id` or the `rf_`-prefixed
+   * id list responses emit. The envelope's `object` is `"suspicious_trade"`.
+   */
+  getSuspiciousTrade(
+    id: OperationPath["getSuspiciousTrade"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getSuspiciousTrade", { ...options, path: { id } });
+  }
+
+  /** List stored trades whose recorded suspicion score meets the flag threshold. */
+  listSuspiciousTrades(
+    params: SuspiciousTradesListParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listSuspiciousTrades", { ...options, query: params });
+  }
+
+  /**
+   * @deprecated Use `getSuspiciousTrade()`; renamed in #16301. This method
+   * keeps calling the deprecated `GET /api/v1/insider-radar/{id}`, which stays
+   * live with no retirement date and still answers `object: "radar_flag"`, so
+   * an integration branching on that envelope keeps working.
+   */
   getInsiderRadarFlag(
     id: OperationPath["getInsiderRadarFlag"]["id"],
     options: ConvenienceOptions = {},
@@ -2288,15 +2874,55 @@ export class OxinsiderApiClient {
     return this.call("getInsiderRadarFlag", { ...options, path: { id } });
   }
 
+  /**
+   * @deprecated Use `listSuspiciousTrades()`; renamed in #16301. This method
+   * keeps calling the deprecated `GET /api/v1/insider-radar`, which stays live
+   * with no retirement date and answers with `Deprecation` plus a `Link
+   * rel="successor-version"` header.
+   */
   listInsiderRadar(params: InsiderRadarListParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listInsiderRadar", { ...options, query: params });
   }
 
+  getLargeTrade(
+    id: OperationPath["getLargeTrade"]["id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getLargeTrade", { ...options, path: { id } });
+  }
+
+  /** @deprecated Use {@link getLargeTrade} (#16304); calls the deprecated `/api/v1/whale-trades/{id}`. */
   getWhaleTrade(
     id: OperationPath["getWhaleTrade"]["id"],
     options: ConvenienceOptions = {},
   ) {
     return this.call("getWhaleTrade", { ...options, path: { id } });
+  }
+
+  // --- Exports ---
+
+  /**
+   * Cancel a submitted export (`POST /api/v1/trader/{address}/export/cancel`, #16254).
+   *
+   * Resolves to the job resource after the cancel, the same shape
+   * `getTraderExportStatus` returns: `cancelled` for a job no worker had
+   * started, `cancel_requested` for a running one (poll the status route at
+   * `poll_after_s` until it reads `cancelled`), or the job unchanged when a
+   * cancel can no longer reach it (its file is being published, or it is
+   * already terminal). Compare `status` rather than assuming success. A
+   * cancel never deletes a ready file, never returns quota, and is safe to
+   * repeat, so it is retried on a transport or 5xx failure like a read.
+   */
+  cancelTraderExport(
+    address: OperationPath["cancelTraderExport"]["address"],
+    jobId: OperationQuery["cancelTraderExport"]["job_id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("cancelTraderExport", {
+      ...options,
+      path: { address },
+      query: { job_id: jobId },
+    });
   }
 
   // --- Webhooks ---
@@ -2384,6 +3010,18 @@ export class OxinsiderApiClient {
     return this.call("getApiDiscovery", options);
   }
 
+  /**
+   * Which V1 reads the API serves for Polymarket (`GET /api/v1/coverage`).
+   * Public: needs no API key.
+   */
+  getCoverage(options: ConvenienceOptions = {}) {
+    return this.call("getCoverage", options);
+  }
+
+  /**
+   * @deprecated Use {@link getCoverage} (#16315); calls the deprecated
+   * `GET /api/v1/platforms`, which serves the same body.
+   */
   getPlatforms(options: ConvenienceOptions = {}) {
     return this.call("getPlatforms", options);
   }
@@ -2410,7 +3048,7 @@ export class OxinsiderApiClient {
   /**
    * One market's context as Markdown
    * (`GET /api/v1/market/{condition_id}/context.md`). The JSON form is
-   * `getMarketIntel`.
+   * `getMarketSnapshot`.
    */
   getMarketContextMarkdown(
     conditionId: OperationPath["getMarketContextMarkdown"]["condition_id"],

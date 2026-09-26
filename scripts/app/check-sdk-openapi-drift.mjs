@@ -115,7 +115,15 @@ function sdkTableRows(source, name) {
     const id = /operationId:\s*"([^"]+)"/.exec(body);
     if (!id) continue;
     const kind = /\bkind:\s*"([^"]+)"/.exec(body);
-    rows.set(id[1], { kind: kind ? kind[1] : "envelope" });
+    const method = /\bmethod:\s*"([^"]+)"/.exec(body);
+    const path = /\bpath:\s*"([^"]+)"/.exec(body);
+    const status = /\bstatus:\s*(\d+)/.exec(body);
+    rows.set(id[1], {
+      kind: kind ? kind[1] : "envelope",
+      method: method ? method[1] : undefined,
+      path: path ? path[1] : undefined,
+      status: status ? status[1] : undefined,
+    });
   }
   return rows;
 }
@@ -231,6 +239,22 @@ const wrongKind = [...spec.entries()]
   .sort();
 const redirectMissingFromSdk = [...specRedirect.keys()].filter((id) => !sdkRedirect.has(id)).sort();
 const redirectMissingFromSpec = [...sdkRedirect.keys()].filter((id) => !specRedirect.has(id)).sort();
+/**
+ * A redirect row that kept its operationId while the spec moved its method,
+ * path or status (#16686): the SDK would still call the old path or accept
+ * only the old status, so the ids alone are not lockstep.
+ */
+const redirectMismatch = [...specRedirect.entries()]
+  .filter(([id]) => sdkRedirect.has(id))
+  .flatMap(([id, row]) => {
+    const sdkRow = sdkRedirect.get(id);
+    const diffs = [];
+    if (sdkRow.method !== row.method.toUpperCase()) diffs.push(`method ${sdkRow.method} vs spec ${row.method.toUpperCase()}`);
+    if (sdkRow.path !== row.path) diffs.push(`path ${sdkRow.path} vs spec ${row.path}`);
+    if (sdkRow.status !== row.status) diffs.push(`status ${sdkRow.status} vs spec ${row.status}`);
+    return diffs.length === 0 ? [] : [`${id}: ${diffs.join("; ")}`];
+  })
+  .sort();
 const unsupportedMissingFromSdk = [...specOther.keys()].filter((id) => !sdkUnsupported.has(id)).sort();
 const unsupportedMissingFromSpec = [...sdkUnsupported.keys()].filter((id) => !specOther.has(id)).sort();
 
@@ -240,6 +264,7 @@ if (
   wrongKind.length === 0 &&
   redirectMissingFromSdk.length === 0 &&
   redirectMissingFromSpec.length === 0 &&
+  redirectMismatch.length === 0 &&
   unsupportedMissingFromSdk.length === 0 &&
   unsupportedMissingFromSpec.length === 0 &&
   missingParameters.length === 0 &&
@@ -258,6 +283,12 @@ if (wrongKind.length > 0) {
     `check-sdk-openapi-drift: ${wrongKind.length} operation(s) declare the wrong response kind in sdk/src/client.ts:`,
   );
   for (const entry of wrongKind) console.error(`  - ${entry}`);
+}
+if (redirectMismatch.length > 0) {
+  console.error(
+    "check-sdk-openapi-drift: REDIRECT_OPERATIONS rows in sdk/src/client.ts disagree with the spec's method, path or redirect status:",
+  );
+  for (const entry of redirectMismatch) console.error(`  - ${entry}`);
 }
 if (redirectMissingFromSdk.length > 0 || redirectMissingFromSpec.length > 0) {
   console.error(

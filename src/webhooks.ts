@@ -151,21 +151,40 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
 /**
  * Webhook event types. Source of truth:
  * `web/public/api/v1/openapi.json` -> components.schemas.WebhookEventType.enum.
- * `whale_trades_inserted`, `wallet_grade_changed`, `insider_radar_flag_raised`,
- * and `smart_money_flow_detected` are Pro-only: they deliver only to API keys
- * on an active Pro subscription.
+ * `large_trades_inserted`, `whale_trades_inserted`, `wallet_grade_changed`,
+ * `suspicious_trade_flagged`, `insider_radar_flag_raised`,
+ * `sharp_money_flow_detected`, and `smart_money_flow_detected` are Pro-only:
+ * they deliver only to API keys on an active Pro subscription.
+ *
+ * Some entries are two spellings of ONE event, not two events: either one
+ * subscribes, and an endpoint receives its deliveries under the spelling it
+ * registered. The canonical spelling is listed first of each pair --
+ * `large_trades_inserted` over `whale_trades_inserted` and `trader_synced`
+ * over `whale_trader_synced` (#16304), `suspicious_trade_flagged` over
+ * `insider_radar_flag_raised` (#16301), and `sharp_money_flow_detected` over
+ * `smart_money_flow_detected` (#16308). No deprecated spelling is ever
+ * removed.
  */
 export const WEBHOOK_EVENT_TYPES = [
+  "large_trades_inserted",
   "whale_trades_inserted",
   "live_sports_updated",
+  "trader_synced",
   "whale_trader_synced",
   "large_positions_updated",
   "wallet_grade_changed",
+  "suspicious_trade_flagged",
   "insider_radar_flag_raised",
-  // Pro-only; present in the OpenAPI WebhookEventType enum + backend
-  // allowlist but previously missing here (drift fix, #6915). The wire
-  // identifier stays `smart_money_flow_detected` (frozen event name).
+  // Pro-only. `sharp_money_flow_detected` is the canonical spelling since
+  // #16308 ("sharp money" is the pinned product term);
+  // `smart_money_flow_detected` is its deprecated twin, kept live, and stays
+  // the `type` an endpoint that registered it receives.
+  "sharp_money_flow_detected",
   "smart_money_flow_detected",
+  "export_job_ready",
+  "export_job_failed",
+  "export_job_expired",
+  "export_job_cancelled",
 ] as const;
 
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
@@ -190,6 +209,56 @@ export interface WebhookEventEnvelope<
 /** `whale_trades_inserted` data (Pro-only): a batch of new whale trades was ingested. */
 export interface WhaleTradesInsertedData {
   count: number;
+}
+
+/** One side's score line inside a `live_sports_updated` pulse. */
+export interface LiveSportsScoreEntry {
+  team: string;
+  score: string;
+  /** Esports series only: this side's current-map score. Absent on other sports. */
+  map_score?: string;
+}
+
+/**
+ * `live_sports_updated` data: one bounded pulse for one live game.
+ *
+ * A pulse fires when a material field moved since this game's previous
+ * delivered pulse (`scores`, `status`, `period`, `live`, `ended`), at most once
+ * per game per 20 seconds. A `live` or `ended` transition is exempt from that
+ * interval, so a game going live or final is never coalesced away; the game
+ * clock alone never fires a pulse. Suppressed frames are folded into the next
+ * pulse's `changed` and its body carries the current state, so you see every
+ * field that moved but not every intermediate value.
+ */
+export interface LiveSportsUpdatedData {
+  /** The Polymarket event slug this game trades under. */
+  event_slug: string;
+  /** Provider game id, or `null` when the frame carried none. */
+  game_id: string | null;
+  /** League abbreviation, or `null`. */
+  league: string | null;
+  /**
+   * Durable per-game pulse ordinal, increasing by one per delivered pulse.
+   * Deliveries are not ordered, so drop a pulse whose version you already saw.
+   */
+  version: number;
+  /** Material fields that moved since this game's previous delivered pulse. */
+  changed: Array<"scores" | "status" | "period" | "live" | "ended">;
+  /** Provider frame time (ISO 8601), or `null` when the frame carried none. */
+  observed_at: string | null;
+  /** When the pulse was admitted (ISO 8601). */
+  published_at: string;
+  status: string | null;
+  period: string | null;
+  /** Game clock. Not a material field: it never fires a pulse on its own. */
+  clock: string | null;
+  live: boolean | null;
+  ended: boolean;
+  scores: LiveSportsScoreEntry[];
+  /** Esports `BoN` series token, or `null` on every other sport. */
+  series_format: string | null;
+  /** Public game page; re-read it after a gap instead of replaying pulses. */
+  snapshot_url: string;
 }
 
 /** `whale_trader_synced` data: a tracked trader finished a sync pass. */
@@ -220,10 +289,14 @@ export interface WalletGradeChangedData {
 }
 
 /**
- * `insider_radar_flag_raised` data (Pro-only): a suspicion threshold was
+ * `suspicious_trade_flagged` data (Pro-only): a suspicion threshold was
  * crossed on a fresh fill. Source: `backend/src/polymarket_rtds_ingest/flushing.rs`.
+ *
+ * Delivered identically under the deprecated spelling
+ * `insider_radar_flag_raised` (#16301) to an endpoint that registered that
+ * spelling; the payload is the same.
  */
-export interface InsiderRadarFlagRaisedData {
+export interface SuspiciousTradeFlaggedData {
   trade_id: string;
   wallet: string;
   trader_id: number;
@@ -237,10 +310,19 @@ export interface InsiderRadarFlagRaisedData {
 }
 
 /**
- * `smart_money_flow_detected` payload (Pro-only). Fires when a scheduled
- * scanner detects ranked-trader net flow crossing a threshold on a market.
+ * @deprecated Use `SuspiciousTradeFlaggedData`; renamed in #16301. The two
+ * event spellings are one event with one payload, so this is an alias.
  */
-export interface SmartMoneyFlowDetectedData {
+export type InsiderRadarFlagRaisedData = SuspiciousTradeFlaggedData;
+
+/**
+ * `sharp_money_flow_detected` payload (Pro-only). Fires when a scheduled
+ * scanner detects ranked-trader net flow crossing a threshold on a market.
+ *
+ * One payload for both spellings of the event: the deprecated
+ * `smart_money_flow_detected` delivers the same object (#16308).
+ */
+export interface SharpMoneyFlowDetectedData {
   condition_id: string;
   /** Signed net YES/NO exposure from ranked traders. */
   net_flow_usd: number;
@@ -254,9 +336,50 @@ export interface SmartMoneyFlowDetectedData {
   window: string;
 }
 
+/** `export_job_ready` data: the owner's async export can be downloaded. */
+export interface ExportJobReadyData {
+  job_id: number;
+  status: "ready";
+  format: string;
+  next_action: "download";
+  total_trades: number | null;
+  processed_trades: number | null;
+  file_size: number | null;
+  data_as_of: string | null;
+}
+
+/** `export_job_failed` data: the owner's async export reached a terminal failure. */
+export interface ExportJobFailedData {
+  job_id: number;
+  status: "failed";
+  format: string;
+  next_action: "resubmit";
+  failure_reason: string;
+}
+
+/** `export_job_expired` data: the owner's ready export passed retention. */
+export interface ExportJobExpiredData {
+  job_id: number;
+  status: "expired";
+  format: string;
+  next_action: "resubmit";
+}
+
+/** `export_job_cancelled` data: the owner's export stopped because its owner cancelled it. */
+export interface ExportJobCancelledData {
+  job_id: number;
+  status: "cancelled";
+  format: string;
+  next_action: "resubmit";
+}
+
 export type WhaleTradesInsertedEvent = WebhookEventEnvelope<
   "whale_trades_inserted",
   WhaleTradesInsertedData
+>;
+export type LiveSportsUpdatedEvent = WebhookEventEnvelope<
+  "live_sports_updated",
+  LiveSportsUpdatedData
 >;
 export type WhaleTraderSyncedEvent = WebhookEventEnvelope<
   "whale_trader_synced",
@@ -270,24 +393,72 @@ export type WalletGradeChangedEvent = WebhookEventEnvelope<
   "wallet_grade_changed",
   WalletGradeChangedData
 >;
+export type SuspiciousTradeFlaggedEvent = WebhookEventEnvelope<
+  "suspicious_trade_flagged",
+  SuspiciousTradeFlaggedData
+>;
+/**
+ * @deprecated Use `SuspiciousTradeFlaggedEvent`; renamed in #16301. This stays
+ * a distinct envelope rather than an alias of it because the delivered `type`
+ * discriminant is the spelling the endpoint registered: an endpoint subscribed
+ * to `insider_radar_flag_raised` keeps receiving that literal, so narrowing on
+ * it keeps working.
+ */
 export type InsiderRadarFlagRaisedEvent = WebhookEventEnvelope<
   "insider_radar_flag_raised",
-  InsiderRadarFlagRaisedData
+  SuspiciousTradeFlaggedData
 >;
+/**
+ * @deprecated Use `SharpMoneyFlowDetectedData`; renamed in #16308. The two
+ * event spellings are one event with one payload, so this is an alias.
+ */
+export type SmartMoneyFlowDetectedData = SharpMoneyFlowDetectedData;
+
+export type SharpMoneyFlowDetectedEvent = WebhookEventEnvelope<
+  "sharp_money_flow_detected",
+  SharpMoneyFlowDetectedData
+>;
+/**
+ * @deprecated Use `SharpMoneyFlowDetectedEvent`; renamed in #16308. This stays
+ * a distinct envelope rather than an alias of it because the delivered `type`
+ * discriminant is the spelling the endpoint registered: an endpoint subscribed
+ * to `smart_money_flow_detected` keeps receiving that literal, so narrowing on
+ * it keeps working.
+ */
 export type SmartMoneyFlowDetectedEvent = WebhookEventEnvelope<
   "smart_money_flow_detected",
-  SmartMoneyFlowDetectedData
+  SharpMoneyFlowDetectedData
+>;
+export type ExportJobReadyEvent = WebhookEventEnvelope<"export_job_ready", ExportJobReadyData>;
+export type ExportJobFailedEvent = WebhookEventEnvelope<"export_job_failed", ExportJobFailedData>;
+export type ExportJobExpiredEvent = WebhookEventEnvelope<"export_job_expired", ExportJobExpiredData>;
+export type ExportJobCancelledEvent = WebhookEventEnvelope<
+  "export_job_cancelled",
+  ExportJobCancelledData
 >;
 
-/** Discriminated union over every typed webhook delivery payload. */
+/**
+ * Discriminated union over every typed webhook delivery payload.
+ *
+ * `SuspiciousTradeFlaggedEvent` and `InsiderRadarFlagRaisedEvent` are both
+ * members because the same event is delivered under whichever spelling the
+ * endpoint registered (#16301); the `data` shape is identical. So are
+ * `SharpMoneyFlowDetectedEvent` and `SmartMoneyFlowDetectedEvent` (#16308).
+ */
 export type WebhookEvent =
   | WhaleTradesInsertedEvent
+  | LiveSportsUpdatedEvent
   | WhaleTraderSyncedEvent
   | LargePositionsUpdatedEvent
   | WalletGradeChangedEvent
+  | SuspiciousTradeFlaggedEvent
   | InsiderRadarFlagRaisedEvent
+  | SharpMoneyFlowDetectedEvent
   | SmartMoneyFlowDetectedEvent
-  | WebhookEventEnvelope<"live_sports_updated", unknown>;
+  | ExportJobReadyEvent
+  | ExportJobFailedEvent
+  | ExportJobExpiredEvent
+  | ExportJobCancelledEvent;
 
 /**
  * Parse a verified raw body into the typed delivery envelope. Call only AFTER

@@ -112,9 +112,26 @@ export const API_ERROR_REASONS = [
   // with `reason` set; sleep `retryAfterSeconds` either way.
   "ip_rate_limited",
   "ip_throttled",
+  // 410 `not_found` refinement (#16181): the export job finished but its
+  // retention window has passed and the file is retired. Arrives as
+  // NotFoundError with `status` 410 and `reason` set; submit a new export,
+  // polling or retrying the download cannot succeed.
+  "export_expired",
+  // 409 `bad_request` refinement (#16964): an opt-in trader freshness ceiling
+  // could not be met by the stored body. The response carries the requested
+  // ceiling and the measured clock when one exists; retrying does not refresh it.
+  "freshness_ceiling_unsatisfied",
 ] as const;
 
 export type ApiErrorReason = (typeof API_ERROR_REASONS)[number];
+
+/** Details returned when a trader freshness ceiling cannot be met. */
+export interface FreshnessFailure {
+  max_age_s: number;
+  actual_age_s?: number;
+  as_of?: string;
+  data_quality_status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
+}
 
 /** Parsed `error` object from the V1 error envelope. */
 export interface ApiErrorBody {
@@ -126,6 +143,8 @@ export interface ApiErrorBody {
   reason?: string | null;
   /** RFC3339 instant before which retrying cannot succeed (#7209). Always future. */
   retry_at?: string | null;
+  /** Requested and measured ages for `freshness_ceiling_unsatisfied`. */
+  freshness?: FreshnessFailure | null;
   [key: string]: unknown;
 }
 
@@ -158,6 +177,55 @@ export class RequestTimeoutError extends Error {
 }
 
 /**
+ * The export object was read, but its streamed bytes did not match the
+ * immutable manifest returned by the status route. The partial file must be
+ * discarded before requesting a fresh download.
+ */
+export class ExportIntegrityError extends Error {
+  readonly jobId: number;
+  readonly expectedSha256: string;
+  readonly actualSha256: string | null;
+  readonly expectedSizeBytes: number;
+  readonly actualSizeBytes: number;
+  readonly cause: unknown;
+
+  constructor(
+    jobId: number,
+    expectedSha256: string,
+    actualSha256: string | null,
+    expectedSizeBytes: number,
+    actualSizeBytes: number,
+    cause?: unknown,
+  ) {
+    const message =
+      actualSha256 === null
+        ? `Export job ${String(jobId)} could not be verified: the download ended before its SHA-256 could be checked after ${String(actualSizeBytes)} of ${String(expectedSizeBytes)} bytes. Discard the partial file and request a fresh download.`
+        : `Export job ${String(jobId)} failed integrity verification: expected ${String(expectedSizeBytes)} bytes with SHA-256 ${expectedSha256}, received ${String(actualSizeBytes)} bytes with SHA-256 ${actualSha256}. Discard the partial file and request a fresh download.`;
+    super(message);
+    this.name = "ExportIntegrityError";
+    this.jobId = jobId;
+    this.expectedSha256 = expectedSha256;
+    this.actualSha256 = actualSha256;
+    this.expectedSizeBytes = expectedSizeBytes;
+    this.actualSizeBytes = actualSizeBytes;
+    this.cause = cause;
+  }
+}
+
+/** `value` when it is one of `API_ERROR_REASONS`, otherwise `null` (#16547). */
+function knownApiErrorReason(value: string | null | undefined): ApiErrorReason | null {
+  return typeof value === "string" &&
+    (API_ERROR_REASONS as readonly string[]).includes(value)
+    ? (value as ApiErrorReason)
+    : null;
+}
+
+function extractFreshnessFailure(error: ApiErrorBody | null): FreshnessFailure | null {
+  const value = error?.freshness;
+  return value && typeof value === "object" ? value : null;
+}
+
+/**
  * Base class for every error thrown by the SDK on a non-2xx API response.
  * Subclasses below specialize by documented `code`.
  */
@@ -181,8 +249,14 @@ export class OxinsiderApiError extends Error {
    *
    * The raw wire value always stays on `error.reason`, so a reason NEWER than this SDK is
    * never destroyed -- it is simply not typed yet, and reads as `null` here.
+   *
+   * Read from the wire for EVERY class (#16547): a `SubscriptionRequiredError` carries
+   * `subscription_inactive`, a `RateLimitedError` carries `monthly_quota_exceeded`,
+   * `ip_rate_limited` or `ip_throttled`, and a `BadRequestError` carries `invalid_body`,
+   * `payload_too_large` and the rest. Until then only the subclasses that pin a literal
+   * carried a value and every other known reason read `null`.
    */
-  readonly reason: ApiErrorReason | null = null;
+  readonly reason: ApiErrorReason | null;
   /**
    * When retrying can first succeed, or `null` when the error is terminal.
    *
@@ -223,6 +297,7 @@ export class OxinsiderApiError extends Error {
     this.name = "OxinsiderApiError";
     this.status = status;
     this.code = error?.code;
+    this.reason = knownApiErrorReason(error?.reason);
     this.error = error;
     this.meta = meta;
     this.requestId = meta?.request_id;
@@ -239,6 +314,23 @@ export class BadRequestError extends OxinsiderApiError {
   constructor(status: number, body: unknown) {
     super(status, body);
     this.name = "BadRequestError";
+  }
+}
+
+/**
+ * 409 `reason: freshness_ceiling_unsatisfied` - a trader response did not
+ * satisfy the caller's opt-in whole-response age ceiling. The server does not
+ * refresh or bypass its normal read, so the caller may use the details to decide
+ * whether to accept the body or try again later.
+ */
+export class FreshnessCeilingUnsatisfiedError extends BadRequestError {
+  override readonly reason = "freshness_ceiling_unsatisfied" as const;
+  readonly freshness: FreshnessFailure | null;
+
+  constructor(status: number, body: unknown) {
+    super(status, body);
+    this.name = "FreshnessCeilingUnsatisfiedError";
+    this.freshness = extractFreshnessFailure(this.error);
   }
 }
 
@@ -578,6 +670,8 @@ export function errorFromResponse(
   // "warming" vs "rate limiter down". Falling through to `code` here is what made
   // the SDK re-assert the very lie the backend removed.
   switch (parsed?.reason) {
+    case "freshness_ceiling_unsatisfied":
+      return new FreshnessCeilingUnsatisfiedError(status, body);
     case "pick_not_released":
       return new PickNotReleasedError(status, body, retryAfterSeconds);
     case "read_model_warming":
