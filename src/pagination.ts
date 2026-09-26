@@ -41,7 +41,9 @@ import type {
   ListParams,
   OperationEnvelope,
   OperationItem,
+  OperationOptionsArgs,
   OxinsiderApiClient,
+  RuntimeOperationId,
 } from "./client.js";
 import type { OperationPath, OperationQuery } from "./schema.js";
 
@@ -235,12 +237,12 @@ function usableCursor(value: string | null | undefined): value is string {
 export function paginatePages<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
-  options?: OperationPaginateOptions<K>,
+  ...options: OperationOptionsArgs<K, OperationPaginateOptions<K>>
 ): AsyncGenerator<OperationEnvelope<K>, void, undefined>;
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
-export function paginatePages<T = unknown>(
+export function paginatePages<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: ApiOperationId,
+  operationId: RuntimeOperationId<I>,
   options?: PaginateOptions,
 ): AsyncGenerator<ApiListEnvelope<T>, void, undefined>;
 export async function* paginatePages(
@@ -342,12 +344,12 @@ export async function* paginatePages(
 export function paginate<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
-  options?: OperationPaginateOptions<K>,
+  ...options: OperationOptionsArgs<K, OperationPaginateOptions<K>>
 ): AsyncGenerator<OperationItem<K>, void, undefined>;
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
-export function paginate<T = unknown>(
+export function paginate<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: ApiOperationId,
+  operationId: RuntimeOperationId<I>,
   options?: PaginateOptions,
 ): AsyncGenerator<T, void, undefined>;
 export async function* paginate(
@@ -369,12 +371,12 @@ export async function* paginate(
 export function collect<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
-  options?: OperationPaginateOptions<K>,
+  ...options: OperationOptionsArgs<K, OperationPaginateOptions<K>>
 ): Promise<OperationItem<K>[]>;
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
-export function collect<T = unknown>(
+export function collect<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: ApiOperationId,
+  operationId: RuntimeOperationId<I>,
   options?: PaginateOptions,
 ): Promise<T[]>;
 export async function collect(

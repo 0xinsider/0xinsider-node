@@ -171,8 +171,18 @@ function objectBody(schema, depth, path) {
   for (const [name, property] of Object.entries(schema.properties)) {
     const optional = required.has(name) ? "" : "?";
     const type = typeOf(property, depth + 1, `${path}/${name}`);
-    if (property.description) {
-      lines.push(`${pad}/** ${property.description.replace(/\s+/g, " ").trim()} */`);
+    const description = property.description?.replace(/\s+/g, " ").trim();
+    if (property.deprecated === true) {
+      // A key the document marks `deprecated` stays on the wire beside its
+      // canonical spelling (#16310, #16311). The tag has to open its own JSDoc
+      // line: TypeScript reads `@deprecated` inside running text as prose, and
+      // only the tag gives an editor's strikethrough and hover the successor.
+      lines.push(`${pad}/**`);
+      if (description) lines.push(`${pad} * ${description}`);
+      lines.push(`${pad} * @deprecated`);
+      lines.push(`${pad} */`);
+    } else if (description) {
+      lines.push(`${pad}/** ${description} */`);
     }
     lines.push(`${pad}${propertyKey(name)}${optional}: ${type};`);
   }

@@ -2,7 +2,7 @@
  * @0xinsider/sdk - official TypeScript SDK for the 0xinsider API.
  *
  * Analytics for Polymarket sports and esports markets: wallet grades, large
- * trades, profitable-wallet flows, market intel/candles, the live SSE feed, and
+ * trades, profitable-wallet flows, market flow/candles, the live SSE feed, and
  * webhooks. Drift-tested
  * against the public OpenAPI contract (`web/public/api/v1/openapi.json`).
  *
@@ -13,6 +13,14 @@
  * const board = await client.listLeaderboard({ strategy: "swing_trader", limit: 100 });
  */
 
+// One default decision over a response's data_quality block (#16965)
+export { assessDataQuality } from "./data-quality.js";
+export type {
+  AssessDataQualityOptions,
+  DataQualityAssessment,
+  DataQualityFailure,
+} from "./data-quality.js";
+
 // Client + core request/response types
 export {
   API_CLIENT_OPERATIONS,
@@ -21,6 +29,7 @@ export {
   IDEMPOTENT_WRITE_OPERATIONS,
   MCP_METHODS,
   READ_ONLY_POST_OPERATIONS,
+  CONVERGENT_WRITE_OPERATIONS,
   REDIRECT_OPERATIONS,
   UNSUPPORTED_OPERATIONS,
   retryEligibility,
@@ -59,6 +68,8 @@ export type {
   ConvenienceOptions,
   EnvelopeOperationId,
   ExploreMarketsParams,
+  Game,
+  GamesListParams,
   Grade,
   IdempotentWriteOperationId,
   InsiderRadarListParams,
@@ -74,7 +85,11 @@ export type {
   OperationEnvelope,
   OperationItem,
   OperationMeta,
+  OperationOptionsArgs,
   OperationRequestOptions,
+  OperationRequiresOptions,
+  OptionalInputOperationId,
+  RuntimeOperationId,
   OperationResult,
   PositionsListParams,
   ResponseKind,
@@ -82,10 +97,14 @@ export type {
   SseOperationId,
   TextOperationId,
   TraderExportDownload,
+  TraderExportDownloadIntegrity,
   TraderExportDownloadOptions,
   TraderExportDownloadTarget,
   SharpMoneyFlowsParams,
   PickQualifyingExpert,
+  PreGameSidesParams,
+  PreGameSideObservationsParams,
+  PreGameSideObservationsResponse,
   SportsEdgeSignalsParams,
   SportsEdgeObservationBoardUnavailableScope,
   SportsEdgeObservationBoardUpcomingStatus,
@@ -97,11 +116,14 @@ export type {
   SportsEdgeObservationTopGrade,
   SportsEdgeObservationsParams,
   SportsEdgeObservationsResponse,
+  SuspiciousTradesListParams,
   TennisTour,
+  LargeTradeHistoryParams,
   WhaleTradeHistoryParams,
   LeaderboardListParams,
   LeaderboardStrategy,
   TrendingWalletsParams,
+  LargeTradeListParams,
   WhaleTradeListParams,
 } from "./client.js";
 
@@ -112,6 +134,7 @@ export {
   AccountLockedError,
   BadRequestError,
   CursorExpiredError,
+  ExportIntegrityError,
   ForbiddenError,
   IdempotencyInProgressError,
   InternalServerError,
@@ -127,6 +150,7 @@ export {
   ReadModelWarmingError,
   DatabaseUnavailableError,
   RequestAccountingUnavailableError,
+  FreshnessCeilingUnsatisfiedError,
   SandboxApiKeyError,
   ApiKeyInQueryError,
   SubscriptionRequiredError,
@@ -141,6 +165,7 @@ export type {
   ApiErrorCode,
   ApiErrorMeta,
   ApiErrorReason,
+  FreshnessFailure,
 } from "./errors.js";
 
 // Pagination
@@ -216,10 +241,25 @@ export {
 export type {
   InsiderRadarFlagRaisedData,
   InsiderRadarFlagRaisedEvent,
+  ExportJobCancelledData,
+  ExportJobCancelledEvent,
+  ExportJobExpiredData,
+  ExportJobExpiredEvent,
+  ExportJobFailedData,
+  ExportJobFailedEvent,
+  ExportJobReadyData,
+  ExportJobReadyEvent,
   LargePositionsUpdatedData,
   LargePositionsUpdatedEvent,
+  LiveSportsScoreEntry,
+  LiveSportsUpdatedData,
+  LiveSportsUpdatedEvent,
+  SharpMoneyFlowDetectedData,
+  SharpMoneyFlowDetectedEvent,
   SmartMoneyFlowDetectedData,
   SmartMoneyFlowDetectedEvent,
+  SuspiciousTradeFlaggedData,
+  SuspiciousTradeFlaggedEvent,
   VerifySignatureInput,
   WalletGradeChangedData,
   WalletGradeChangedEvent,
@@ -254,7 +294,7 @@ export type {
   AgentRegistration,
   ApiDiscovery,
   ApiError,
-  BatchMarketIntelItem,
+  BatchMarketFlowItem,
   BatchRateLimitMeta,
   BatchResponseMeta,
   BatchTraderItem,
@@ -284,7 +324,7 @@ export type {
   LargePosition,
   LeaderboardEntry,
   MarketCandles,
-  MarketIntel,
+  MarketFlow,
   MarketSearchResult,
   MarketSnapshot,
   MarketSnapshotFreshness,
@@ -315,7 +355,6 @@ export type {
   PositionTimelineEvent,
   PotdEntryAuthorization,
   ProofPendingPickSlot,
-  RadarFlag,
   ReportPayload,
   ReportReconciliation,
   ReportSnapshot,
@@ -327,19 +366,28 @@ export type {
   SmartMoneyFlowMarket,
   SnapshotCompleteness,
   SnapshotState,
-  SportsEdgeFunnelReport,
-  SportsEdgeObservation,
-  SportsEdgeObservationTerminalReason,
-  SportsEdgeSignal,
-  SportsEdgeSignalCategorySkill,
-  SportsEdgeSportFunnelReport,
+  PreGameSideFunnelReport,
+  PreGameSideObservation,
+  PreGameSideObservationTerminalReason,
+  PreGameSide,
+  PreGameSideCategorySkill,
+  PreGameSideSportFunnelReport,
+  SuspiciousTrade,
   Trader,
   TraderCategoryRecord,
   TraderCategoryRecords,
+  TraderGradeAt,
   TraderContext,
   TraderEsportsGameRecord,
   TraderExportJob,
+  TraderExportArtifactManifest,
+  TraderExportCategoryWatermark,
+  TraderExportGeneration,
+  TraderExportPnlWatermark,
+  TraderExportPositionWatermark,
   TraderExportSnapshot,
+  TraderExportSourceWatermarks,
+  TraderExportTradeWatermark,
   TraderPnl,
   TraderTrust,
   TrendingWallet,
@@ -357,12 +405,55 @@ export type {
   WebhookRetryPolicy,
   WebhookStatus,
   WebhookVerification,
-  WhaleTrade,
-  WhaleTradeDetail,
-  WhaleTradeHistoryMeta,
+  LargeTrade,
+  LargeTradeDetail,
+  LargeTradeHistoryMeta,
   OperationBody,
   OperationData,
   OperationPath,
   OperationQuery,
   OperationResponse,
 } from "./schema.js";
+
+/**
+ * @deprecated Use `SuspiciousTrade`. The OpenAPI component schema `RadarFlag`
+ * was renamed to `SuspiciousTrade` in #16301 and the generated types no longer
+ * spell it, so the name is kept here as an alias: an existing
+ * `import type { RadarFlag } from "@0xinsider/sdk"` keeps compiling and keeps
+ * describing the same payload. The deprecated
+ * `GET /api/v1/insider-radar/{id}` still returns it under
+ * `object: "radar_flag"`.
+ */
+export type RadarFlag = import("./schema.js").SuspiciousTrade;
+import type { LargeTrade, LargeTradeDetail, LargeTradeHistoryMeta } from "./schema.js";
+import type { BatchMarketFlowItem, MarketFlow } from "./schema.js";
+/** @deprecated Use {@link MarketFlow} (#16312). */
+export type MarketIntel = MarketFlow;
+/** @deprecated Use {@link BatchMarketFlowItem} (#16312). */
+export type BatchMarketIntelItem = BatchMarketFlowItem;
+/** @deprecated Use {@link LargeTrade} (#16304). */
+export type WhaleTrade = LargeTrade;
+/** @deprecated Use {@link LargeTradeDetail} (#16304). */
+export type WhaleTradeDetail = LargeTradeDetail;
+/** @deprecated Use {@link LargeTradeHistoryMeta} (#16304). */
+export type WhaleTradeHistoryMeta = LargeTradeHistoryMeta;
+import type {
+  PreGameSide,
+  PreGameSideCategorySkill,
+  PreGameSideFunnelReport,
+  PreGameSideObservation,
+  PreGameSideObservationTerminalReason,
+  PreGameSideSportFunnelReport,
+} from "./schema.js";
+/** @deprecated Use {@link PreGameSide} (#16310). */
+export type SportsEdgeSignal = PreGameSide;
+/** @deprecated Use {@link PreGameSideCategorySkill} (#16310). */
+export type SportsEdgeSignalCategorySkill = PreGameSideCategorySkill;
+/** @deprecated Use {@link PreGameSideObservation} (#16310). */
+export type SportsEdgeObservation = PreGameSideObservation;
+/** @deprecated Use {@link PreGameSideObservationTerminalReason} (#16310). */
+export type SportsEdgeObservationTerminalReason = PreGameSideObservationTerminalReason;
+/** @deprecated Use {@link PreGameSideFunnelReport} (#16310). */
+export type SportsEdgeFunnelReport = PreGameSideFunnelReport;
+/** @deprecated Use {@link PreGameSideSportFunnelReport} (#16310). */
+export type SportsEdgeSportFunnelReport = PreGameSideSportFunnelReport;

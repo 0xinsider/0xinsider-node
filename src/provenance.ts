@@ -12,4 +12,4 @@ export const OPENAPI_VERSION = "1.0.0";
 export const OPERATION_COUNT = 83;
 export const APP_REPOSITORY = "0xinsider/0xinsider";
 export const APP_SPEC_PATH = "web/public/api/v1/openapi.json";
-export const APP_COMMIT: string | null = null;
+export const APP_COMMIT: string | null = "f3f8a8a9e5b48902af192ae08aed96aecb0d2284";

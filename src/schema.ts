@@ -496,7 +496,10 @@ export type ExploreMarket = {
     recency_signal: number | null;
     /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value. */
     sharp_money_signal: number | null;
-    /** Deprecated spelling of sharp_money_signal; emitted beside it with the same value and never removed. */
+    /**
+     * Deprecated spelling of sharp_money_signal; emitted beside it with the same value and never removed.
+     * @deprecated
+     */
     smart_money_signal: number | null;
     price_move_signal: number | null;
     missing_price_penalty: number;
@@ -859,11 +862,17 @@ export type LargeTrade = {
   price: number;
   /** Current 0.0–1.0 review score, computed at request time from the trade's size, the trader's win rate today, a bonus when a trader with a win rate above 55% trades at a price below 30¢, and the trade's age now. A higher score means read this trade first; it does not measure edge or predict an outcome. On a historical row it is today's view of the trade, not what a reader saw then; use recorded_review_score for that. Canonical since #16311; signal_score carries the same value. */
   review_score: number;
-  /** Current 0.0–1.0 review score, computed at request time from the trader's win rate today and the trade's age now. Deprecated (#16311): `review_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Current 0.0–1.0 review score, computed at request time from the trader's win rate today and the trade's age now. Deprecated (#16311): `review_score` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   signal_score: number;
   /** 0.0–1.0 review score written once when the trade row is inserted, from the trader's statistics at that moment. Populated from 2026-08-03T11:59Z; older rows return null and are never backfilled, because a backfill could only read today's statistics. If a trade is added later, its time-sensitive recorded score reflects that delay. Canonical since #16311; recorded_signal_score carries the same value. */
   recorded_review_score: number | null;
-  /** 0.0–1.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * 0.0–1.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   recorded_signal_score: number | null;
   /** Persisted live suspicion score from the scorer. Null when the row has no persisted score. */
   suspicion_score: number | null;
@@ -991,7 +1000,10 @@ export type MarketFlow = {
     /** Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times. */
     oldest_snapshot_as_of: string | null;
   };
-  /** Deprecated alias of sharp_money; byte-identical and retained for backward compatibility. */
+  /**
+   * Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.
+   * @deprecated
+   */
   smart_money: {
     net_flow_usd: number;
     direction: "YES" | "NO";
@@ -1313,7 +1325,10 @@ export type PickOfTheDay = {
   side_summary?: string;
   /** Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. Canonical key since #16308; smart_wallet_count is its deprecated spelling, emitted beside it with the same value. */
   sharp_wallet_count?: number;
-  /** Deprecated spelling of sharp_wallet_count, emitted beside it with the same value and never removed. Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
+  /**
+   * Deprecated spelling of sharp_wallet_count, emitted beside it with the same value and never removed. Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof.
+   * @deprecated
+   */
   smart_wallet_count?: number;
   /** Best public V1-compatible S/A sharp-money grade on the backed side. The first-party/internal current policy can select B, but a current B-only grade is omitted by the stable V1 adapter. Historical rows retain their frozen policy's grade. A current-day published pick with pending legacy proof, unknown-future proof, or structurally invalid current-policy proof returns 503 before this success schema is served. Resolved legacy proof remains readable on both current-day and archive/history responses. */
   top_grade?: string;
@@ -1323,7 +1338,10 @@ export type PickOfTheDay = {
   category_edge_sample?: number;
   /** Recency-weighted graded-flow magnitude in USD; omitted when <= 0. Canonical key since #16308; smart_usd is its deprecated spelling, emitted beside it with the same value. */
   sharp_usd?: number;
-  /** Deprecated spelling of sharp_usd, emitted beside it with the same value and never removed. Recency-weighted graded-flow magnitude in USD; omitted when <= 0. */
+  /**
+   * Deprecated spelling of sharp_usd, emitted beside it with the same value and never removed. Recency-weighted graded-flow magnitude in USD; omitted when <= 0.
+   * @deprecated
+   */
   smart_usd?: number;
   /** Frozen pre-game probability (0..1) for the backed side, written once at publication. It is the Polymarket CLOB order book midpoint at release, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. */
   backed_price?: number;
@@ -1939,7 +1957,10 @@ export type PreGameSide = {
   side_share: number | null;
   /** Polymarket condition id. */
   condition_id: string;
-  /** UTC time at which the immutable signal snapshot was computed. Every row from one snapshot shares this value; it is not provider market creation time and is not rewritten at request time. Deprecated (#16310): `ranked_at` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * UTC time at which the immutable signal snapshot was computed. Every row from one snapshot shares this value; it is not provider market creation time and is not rewritten at request time. Deprecated (#16310): `ranked_at` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   signal_created_at: string;
   /** Polymarket CLOB token id (ERC1155 asset id, decimal string) for the PILED outcome; null when unavailable. */
   token_id: string | null;
@@ -1951,7 +1972,10 @@ export type PreGameSide = {
   event_slug: string | null;
   /** Kickoff (UTC). In the future at SNAPSHOT time and within the requested horizon; because the response is served from a shared snapshot cached up to the ~180s TTL, a served kickoff can be up to ~180s in the past relative to the response time. Not a live guarantee that the game has not yet started. */
   game_start_time: string | null;
-  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   piled_side: string | null;
   /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
   piled_outcome_index: number;
@@ -1969,13 +1993,19 @@ export type PreGameSide = {
   graded_holders: number;
   /** Best grade present on the piled side; null when none. */
   top_grade: "S" | "A" | "B" | null;
-  /** Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative); a lower-order ranking tiebreak (after directional_rank_score and conviction_score). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative); a lower-order ranking tiebreak (after directional_rank_score and conviction_score). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   smart_score: number | null;
   /** Market volume (USD). */
   volume: number | null;
   /** Aggregate recent flow direction on the market; null when unavailable. */
   net_side: "BUY" | "SELL" | null;
-  /** Grade-weighted pile score (5*s + 4*a + 3*b) * sharp_pct; the raw conviction input to the ranking (see directional_rank_score). Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Grade-weighted pile score (5*s + 4*a + 3*b) * sharp_pct; the raw conviction input to the ranking (see directional_rank_score). Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   conviction_score: number;
   /** Piled-side graded holders read one-way: their fresh open legs across the signal game's markets (cross-market within the one game; moneyline+spread family only) all back the same team, or, when the market's holder scan was complete, Polymarket's currentValue shows no opposite leg on this market worth 10% of the backed leg and no fresh leg opposes it. Null when the directional read was not computed (no groupable game, no holder-level data on this ranking path, or the enrichment read failed) or classified nobody. */
   one_way_holder_count: number | null;
@@ -2052,7 +2082,10 @@ export type PreGameSideObservation = {
   cohort: "wider_holder" | "in_play" | "emerging_pile";
   /** Always true. This row must not be routed to an order executor. */
   observation_only: true;
-  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   piled_side: string | null;
   /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
   piled_outcome_index: 0 | 1;
@@ -2068,11 +2101,17 @@ export type PreGameSideObservation = {
   /** Piled-side S/A/B holder count. */
   graded_holders: number;
   top_grade: "S" | "A" | "B";
-  /** Canonical signed holder-pile score. Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Canonical signed holder-pile score. Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   smart_score: number;
   /** Strictly positive stored market volume in USD. Missing, zero, or non-finite volume terminates as invalid_market and is never emitted as an observation. */
   volume: number;
-  /** Grade-weighted holder-pile score before directional enrichment. Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  /**
+   * Grade-weighted holder-pile score before directional enrichment. Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
   conviction_score: number;
   /** Whether the provider holder page came from the shared cache or a live provider read. */
   provider_read_source: "cached" | "live";
@@ -2307,7 +2346,10 @@ export type SmartMoneyFlowMarket = {
     buy_volume_usd: number;
     sell_volume_usd: number;
   };
-  /** Deprecated alias of sharp_money; byte-identical and retained for backward compatibility. */
+  /**
+   * Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.
+   * @deprecated
+   */
   smart_money: {
     net_flow_usd: number;
     direction: "YES" | "NO";

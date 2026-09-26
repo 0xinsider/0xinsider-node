@@ -31,13 +31,17 @@
  *     `unusable_sequence`); a resync frame whose payload is not an object is
  *     `invalid_resync`. Before #16248 such frames were skipped or yielded with
  *     `NaN`, and the next valid frame moved the cursor past the gap.
- *   - A frame that has not reached its blank-line delimiter after
- *     `maxFrameBytes` (default 1 MiB) is `frame_too_large`; the reader is
- *     released and the connection closed.
+ *   - A frame larger than `maxFrameBytes` (default 1 MiB), whether or not its
+ *     blank-line delimiter has arrived, is `frame_too_large` before it is
+ *     parsed (#16644); the reader is released and the connection closed.
  *   - The error carries `lastSeq`, the last sequence delivered before it, so a
  *     malformed frame never moves the cursor and a caller can decide whether
  *     to resume from there (which replays the frame while it is retained),
  *     skip past `frameId`, or refetch state. No raw payload is on the error.
+ *   - A terminal `event: error` frame (the key was revoked, the account
+ *     lapsed, or the credential store could not confirm the key) throws the
+ *     typed `OxinsiderApiError` it carries and is never yielded (#16546);
+ *     `retry: false` is permanent to the resilient consumers.
  *   Comment lines (`: keep-alive`), LF and CRLF framing, unknown SSE fields
  *   and unknown-but-valid envelope `type`s are compatible as before.
  */
@@ -113,9 +117,10 @@ export interface StreamOptions extends StreamFilters {
   cursor?: { seq?: number };
   /**
    * Byte ceiling for one undelivered frame (#16248). Default
-   * `DEFAULT_MAX_STREAM_FRAME_BYTES` (1 MiB). A connection that sends more
-   * than this without a blank-line delimiter ends with
-   * `StreamProtocolError` (`frame_too_large`) and the reader is released.
+   * `DEFAULT_MAX_STREAM_FRAME_BYTES` (1 MiB). A frame larger than this,
+   * delimited or not, ends the connection with `StreamProtocolError`
+   * (`frame_too_large`) before it is parsed or yielded, and the reader is
+   * released (#16644).
    * A positive finite integer; the largest real frame is a few KB.
    */
   maxFrameBytes?: number;
@@ -136,7 +141,7 @@ export type StreamProtocolErrorReason =
   | "unusable_sequence"
   /** A resync frame whose payload is not an object, or whose `type` is not `resync`. */
   | "invalid_resync"
-  /** A frame grew past `maxFrameBytes` without reaching its delimiter. */
+  /** A frame, delimited or not, is larger than `maxFrameBytes`. */
   | "frame_too_large";
 
 /**
@@ -332,6 +337,18 @@ export async function* streamFeed(
       }
       while (sepIndex.index !== -1) {
         const rawFrame = buffer.slice(0, sepIndex.index);
+        // A complete frame is held to the same ceiling as an incomplete one,
+        // before it is parsed, advances the cursor, or is yielded: a chunk
+        // carrying an oversized frame and its delimiter together never reaches
+        // the no-delimiter check above (#16644). `lastSeq` stays the last
+        // delivered event.
+        const frameBytes = encoder.encode(rawFrame).byteLength;
+        if (frameBytes > maxFrameBytes) {
+          throw new StreamProtocolError("frame_too_large", {
+            lastSeq,
+            bytes: frameBytes,
+          });
+        }
         buffer = buffer.slice(sepIndex.index + sepIndex.length);
 
         const parsed = parseSseFrame(rawFrame);
@@ -482,6 +499,10 @@ function isPermanentStreamError(error: unknown): boolean {
   // replays the same frame while the server retains it, and a wrong media
   // type is the same answer on every connection.
   if (error instanceof StreamProtocolError) return true;
+  // A terminal frame that said `retry: false` (#16546).
+  if (error instanceof OxinsiderApiError && permanentTerminalErrors.has(error)) {
+    return true;
+  }
   return (
     error instanceof OxinsiderApiError &&
     error.status >= 400 &&
@@ -1142,6 +1163,9 @@ export function decodeStreamFrame(
   } catch {
     throw new StreamProtocolError("invalid_json", detail);
   }
+  if (parsed.event === "error") {
+    throw terminalStreamError(payload, detail);
+  }
   if (parsed.event === "resync") {
     if (!isPlainObject(payload)) {
       throw new StreamProtocolError("invalid_resync", detail);
@@ -1169,6 +1193,68 @@ export function decodeStreamFrame(
     throw new StreamProtocolError("unusable_sequence", detail);
   }
   return { kind: "event", seq, envelope: payload as FeedEnvelope };
+}
+
+/**
+ * The HTTP status the reconnect is answered with, for each code a terminal
+ * `event: error` frame carries (#16546). The frame has no status of its own;
+ * this mirrors `ApiError::status_code` in `backend/crates/api-core`, so the
+ * error thrown mid-stream is the one the next request would get.
+ */
+const STREAM_ERROR_CODE_STATUS: Readonly<Record<string, number>> = {
+  bad_request: 400,
+  invalid_api_key: 401,
+  subscription_required: 402,
+  forbidden: 403,
+  insufficient_scope: 403,
+  not_found: 404,
+  request_timeout: 408,
+  account_locked: 423,
+  rate_limited: 429,
+  internal_error: 500,
+  rate_limit_unavailable: 503,
+};
+const STREAM_ERROR_UNAVAILABLE_REASONS: ReadonlySet<string> = new Set([
+  "database_unavailable",
+  "read_model_warming",
+  "request_accounting_unavailable",
+]);
+
+/**
+ * Errors built from a terminal frame that said `retry: false`: permanent
+ * whatever their status, so no consumer reconnects on them (#16546).
+ */
+const permanentTerminalErrors = new WeakSet<OxinsiderApiError>();
+
+/**
+ * The typed error a terminal `event: error` frame stands for (#16546).
+ *
+ * The backend ends `/api/v1/stream` with `{ "type": "error", "error": {...},
+ * "retry": <bool> }` when the key is revoked, the account lapses, or the
+ * credential store cannot confirm the key. The frame is never a feed event:
+ * it is thrown, so it reaches no handler and moves no cursor or checkpoint.
+ * `retry: false` is permanent; `retry: true` goes through the resilient
+ * consumer's reconnect path like any 5xx.
+ */
+function terminalStreamError(
+  payload: unknown,
+  detail: ConstructorParameters<typeof StreamProtocolError>[1],
+): Error {
+  if (!isPlainObject(payload) || !isPlainObject(payload.error)) {
+    return new StreamProtocolError("invalid_envelope", detail);
+  }
+  const body = payload.error;
+  const retry = payload.retry === true;
+  const code = typeof body.code === "string" ? body.code : undefined;
+  const reason = typeof body.reason === "string" ? body.reason : undefined;
+  const status =
+    reason !== undefined && STREAM_ERROR_UNAVAILABLE_REASONS.has(reason)
+      ? 503
+      : ((code !== undefined ? STREAM_ERROR_CODE_STATUS[code] : undefined) ??
+        (retry ? 503 : 400));
+  const error = errorFromResponse(status, { object: "error", error: body });
+  if (!retry) permanentTerminalErrors.add(error);
+  return error;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
