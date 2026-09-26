@@ -32,7 +32,7 @@ export type AgentRegistration = {
   environment: "sandbox";
   created_at: string;
   sandbox: {
-    /** The sandbox V1 base URL. Every documented operation answers here with example data. */
+    /** The sandbox V1 base URL. Every documented operation answers here with example data, except GET /api/v1/stream: a Server-Sent Events stream is a live connection rather than a body, so the sandbox answers it with 400. */
     api_base_url: string;
     /** A read to send with the key. */
     first_request_url: string;
@@ -67,7 +67,7 @@ export type ApiDiscovery = {
   openapi_url: string;
   /** Unauthenticated API health endpoint. */
   health_url: string;
-  authentication: "Bearer API key required for data endpoints; discovery (/api/v1), health, /api/v1/platforms, the Pick of the Day commitment ledger (/api/v1/pick-of-the-day/ledger), and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.";
+  authentication: "Bearer API key required for data endpoints; discovery (/api/v1), health, coverage (/api/v1/coverage, and its deprecated alias /api/v1/platforms), the Pick of the Day commitment ledger (/api/v1/pick-of-the-day/ledger), and the MCP handshake (initialize, ping, tools/list on /api/v1/mcp) are public. A 401 carries WWW-Authenticate with the resource_metadata URL.";
   /** RFC 9728 protected-resource metadata for the API origin: the document every V1 401 names in its WWW-Authenticate challenge (resource, bearer_methods_supported, resource_documentation). The remote MCP server has its own document at /.well-known/oauth-protected-resource/api/v1/mcp. */
   protected_resource_metadata_url: string;
   /** The complete authenticated route index: one entry per authenticated route this spec documents, in "<METHOD> <path>" form, not a representative subset. GET /api/v1 is the unauthenticated entrypoint an agent hits first, so it hands back the whole authenticated surface rather than a sample the caller would have to guess around. The example on GET /api/v1 is abridged for readability -- the live response returns all of them. Kept in lockstep with this spec by review: it is a hand-maintained const in backend/src/api_v1/discovery.rs and no automated check compares the two, so treat this spec as authoritative if they ever disagree. */
@@ -84,8 +84,9 @@ export type ApiError = {
     param?: string;
     /** The recommended next request instant (RFC3339), always in the future. Present on every retryable error: `pick_not_released`, `rate_limited`, `rate_limit_unavailable`, and `read_model_warming`. Omitted otherwise. The absolute twin of `Retry-After`; prefer the header for the sleep duration. For `pick_not_released`, the earliest of the next scheduled release, the next automatic selector attempt, the operating-window start, or about 60 seconds. See that response. */
     retry_at?: string;
+    freshness?: FreshnessFailure;
     /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
-    reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled";
+    reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied";
   };
   meta: ResponseMeta;
 };
@@ -96,18 +97,19 @@ export type ApiErrorBody = {
   message: string;
   doc_url?: string;
   param?: string;
-  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 11:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory under supported operator actions: manual publication, release-time override, or admin generation can make a pick available first. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
+  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 11:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
   retry_at?: string;
+  freshness?: FreshnessFailure;
   /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
-  reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled";
+  reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied";
 };
 
-export type BatchMarketIntelItem = {
+export type BatchMarketFlowItem = {
   /** Zero-based request index. Duplicate inputs keep separate result rows. */
   index: number;
   input: string;
   status: "ok" | "error";
-  data?: MarketIntel;
+  data?: MarketFlow;
   error?: ApiErrorBody;
 };
 
@@ -274,6 +276,31 @@ export type CreateWebhookRequest = {
   /** Public HTTPS callback URL on the default port 443. Local, private, and internal targets are rejected, as is any explicit port other than 443 and any URL carrying credentials. Each user's URLs are unique after normalizing HTTPS scheme/host case, trailing DNS dots and port 443; path/query case is preserved. Pending verification and PATCH-disabled endpoints still reserve their stored URL. The destination must answer the signed webhook.verification challenge with a 2xx before POST /api/v1/webhooks/{id}/verify can activate the endpoint. */
   url: string;
   event_types: WebhookEventType[];
+  trade_filters?: LargeTradeSubscriptionFilters;
+};
+
+/** Compact data age and coverage for a response body, always present on the operations that publish it. Read status and as_of to decide whether to use the body at all, and field_groups to see which part is weak. Everything here comes from stored observation clocks, so a cached body reports the same ages a freshly computed one does: meta.cached and meta.cache_age_s stay the only transport-time facts and neither makes this block newer. The per-field audit object is still available through expand=trust; this is the default summary of the same question. */
+export type DataQuality = {
+  /** fresh when every group is fresh, unavailable when every group is unavailable, and partial in every other case. */
+  status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
+  /** The oldest as_of among the groups that carry one: the age of the weakest clock this body rests on. Omitted when no group carries a clock. */
+  as_of?: string;
+  /** One entry per field group. Entries may be added in later releases, so match on group rather than on position or length. */
+  field_groups: DataQualityGroup[];
+};
+
+/** One group of response fields that share a writer and therefore share a clock. */
+export type DataQualityGroup = {
+  /** Stable snake_case group name. Names are additive across releases, so match on the ones you know and ignore the rest. */
+  group: string;
+  /** The table and column that write this group, named so the verdict can be audited (for example trader_rankings.computed_at). */
+  owner: string;
+  /** fresh: served, and as_of carries this group's real observation or computation clock. partial: some of the group's fields are served and some are missing. unknown: served, and this read has no clock for it, so no age may be inferred. untracked: 0xinsider does not track this group for this subject, by design. unavailable: the group could not be served. New values may be added; treat one you do not recognize as unknown. fresh means the group is tracked and clocked, not that it is inside any particular tolerance: compare as_of against your own. */
+  status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
+  /** When this group's values were observed or computed. Omitted whenever the read cannot measure it, and never filled with the serialization time, the cache time, or another group's clock. */
+  as_of?: string;
+  /** Why the status is not fresh. Omitted when it is. */
+  reason?: string;
 };
 
 export type EventReplayEvent = {
@@ -298,8 +325,8 @@ export type EventReplayEvent = {
     /** Provider discriminator. Polymarket only. */
     platform: "polymarket";
   };
-  /** Present only with expand=trade: the public trade read for this row, the same object GET /api/v1/whale-trades/{id} returns, read at request time from one query per page. traded_at, side, size_usd, price, outcome, token_id, recorded_signal_score and trader.grade_at_trade with its status are the row's event-time facts; trader.grade, trader.username, signal_score, suspicion_score, suspicion_track and market title/slug/category are enrichment that can move after the event. null when that route would answer 404 for the row (its trader or market is not synced yet). */
-  trade?: WhaleTrade | null;
+  /** Present only with expand=trade: the base trade fields for this row, read at request time from one query per page. GET /api/v1/large-trades/{id} adds counterparty_analysis; replay does not include it. traded_at, side, size_usd, price, outcome, token_id, recorded_signal_score and trader.grade_at_trade with its status are the row's event-time facts; trader.grade, trader.username, signal_score, suspicion_score, suspicion_track and market title/slug/category are enrichment that can move after the event. null when that route would answer 404 for the row (its trader or market is not synced yet). */
+  trade?: LargeTrade | null;
   source: EventReplaySource;
   freshness: EventReplayFreshness;
 };
@@ -360,6 +387,18 @@ export type EventReplaySource = {
   provider_fetch_at_request_time: false;
 };
 
+/** A lossless decimal atom rendered from the canonical NUMERIC or provider value. The value is a decimal string and must be parsed with a decimal library; it is never a display string and must not be converted through a binary float. `scale` is the source decimal scale. The field is omitted when its source is unavailable. */
+export type ExactDecimal = {
+  /** Plain decimal text at full source precision, including a minus sign for negative values and trailing zeros when the source scale carries them. Parse as an arbitrary-precision decimal. */
+  value: string;
+  /** Unit of the value, such as `USD`, `USD/share`, or `shares`. */
+  unit: string;
+  /** Number of digits after the decimal point in `value`'s source atom. */
+  scale: number;
+  /** Backend-owned source or derivation basis. Treat it as provenance, not as a display label. */
+  basis: string;
+};
+
 export type ExploreEntry = ExploreGroup | ExploreStandalone;
 
 export type ExploreFacets = {
@@ -383,6 +422,8 @@ export type ExploreGroup = {
   /** Markets in the event cluster, ranked by volume with condition_id as the tie-breaker. The selected representative is retained within the 12-market cap. */
   markets: ExploreMarket[];
   rep_volume: number | null;
+  /** Canonical key since #16304; rep_whales is its deprecated spelling, emitted beside it with the same value. */
+  rep_large_trades: number | null;
   rep_whales: number | null;
 };
 
@@ -399,12 +440,21 @@ export type ExploreMarket = {
   icon: string | null;
   category: string | null;
   platform: string | null;
+  /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
   volume: number | null;
   liquidity: number | null;
+  /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+  large_trade_count: number | null;
   whale_trade_count: number | null;
+  /** Canonical key since #16304; whale_distinct_wallets is its deprecated spelling, emitted beside it with the same value. */
+  large_trade_distinct_wallets: number | null;
   whale_distinct_wallets: number | null;
+  /** Canonical key since #16304; whale_total_usd is its deprecated spelling, emitted beside it with the same value. */
+  large_trade_total_usd: number | null;
   whale_total_usd: number | null;
+  /** Canonical key since #16304; whale_last_trade_at is its deprecated spelling, emitted beside it with the same value. */
+  large_trade_last_at: string | null;
   whale_last_trade_at: string | null;
   end_date: string | null;
   created_at: string | null;
@@ -417,6 +467,7 @@ export type ExploreMarket = {
   event_slug: string | null;
   smart_score: number | null;
   smart_count: number | null;
+  /** The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side diverges from that side's price-implied share by at least 10 points, with at least $500 on the leaning side and outside the crowded-side guard. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
   smart_label: string | null;
   /** Display label for the YES/outcome_index=0 side, enriched from provider outcome metadata when available. */
   outcome_yes_label: string | null;
@@ -438,9 +489,14 @@ export type ExploreMarket = {
   discover_score: number | null;
   score_components?: {
     volume_signal: number | null;
+    /** Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value. */
+    large_trade_signal: number | null;
     whale_signal: number | null;
     liquidity_signal: number | null;
     recency_signal: number | null;
+    /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value. */
+    sharp_money_signal: number | null;
+    /** Deprecated spelling of sharp_money_signal; emitted beside it with the same value and never removed. */
     smart_money_signal: number | null;
     price_move_signal: number | null;
     missing_price_penalty: number;
@@ -485,6 +541,207 @@ export type ExportVolumeReconciliation = {
   activity_volume_coverage: number | null;
 };
 
+export type FreshnessFailure = {
+  /** The caller's requested whole-response freshness ceiling in seconds. */
+  max_age_s: number;
+  /** Age in seconds of the oldest stored data_quality.as_of clock, when one is available. */
+  actual_age_s?: number;
+  /** The oldest stored data-quality clock used to calculate actual_age_s, when one is available. */
+  as_of?: string;
+  /** The trader body's whole-response data-quality status. Only fresh can satisfy max_age_s. */
+  data_quality_status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
+};
+
+/** One sports or esports game: both sides, its schedule, provider status, linked Polymarket markets and their available provider moneyline price states. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out. */
+export type Game = {
+  object: "game";
+  /** The game's identity, for example mlb-mil-cin-2026-06-22. The same key the live_sports_updated webhook pulse carries and the same key /api/v1/games/{event_slug} takes. */
+  event_slug: string;
+  /** The provider's Gamma gameId, as a string. Omitted when the canonical owner has no single value for this slug: the provider stamps one gameId across an event's derivative siblings, so an ambiguous read is reported as unknown rather than guessed. */
+  game_id?: string;
+  /** The canonical sport bucket, for example Soccer or Table Tennis. Omitted when neither the board scope nor the provider category names one. */
+  sport?: string;
+  /** The league tag, for example nfl or epl. Omitted for a sport served as one whole bucket with no league scope. */
+  league?: string;
+  /** The provider's event title. Omitted when the provider sent none. */
+  title?: string;
+  /** Kickoff in UTC, as the provider supplied it. Omitted when the provider published none; coverage.schedule then reads unavailable. */
+  scheduled_at?: string;
+  status: GameStatus;
+  /** Both sides, in the provider's own order. For a team league the provider lists the home side first. Empty when the provider identified neither side. */
+  competitors: GameCompetitor[];
+  /** The esports series length, for example Bo3. Omitted for everything else. */
+  series_format?: string;
+  /** Whether one of this game's markets pays on a draw. Read this instead of assuming a two-outcome moneyline. */
+  draw_offered: boolean;
+  /** Every market this read linked to the game, ordered by condition_id. */
+  markets: GameMarket[];
+  freshness: GameFreshness;
+  coverage: GameCoverage;
+  /** The game's page on 0xinsider. */
+  url: string;
+};
+
+/** One side of the game. */
+export type GameCompetitor = {
+  /** The competitor's name as the provider gives it. */
+  name: string;
+  /** The provider's league-scoped competitor id, as a string. Omitted when the provider has not identified this side; coverage.competitors then reads labels. */
+  provider_id?: string;
+  /** Provider crest or logo URL. Omitted when there is none. */
+  logo?: string;
+  /** The provider's score for this side, verbatim. A string because the provider sends one: a set score, a map score and a run total are not all integers. Omitted when no live-score frame carries a score. */
+  score?: string;
+  /** The provider's season record for this side, for example 12-4. Omitted when the provider sent none. */
+  record?: string;
+};
+
+/** What this game's read actually supplied, so a client branches on coverage instead of on a missing key. */
+export type GameCoverage = {
+  /** available when a live-score frame supplied this game's scores. */
+  scores: "available" | "unavailable";
+  /** provider_ids when every side carries a provider id, labels when only the provider's names identify them, unavailable when neither exists. Do not join on names when this reads labels. */
+  competitors: "provider_ids" | "labels" | "unavailable";
+  /** available when the provider supplied a kickoff. */
+  schedule: "available" | "unavailable";
+};
+
+/** How current this game's facts are. Independent per source: the board half that produced the game, and the live-score frame that produced its scores. */
+export type GameFreshness = {
+  /** Which board half produced this game. */
+  source: "live" | "upcoming";
+  /** Whether that half returned a truthful source body for this read. */
+  source_status: "ok" | "unavailable";
+  /** Whether that half had a source body at all. not_applicable means the sport has no configured source for that half. */
+  source_availability: "available" | "unavailable" | "not_applicable";
+  /** Freshness of the cached source body, never inferred from the response clock or the row count. */
+  source_freshness: "fresh" | "stale" | "unknown" | "not_applicable";
+  /** The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. */
+  source_observed_at?: string;
+  /** Age of source_observed_at in seconds, capped at 600. Omitted past the cap or with no anchor. */
+  source_age_seconds?: number;
+  /** Whether a reader should be told these rows are behind. This applies the half's own servable-age bar (15 s live, 120 s upcoming), which is not the same as source_freshness: a live board whose scores are seconds old reads stale for about half of every publish cycle and is not delayed. */
+  delayed: boolean;
+  /** When this game's live-score frame was observed. Omitted when there is no frame. */
+  scores_observed_at?: string;
+  /** The provider's own frame clock. Omitted when the frame carries none. */
+  scores_source_at?: string;
+};
+
+/** One Polymarket market linked to this game. */
+export type GameMarket = {
+  /** The mkt_-prefixed market id every other V1 response uses. */
+  id: string;
+  /** The raw provider condition id. */
+  condition_id: string;
+  /** Always polymarket. */
+  platform: string;
+  /** The provider's market slug. Omitted when the provider sent none. */
+  slug?: string;
+  /** The provider's own market type, for example moneyline or spread. Omitted when the provider sent none. Not an enum: the provider owns this vocabulary and adds to it. */
+  sports_market_type?: string;
+  /** Which side of the game this market's YES leg pays. draw is a real value: a 1X2 market's third leg is not a competitor. Omitted when the provider ids do not classify the leg, which is not the same as other. */
+  side?: "home" | "away" | "draw" | "other";
+  /** The provider's label for the YES outcome. Omitted when the provider sent none. */
+  outcome_yes?: string;
+  /** The provider's label for the NO outcome. Omitted when the provider sent none. */
+  outcome_no?: string;
+  /** Polymarket CLOB token ids in the provider's own outcome-index order. Omitted when the provider has published none for this market. */
+  outcome_token_ids?: string[];
+  /** Default provider moneyline state. Omitted when this market has no classified moneyline projection; incomplete and invalid projections remain explicit. */
+  prices?: GameMarketPrices;
+};
+
+/** How the existing sports-board writer bound prices to competitors. */
+export type GameMarketPriceBindingProvenance = "provider_ids" | "exact_labels" | "containment_labels" | "elimination";
+
+/** One competitor-bound provider moneyline price. No YES/NO inference is required. */
+export type GameMarketPriceCompetitor = {
+  /** The provider competitor id when identity is available. */
+  provider_id?: number;
+  /** The provider competitor label. */
+  label: string;
+  /** Unrounded provider price in [0, 1]. */
+  price: number;
+  /** Which provider price observation supplies this leg. */
+  price_provenance: "gamma_outcome_prices" | "clob_display";
+};
+
+/** The provider moneyline pair is incomplete; no numeric pair is invented. */
+export type GameMarketPriceIncomplete = {
+  state: "incomplete";
+  reason: "outcome_prices_missing" | "outcome_price_leg_missing" | "zero_price_sentinel" | "display_price_pair_unavailable" | "outcome_identity_unavailable" | "final_score_unavailable";
+  /** Whether competitor A is the provider YES leg. */
+  competitor_a_is_yes?: boolean;
+  /** The provider competitor id when identity is available. */
+  competitor_a_provider_id?: number;
+  /** The provider competitor id when identity is available. */
+  competitor_b_provider_id?: number;
+  binding_provenance?: GameMarketPriceBindingProvenance;
+};
+
+/** The provider moneyline pair is invalid; no numeric pair is invented. */
+export type GameMarketPriceInvalid = {
+  state: "invalid";
+  reason: "team_cardinality" | "outcome_cardinality" | "price_cardinality" | "non_finite_price" | "out_of_range_price" | "non_complementary_prices" | "ambiguous_identity" | "final_identity_mismatch";
+  /** Whether competitor A is the provider YES leg. */
+  competitor_a_is_yes?: boolean;
+  /** The provider competitor id when identity is available. */
+  competitor_a_provider_id?: number;
+  /** The provider competitor id when identity is available. */
+  competitor_b_provider_id?: number;
+  binding_provenance?: GameMarketPriceBindingProvenance;
+};
+
+/** A validated provider moneyline pair bound to the two competitors. */
+export type GameMarketPricePaired = {
+  state: "paired";
+  competitor_a: GameMarketPriceCompetitor;
+  competitor_b: GameMarketPriceCompetitor;
+  /** Whether competitor A is the provider YES leg. */
+  competitor_a_is_yes: boolean;
+  binding_provenance: GameMarketPriceBindingProvenance;
+};
+
+/** Provider-owned moneyline state with the observation clock that can be compared with game freshness. */
+export type GameMarketPrices = {
+  provider: GameMarketProviderPrices;
+  /** Board cache vintage for Gamma or the older CLOB leg clock. Null when no reliable clock is available; never a Gamma-authored timestamp. */
+  observed_at: string | null;
+  /** The clock used for observed_at. board_snapshot is this service’s cache observation, not a provider source timestamp. */
+  observation_source: "board_snapshot" | "clob_display";
+};
+
+export type GameMarketProviderPrices = GameMarketPricePaired | GameMarketPriceIncomplete | GameMarketPriceInvalid;
+
+/** What this deployment covers, published with every page so a client never has to guess whether an empty list means no games or no coverage. */
+export type GamesCoverage = {
+  /** Canonical sport buckets served, sorted. */
+  sports: string[];
+  /** League tags served, sorted. */
+  leagues: string[];
+  /** Scopes whose source half was unavailable for this read, as <sport>:<half>. Empty means every scope answered. */
+  sources_unavailable: string[];
+};
+
+/** Where the game is in its own life, as the provider reports it. A postponement, a cancellation and a suspension each keep their own state, so a client can tell a game that will be played later from one that never will be. */
+export type GameStatus = {
+  /** scheduled: kickoff is ahead or the provider still calls it scheduled. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own. */
+  state: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
+  /** The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status. */
+  match_status?: "scheduled" | "in_progress" | "halftime" | "penalty_shootout" | "delayed" | "suspended" | "final" | "final_overtime" | "final_shootout" | "awarded" | "forfeit" | "not_necessary" | "postponed" | "cancelled" | "unknown";
+  /** The provider's status string, verbatim. Omitted when the provider sent none. */
+  provider_status?: string;
+  /** The provider's period label, for example Q3, End Q2 or T5. Omitted when the provider sent none. */
+  period?: string;
+  /** The game clock as the provider spells it, never reformatted. Omitted when the provider sent none. */
+  clock?: string;
+  /** The provider's own in-play flag. Omitted when no live-score frame exists, which is not the same as false. */
+  live?: boolean;
+  /** Whether the game is over. Always present. */
+  ended: boolean;
+};
+
 /** Current category evidence, independent of the global grade. Pick of the Day stamps only the served display roster; frozen entry snapshots remain unchanged. */
 export type HolderCategoryEvidence = {
   status: "live" | "insufficient" | "stale" | "unknown" | "degraded";
@@ -495,18 +752,20 @@ export type HolderCategoryEvidence = {
 export type LargeExportPolicy = {
   mode: "v1_async_export";
   current_internal_route: string;
-  /** Programmatic API-key-gated export routes (submit/status/download) and supported formats (json, ndjson, csv). */
+  /** Programmatic API-key-gated export routes (submit/status/download/cancel) and supported formats (json, ndjson, csv). */
   v1_async: {
-    /** POST route template to submit an export job. */
+    /** POST route template to submit an export job. fresh=true asks for a snapshot read after the submit instead of reusing a finished one. */
     submit_route?: string;
     /** GET route template to poll job status. */
     status_route?: string;
     /** GET route template that 302-redirects to the file. */
     download_route?: string;
+    /** POST route template to cancel a queued or running job. */
+    cancel_route?: string;
     /** Supported ?format= values. */
     formats?: ("json" | "ndjson" | "csv")[];
     /** Possible job status values. */
-    status_values?: ("queued" | "running" | "ready" | "failed")[];
+    status_values?: ("queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled")[];
     /** How long a finished export is retained before expiry. */
     retention?: string;
   };
@@ -587,6 +846,86 @@ export type LargePosition = {
   };
 };
 
+export type LargeTrade = {
+  /** Prefixed ID (wt_...). */
+  id: string;
+  traded_at: string;
+  size_usd: number;
+  side: "BUY" | "SELL";
+  /** Traded outcome label (e.g. "Yes"/"No"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, whose stored outcome_index is not trusted (a defaulted 0 for about a third of those rows; the side is unknown, not defaulted). */
+  outcome: string | null;
+  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, where the traded side is unknown. */
+  token_id: string | null;
+  price: number;
+  /** Current 0.0–1.0 review score, computed at request time from the trade's size, the trader's win rate today, a bonus when a trader with a win rate above 55% trades at a price below 30¢, and the trade's age now. A higher score means read this trade first; it does not measure edge or predict an outcome. On a historical row it is today's view of the trade, not what a reader saw then; use recorded_review_score for that. Canonical since #16311; signal_score carries the same value. */
+  review_score: number;
+  /** Current 0.0–1.0 review score, computed at request time from the trader's win rate today and the trade's age now. Deprecated (#16311): `review_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  signal_score: number;
+  /** 0.0–1.0 review score written once when the trade row is inserted, from the trader's statistics at that moment. Populated from 2026-08-03T11:59Z; older rows return null and are never backfilled, because a backfill could only read today's statistics. If a trade is added later, its time-sensitive recorded score reflects that delay. Canonical since #16311; recorded_signal_score carries the same value. */
+  recorded_review_score: number | null;
+  /** 0.0–1.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  recorded_signal_score: number | null;
+  /** Persisted live suspicion score from the scorer. Null when the row has no persisted score. */
+  suspicion_score: number | null;
+  /** Persisted scorer track. Null when a legacy row has no stored track label. */
+  suspicion_track: "whale" | "fresh_conviction" | "sliced_position" | null;
+  /** This fill's size relative to its market: size_usd divided by a market volume figure recorded at or after the trade, so the value always falls between 0 and 1 inclusive. A $10,000 fill is 0.00005 of a $200M market and 0.125 of an $80,000 one, which size_usd alone cannot distinguish. Absent when no volume figure recorded at or after the trade is available; never 0 as a stand-in and never capped at 1, because a denominator we cannot trust publishes nothing rather than a trimmed number. A market's volume keeps growing, so the same trade reports a smaller share as the market trades on. */
+  market_volume_share?: number;
+  trader: {
+    id: string;
+    address: string;
+    username?: string;
+    /** The trader's grade today, on every row however old. For what the grade was when the trade happened, read grade_at_trade. */
+    grade?: string;
+    /** The grade the trader held when the trade happened, from recorded grade history (recorded from 2026-09-19T23:00Z). Null unless grade_at_trade_status is graded. Never today's grade projected backward. */
+    grade_at_trade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+    /** graded: grade_at_trade holds the recorded grade. ungraded: the trader was recorded without a grade at that moment. unknown: no record covers the moment, which is every trade before 2026-09-19T23:00Z and a trade that fell between a grade change and its confirmation. unknown never means ungraded. */
+    grade_at_trade_status: "graded" | "ungraded" | "unknown";
+  };
+  market: {
+    id: string;
+    condition_id: string;
+    title: string;
+    slug?: string;
+    /** Provider-backed market_canonical category. */
+    category?: string;
+  };
+};
+
+export type LargeTradeDetail = LargeTrade & {
+  counterparty_analysis: CounterpartyAnalysis;
+};
+
+export type LargeTradeHistoryMeta = {
+  /** Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines. */
+  request_id: string;
+  cached: boolean;
+  /** Cache age in seconds; the key is absent when the response was not cached. */
+  cache_age_s?: number;
+  source: {
+    kind: "local_replay";
+    table: "whale_alerts";
+    provider_fetch_at_request_time: false;
+  };
+  completeness: {
+    status: "best_effort";
+    /** Explains that local replay completeness can vary by market and time window. */
+    reason: string;
+  };
+};
+
+/** All present fields narrow large_trade_inserted_v2 delivery. Grade is observed at publication; ungraded trades do not match min_grade. An empty object matches every large trade. */
+export type LargeTradeSubscriptionFilters = {
+  /** Raw provider condition ID or mkt_-prefixed market ID. */
+  condition_id?: string;
+  /** Polymarket wallet address; matching is case-insensitive. */
+  wallet?: string;
+  /** S is best; ungraded trades do not match. */
+  min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+  /** Positive USD notional as an exact decimal string. */
+  min_size_usd?: string;
+};
+
 export type LeaderboardEntry = {
   id: string;
   address: string;
@@ -617,6 +956,66 @@ export type MarketCandles = {
   resolution: "1d" | "1w";
   /** One entry per present provider token (YES first, then NO); empty when no tokens have been fetched yet. */
   outcomes: OutcomeCandles[];
+};
+
+export type MarketFlow = {
+  market: {
+    id: string;
+    condition_id: string;
+    title: string;
+    slug: string | null;
+    category: string | null;
+    platform: string | null;
+  };
+  /** Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias. */
+  sharp_money: {
+    net_flow_usd: number;
+    direction: "YES" | "NO";
+    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
+    token_id: string | null;
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    large_trade_count?: number;
+    whale_trade_count: number;
+    buy_volume_usd: number;
+    sell_volume_usd: number;
+    top_positions: ({
+      id: string;
+      address: string;
+      username: string | null;
+      grade: string | null;
+      side: "YES" | "NO";
+      /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets). */
+      token_id: string | null;
+      size_usd: number;
+    })[];
+    /** Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times. */
+    oldest_snapshot_as_of: string | null;
+  };
+  /** Deprecated alias of sharp_money; byte-identical and retained for backward compatibility. */
+  smart_money: {
+    net_flow_usd: number;
+    direction: "YES" | "NO";
+    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
+    token_id: string | null;
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    large_trade_count?: number;
+    whale_trade_count: number;
+    buy_volume_usd: number;
+    sell_volume_usd: number;
+    top_positions: ({
+      id: string;
+      address: string;
+      username: string | null;
+      grade: string | null;
+      side: "YES" | "NO";
+      /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets). */
+      token_id: string | null;
+      size_usd: number;
+    })[];
+    /** Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times. */
+    oldest_snapshot_as_of: string | null;
+  };
+  timeframe: string;
 };
 
 export type MarketHolder = {
@@ -719,58 +1118,6 @@ export type MarketHoldersTotals = {
   no_grades: MarketHoldersSideGrades;
 };
 
-export type MarketIntel = {
-  market: {
-    id: string;
-    condition_id: string;
-    title: string;
-    slug: string | null;
-    category: string | null;
-    platform: string | null;
-  };
-  /** Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias. */
-  sharp_money: {
-    net_flow_usd: number;
-    direction: "YES" | "NO";
-    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
-    token_id: string | null;
-    whale_trade_count: number;
-    buy_volume_usd: number;
-    sell_volume_usd: number;
-    top_positions: ({
-      id: string;
-      address: string;
-      username: string | null;
-      grade: string | null;
-      side: "YES" | "NO";
-      /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets). */
-      token_id: string | null;
-      size_usd: number;
-    })[];
-  };
-  /** Deprecated alias of sharp_money; byte-identical and retained for backward compatibility. */
-  smart_money: {
-    net_flow_usd: number;
-    direction: "YES" | "NO";
-    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
-    token_id: string | null;
-    whale_trade_count: number;
-    buy_volume_usd: number;
-    sell_volume_usd: number;
-    top_positions: ({
-      id: string;
-      address: string;
-      username: string | null;
-      grade: string | null;
-      side: "YES" | "NO";
-      /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets). */
-      token_id: string | null;
-      size_usd: number;
-    })[];
-  };
-  timeframe: string;
-};
-
 export type MarketSearchResult = {
   id: string;
   condition_id: string;
@@ -778,6 +1125,7 @@ export type MarketSearchResult = {
   slug: string | null;
   category: string | null;
   platform: string | null;
+  /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
 };
 
@@ -791,6 +1139,7 @@ export type MarketSnapshot = {
     page_slug: string | null;
     event_slug: string | null;
     category: string | null;
+    /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
     status: "active" | "closed";
     description: string | null;
     image: string | null;
@@ -888,9 +1237,13 @@ export type PickHolder = {
   name: string | null;
   /** All-time trader grade (S, A, B, C, D, F). */
   grade: string | null;
+  /** The wallet's most recent recorded trade time, stamped at serve time from its current trader record rather than frozen with the pick. Always sent; null when no trade time is recorded. */
+  last_traded_at: string | null;
   /** 0xinsider profile path segment this wallet links to: `@<username>` when that username resolves to this wallet alone, otherwise the lowercase wallet. Percent-encode the part after `@` and append to `https://0xinsider.com/profile/`. Stamped at serve time; absent on a body cached before the field shipped. */
   profile_segment?: string;
   shares: number;
+  /** USD entry value of this wallet's position: `shares` times the pick's frozen `backed_price`. An entry valuation, never a live balance or the provider's current value. Omitted when the holder snapshot has no valid price. */
+  entry_value_usd?: number;
   /** This wallet's win rate in the pick's canonical category bucket (the pick's `category` field, e.g. Basketball -- label the rate with it, never with the narrower `display_category` league, except when `category_win_rate_game` is present, in which case the rate is that game's and is labelled with it): the share of the wallet's resolved markets in that category whose realized P&L closed positive, as a 0..1 fraction. Present only with `category_win_rate_status` = `measured`, on `display_holders` entries, and only when the wallet clears the resolved-market floor; recomputed at serve time from the current category read model, not frozen with the pick. Absent on `holders` entries, legacy rows, and payloads predating the field. */
   category_win_rate?: number;
   /** The two counts `category_win_rate` is the ratio of, read from the same row: `wins / decided` equals the rate. Counts every resolved Polymarket market the wallet traded in the pick's canonical category (or in its game, when `category_win_rate_game` is present), at any position size; the counts are rebuilt daily. Present only with `category_win_rate_status` = `measured`; absent otherwise and on payloads predating the field. */
@@ -934,7 +1287,7 @@ export type PickOfTheDay = {
   matchup?: string;
   /** Frozen canonical calibration/report bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
   category?: string;
-  /** Frozen public presentation category. For supported Polymarket sports this is the exact verified provider event identity: an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition whose official mark we vendor (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"). Only identities with a vendored official mark are split out; every other competition keeps its canonical bucket, so "Soccer" remains a live value; otherwise it equals category. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
+  /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
   display_category?: string;
   /** Provider platform (e.g. "polymarket"). */
   platform?: string;
@@ -944,6 +1297,8 @@ export type PickOfTheDay = {
   is_locked?: boolean;
   /** True once the backed game's kickoff has passed (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. Absent for a legacy pick with no stored kickoff (treat as not-started). */
   game_started?: boolean;
+  /** Whether the backed game is over according to the cached live scoreboard, read at serve time. Tells a finished game from one still in play before `outcome` settles. Omitted when the pick has no event slug or no scoreboard is cached for it; absence is unknown, never false. */
+  game_ended?: boolean;
   /** Settlement outcome of the backed side; 'pending' until the market resolves. */
   outcome?: "pending" | "win" | "loss" | "void";
   /** Pre-formatted SETTLEMENT STATUS for display: "Win" / "Loss" / "Void" / "Pending" -- the outcome enum above as a label. Convenience only; outcome is the source value. NOTE: this is the win/loss STATUS, not the backed side. The backed side is pick_outcome_label ("Belgium (-2.5)") -- a different field answering a different question. */
@@ -956,15 +1311,19 @@ export type PickOfTheDay = {
   position?: string;
   /** One-line summary of which side sharp money is backing. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
   side_summary?: string;
-  /** Public V1 compatibility count of S/A smart-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
+  /** Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. Canonical key since #16308; smart_wallet_count is its deprecated spelling, emitted beside it with the same value. */
+  sharp_wallet_count?: number;
+  /** Deprecated spelling of sharp_wallet_count, emitted beside it with the same value and never removed. Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
   smart_wallet_count?: number;
-  /** Best public V1-compatible S/A smart-money grade on the backed side. The first-party/internal current policy can select B, but a current B-only grade is omitted by the stable V1 adapter. Historical rows retain their frozen policy's grade. A current-day published pick with pending legacy proof, unknown-future proof, or structurally invalid current-policy proof returns 503 before this success schema is served. Resolved legacy proof remains readable on both current-day and archive/history responses. */
+  /** Best public V1-compatible S/A sharp-money grade on the backed side. The first-party/internal current policy can select B, but a current B-only grade is omitted by the stable V1 adapter. Historical rows retain their frozen policy's grade. A current-day published pick with pending legacy proof, unknown-future proof, or structurally invalid current-policy proof returns 503 before this success schema is served. Resolved legacy proof remains readable on both current-day and archive/history responses. */
   top_grade?: string;
   /** Deprecated (#7170): no longer populated for picks selected on/after the calibration-edge change; omitted (absent) for new picks (the field uses skip_serializing_if, so a null value is dropped from the JSON rather than serialized as null). Permanently frozen-legacy -- retained for historical picks, with no removal or replacement planned, so no v2 is implied. Historical picks may still carry a value. Legacy meaning: category win-rate edge as a fraction (the backed-side cohort's win rate in this category minus the non-market-maker category baseline, e.g. 0.09 = +9 points), paired with category_edge_sample. */
   category_edge_pct?: number;
   /** Deprecated (#7170): no longer populated for picks selected on/after the calibration-edge change; omitted (absent) for new picks (the field uses skip_serializing_if, so a null value is dropped from the JSON rather than serialized as null). Permanently frozen-legacy -- retained for historical picks, with no removal or replacement planned, so no v2 is implied. Historical picks may still carry a value. Legacy meaning: pooled count of resolved markets behind category_edge_pct (the headline's n). */
   category_edge_sample?: number;
-  /** Recency-weighted graded-flow magnitude in USD; omitted when <= 0. */
+  /** Recency-weighted graded-flow magnitude in USD; omitted when <= 0. Canonical key since #16308; smart_usd is its deprecated spelling, emitted beside it with the same value. */
+  sharp_usd?: number;
+  /** Deprecated spelling of sharp_usd, emitted beside it with the same value and never removed. Recency-weighted graded-flow magnitude in USD; omitted when <= 0. */
   smart_usd?: number;
   /** Frozen pre-game probability (0..1) for the backed side, written once at publication. It is the Polymarket CLOB order book midpoint at release, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. */
   backed_price?: number;
@@ -1048,15 +1407,15 @@ export type PickOfTheDay = {
     lane_probability_source?: "p";
   };
   trust?: PickTrust;
-  /** Public V1 S/A compatibility count on the backed side (equals the adapted smart_wallet_count). The first-party/internal current policy counts S/A/B. Historical rows retain their frozen policy's count. */
+  /** Public V1 S/A compatibility count on the backed side (equals the adapted sharp_wallet_count). The first-party/internal current policy counts S/A/B. Historical rows retain their frozen policy's count. */
   traders?: number;
-  /** Raw backed-side sharp-money USD frozen at generation. This is the Sharp USD value, not the recency-weighted smart_usd which decays. Omitted on current public V1 rows when the B-inclusive value has no reconstructible S/A equivalent. */
+  /** Raw backed-side sharp-money USD frozen at generation. This is the Sharp USD value, not the recency-weighted sharp_usd which decays. Omitted on current public V1 rows when the B-inclusive value has no reconstructible S/A equivalent. */
   backed_sharp_usd?: number;
   /** Bounded S/A compatibility projection of the frozen sharp-money holders on the backed side. Current full payloads expose the complete S/A/B roster in display_holders; historical rows can retain their earlier frozen shape. */
   holders?: PickHolder[];
   /** Full-only complete provider-confirmed S/A/B holder roster for the current Pick of the Day backing policy. Omitted for teaser, no-pick, and historical rows whose frozen holder proof predates this policy. Each entry may additionally carry `category_win_rate` / `category_win_rate_status`: the wallet's win rate in the pick's canonical `category`, stamped at serve time from the current category read model (the same annotation the sports sharp-money chips carry). The bounded `holders` compatibility projection never carries these fields. */
   display_holders?: PickHolder[];
-  /** Exact S/A smart-money proof count on the backed side. The current display_holders roster can be longer because it also carries B-grade smart-money holders. */
+  /** Exact S/A sharp-money proof count on the backed side. The current display_holders roster can be longer because it also carries B-grade sharp-money holders. */
   holder_count?: number;
   /** Optional editorial note attached to the pick. */
   editorial_note?: string;
@@ -1064,6 +1423,8 @@ export type PickOfTheDay = {
   thesis?: string;
   /** Canonical web market URL. */
   market_url?: string;
+  /** Where this pick's outbound Polymarket link lands: Polymarket's own redirect answer for `/event/<event_slug>`, carrying the referral tag. Omitted until that redirect has been resolved; link to the event page instead when it is absent. */
+  polymarket_url?: string;
   /** The canonical /event game-page slug (one neutral page per game); omitted when the game has no neutral event page. */
   event_slug?: string;
   /** Backend-resolved /event destination slug for this pick's source market; its absence is an authoritative no-link decision. */
@@ -1114,22 +1475,26 @@ export type PickOfTheDayArchiveEntry = {
   pick_date: string;
   /** Stable 1-based slot within the product day's ranked picks. */
   pick_rank?: number;
+  /** When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (11:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility. */
+  published_at?: string;
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
   matchup: string;
   /** Frozen canonical calibration/report bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
   category: string;
-  /** Frozen public presentation category. For supported Polymarket sports this is the exact verified provider event identity: an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition whose official mark we vendor (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"). Only identities with a vendored official mark are split out; every other competition keeps its canonical bucket, so "Soccer" remains a live value; otherwise it equals category. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
+  /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
   display_category?: string;
   /** Provider (Polymarket Gamma) market thumbnail URL (markets.image); omitted (not null) when the market has no image. Public regardless of the backed-side gate, so present for pending rows too. */
   image_url?: string;
   /** The backed side's outcome label. Omitted for a still-pending pick when the request is not from an authenticated Pro key. */
   pick_outcome_label?: string;
-  /** Best public V1-compatible S/A smart-money grade on the backed side; a current B-only grade is omitted by the stable V1 adapter, while historical rows retain their frozen policy's grade. Omitted when no smart-money wallet backs the pick, when a pending legacy proof has not yet upgraded, or when the stored holder policy is unknown-future or structurally invalid. Resolved legacy history remains supported. */
+  /** Best public V1-compatible S/A sharp-money grade on the backed side; a current B-only grade is omitted by the stable V1 adapter, while historical rows retain their frozen policy's grade. Omitted when no sharp-money wallet backs the pick, when a pending legacy proof has not yet upgraded, or when the stored holder policy is unknown-future or structurally invalid. Resolved legacy history remains supported. */
   top_grade?: string;
   /** Settlement outcome of the backed side; 'pending' until the market resolves. */
   outcome: "pending" | "win" | "loss" | "void";
   /** Pre-formatted settlement status for display: "Win" / "Loss" / "Void" / "Pending" -- the outcome enum above as a label, from the same formatter the pick payload's outcome_display uses. Convenience only; outcome is the source value. */
   outcome_display?: string;
+  /** When outcome was LAST written to a settled value (RFC3339 UTC), the same instant the commitment ledger publishes. It moves with a corrected market re-mapping an already-settled pick. Omitted (not null) for a pending pick and for a pick that settled before the instant was recorded, so absence means the instant is unknown, never that the pick is unsettled -- outcome answers that. Additive and optional for mixed-version client compatibility. */
+  resolved_at?: string;
   /** The flat stake this row was valued at, in USD: 1000 since 2026-09-22 (100 before). Every row of the record is valued at the current stake, including picks published before the change. Present exactly when return_usd is. */
   stake_usd?: number;
   /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void refunds stake_usd. A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
@@ -1401,6 +1766,8 @@ export type PickSportsTeam = {
   provider_id: number | null;
   /** Team crest or flag URL. Provider-owned for most teams (Polymarket /teams crest for clubs, country flag for national teams and tennis players). A club with a vendored crest carries it instead, served same-origin as a relative path (`/api/sports/team-logos/{league}/{abbr}.svg?v=<content hash>` or `.png`, resolve it against this server): every NFL and WNBA team, whose provider asset is a text tile, and the soccer clubs whose provider asset is an empty object. */
   logo: string | null;
+  /** True when the team mark is dark enough to disappear on a dark background, measured from the artwork by the teams sync. Render a dark mark on a light plate. Always sent; false until the artwork has been measured. */
+  logo_mark_dark: boolean;
   /** Team brand color as a hex string (provider-owned). */
   color: string | null;
   /** Win-loss record as a display string (e.g. "12-4"). */
@@ -1420,7 +1787,7 @@ export type PickSportsTeam = {
 
 /** Field-level trust metadata for the full Pick of the Day payload. Present on the full shape only (omitted on the teaser and the no-pick state, because whether a specialist backs the pick is itself backed-side evidence). Unlike TraderTrust it is not gated behind expand=trust: it carries one member on an endpoint that returns a single object per day. */
 export type PickTrust = {
-  /** Provenance of the frozen qualifying category expert. source.kind=database with reconciliation.status=db_mirror means the evidence deserialized, still satisfies every frozen selection gate, and is being served. On that arm freshness.status is always not_live and never fresh, because this evidence is frozen at selection and never refreshed, so on an archived pick the as_of (the expert's own stats_computed_at) can be days or months old by design. source.kind=computed with reconciliation.status=not_applicable means the selector evaluated the backed side and nobody qualified -- a real negative. source.kind=computed with freshness.status=unknown and completeness.status=not_computed means the selector never evaluated this field, as on a pre-feature pick or manual takeover. source.kind=unavailable means the payload is malformed, violates a selection gate, or conflicts with its persisted status, or the public V1 adapter intentionally omitted a current-policy B-grade expert; read the reason before treating it as a negative. Do not read an omitted qualifying_expert as 'no specialist' without checking this field. */
+  /** Provenance of the frozen qualifying category expert. source.kind=database with reconciliation.status=db_mirror means the evidence deserialized, still satisfies every frozen selection gate, and is being served. On that arm freshness.status is always not_live and never fresh, because this evidence is frozen at selection and never refreshed, so on an archived pick the as_of (the expert's own stats_computed_at) can be days or months old by design. source.kind=computed with reconciliation.status=not_applicable means the selector evaluated the backed side and nobody qualified -- a real negative. source.kind=computed with freshness.status=unknown and completeness.status=not_computed means the selector never evaluated this field, as on a pre-feature pick. source.kind=unavailable means the payload is malformed, violates a selection gate, or conflicts with its persisted status, or the public V1 adapter intentionally omitted a current-policy B-grade expert; read the reason before treating it as a negative. Do not read an omitted qualifying_expert as 'no specialist' without checking this field. */
   qualifying_expert: TrustMetadata;
 };
 
@@ -1429,7 +1796,10 @@ export type PlatformCapabilities = {
   pnl: PlatformCapabilityStatus;
   strategy: PlatformCapabilityStatus;
   timeline: PlatformCapabilityStatus;
+  /** The large-trade feed. Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value. */
+  large_trades: PlatformCapabilityStatus;
   whale_signal: PlatformCapabilityStatus;
+  suspicious_trades: PlatformCapabilityStatus;
   insider_radar: PlatformCapabilityStatus;
   market_snapshot: PlatformCapabilityStatus;
 };
@@ -1464,6 +1834,8 @@ export type Position = {
   cash_pnl?: number;
   /** Closed-leg P&L rolled up (Polymarket `realizedPnl`). */
   realized_pnl?: number;
+  /** Additive lossless source atoms for the display-safe position fields. Parse every `value` with decimal-safe arithmetic; never recover exact values from the numeric twins. */
+  exact?: PositionExact;
   /** Max updated_at across mirror legs for this pair. */
   last_reconciled_at?: string;
   /** Backend-computed staleness bucket derived from last_reconciled_at. */
@@ -1495,6 +1867,18 @@ export type Position = {
     outcome_label?: string;
     end_date?: string;
   };
+};
+
+/** Lossless position atoms from `wallet_positions`. `shares` and `current_value_usd` are required when this object is present; other source values are omitted when the mirror has no verified value. */
+export type PositionExact = {
+  shares: ExactDecimal;
+  cost_basis_usd?: ExactDecimal;
+  /** Exact derived price: `wallet_positions.cost_basis_usd / wallet_positions.shares`. */
+  avg_price?: ExactDecimal;
+  current_value_usd: ExactDecimal;
+  initial_value_usd?: ExactDecimal;
+  cash_pnl?: ExactDecimal;
+  realized_pnl?: ExactDecimal;
 };
 
 export type PositionTimelineEvent = {
@@ -1543,6 +1927,199 @@ export type PotdEntryAuthorization = {
   expires_at: string;
 };
 
+/** One ranked pre-game sports market where graded sharp money is piled on one side, with required-status shadow category evidence from partial forward-observed Polymarket fills. */
+export type PreGameSide = {
+  /** The side profitable wallets hold, as a provider-backed display label. Canonical spelling of piled_side (#16310), same value: when provider group context is unavailable it may remain a bare Yes/No/Over/Under, so do not use it alone as participant identity. */
+  side: string | null;
+  /** UTC time at which the snapshot that ranked this row was computed. Canonical spelling of signal_created_at (#16310), same value. */
+  ranked_at: string;
+  /** Grade-weighted holders times the share of their money on the side: (5*s + 4*a + 3*b) * sharp_pct. Canonical spelling of conviction_score (#16310), same value. */
+  backing_score: number;
+  /** Signed share of graded money on the side, (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (side-yes positive, side-no negative). Canonical spelling of smart_score (#16309, #16310), same value. */
+  side_share: number | null;
+  /** Polymarket condition id. */
+  condition_id: string;
+  /** UTC time at which the immutable signal snapshot was computed. Every row from one snapshot shares this value; it is not provider market creation time and is not rewritten at request time. Deprecated (#16310): `ranked_at` is the canonical spelling and carries the same value; this key stays on the wire. */
+  signal_created_at: string;
+  /** Polymarket CLOB token id (ERC1155 asset id, decimal string) for the PILED outcome; null when unavailable. */
+  token_id: string | null;
+  /** Canonical sport bucket (e.g. Basketball, Tennis); null when the raw category has no canonical mapping. */
+  category: string | null;
+  /** Raw provider category as stored (e.g. NBA, EPL). */
+  raw_category: string | null;
+  title: string | null;
+  event_slug: string | null;
+  /** Kickoff (UTC). In the future at SNAPSHOT time and within the requested horizon; because the response is served from a shared snapshot cached up to the ~180s TTL, a served kickoff can be up to ~180s in the past relative to the response time. Not a live guarantee that the game has not yet started. */
+  game_start_time: string | null;
+  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire. */
+  piled_side: string | null;
+  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
+  piled_outcome_index: number;
+  /** Piled-side dollar concentration backed_usd / (yes_usd + no_usd), in (0.5, 1] for a real pile; null when there is no sharp USD. */
+  sharp_pct: number | null;
+  /** Raw piled-side sharp-money USD. */
+  backed_sharp_usd: number;
+  /** S-grade graded holders on the piled side. */
+  s_count: number;
+  /** A-grade graded holders on the piled side. */
+  a_count: number;
+  /** B-grade graded holders on the piled side. */
+  b_count: number;
+  /** Piled-side graded holder count (s_count + a_count + b_count). */
+  graded_holders: number;
+  /** Best grade present on the piled side; null when none. */
+  top_grade: "S" | "A" | "B" | null;
+  /** Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative); a lower-order ranking tiebreak (after directional_rank_score and conviction_score). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire. */
+  smart_score: number | null;
+  /** Market volume (USD). */
+  volume: number | null;
+  /** Aggregate recent flow direction on the market; null when unavailable. */
+  net_side: "BUY" | "SELL" | null;
+  /** Grade-weighted pile score (5*s + 4*a + 3*b) * sharp_pct; the raw conviction input to the ranking (see directional_rank_score). Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  conviction_score: number;
+  /** Piled-side graded holders read one-way: their fresh open legs across the signal game's markets (cross-market within the one game; moneyline+spread family only) all back the same team, or, when the market's holder scan was complete, Polymarket's currentValue shows no opposite leg on this market worth 10% of the backed leg and no fresh leg opposes it. Null when the directional read was not computed (no groupable game, no holder-level data on this ranking path, or the enrichment read failed) or classified nobody. */
+  one_way_holder_count: number | null;
+  /** Piled-side graded holders classified HEDGED across the game by fresh legs (they back two or more distinct teams). A wallet long both outcomes of this market is not one-way and not counted here. Null when the directional read was not computed or classified nobody. */
+  hedged_holder_count: number | null;
+  /** Piled-side graded USD held by one-way wallets (share-weighted allocation of backed_sharp_usd). Null when the directional read was not computed or classified nobody. */
+  one_way_graded_usd: number | null;
+  /** One-way fraction of the piled graded dollars, in [0, 1] -- the metric orthogonal to sharp_pct. Stale, unknown, hedged, and two-sided dollars dilute it toward zero (conservative). Null when the directional read was not computed or classified nobody. */
+  directional_confidence: number | null;
+  /** The ranking key, descending: conviction_score * (1 + 0.25 * directional_confidence). Equals conviction_score when the directional read is null/zero, so signals without the read rank exactly as before. */
+  directional_rank_score: number;
+  category_skill: PreGameSideCategorySkill;
+  /** 1-based rank within the (min_grade-filtered) ranked result. */
+  rank: number;
+};
+
+/** Shadow-only category evidence over the full uncapped piled-side S/A/B holder allocation. It never changes signal membership, ordering, routing, or sizing. */
+export type PreGameSideCategorySkill = {
+  status: "live" | "insufficient" | "stale" | "unknown" | "degraded";
+  model_version: string;
+  taxonomy_version: string | null;
+  platform: "polymarket";
+  scope: "observed_goldsky_primary_taker_fill";
+  source_coverage: "partial_whale_threshold_fills" | "graded_wallet_fills";
+  observation_started_at: string;
+  as_of: string;
+  canonical_category: string | null;
+  eligible_holders: number;
+  covered_holders: number;
+  backed_sharp_usd: number | null;
+  covered_backed_usd: number | null;
+  coverage_pct: number | null;
+  weighted_edge_mean: number | null;
+  weighted_holder_lower_mean: number | null;
+  specialist_backed_usd: number | null;
+  specialist_backed_usd_pct: number | null;
+  largest_holder_backed_usd_pct: number | null;
+  minimum_holder_event_count: number | null;
+};
+
+/** Per-sport accountable funnel for the full observation snapshot, returned on every page. */
+export type PreGameSideFunnelReport = {
+  sports: PreGameSideSportFunnelReport[];
+};
+
+/** One explicitly observation-only holder-pile measurement. It is evidence for cohort evaluation, not an execution instruction, and is isolated from the funded sports-edge-signals route. */
+export type PreGameSideObservation = {
+  /** The side profitable wallets hold, as a provider-backed display label. Canonical spelling of piled_side (#16310), same value: when provider group context is unavailable it may remain a bare Yes/No/Over/Under, so do not use it alone as participant identity. */
+  side: string | null;
+  /** Grade-weighted holder-pile score before directional enrichment. Canonical spelling of conviction_score (#16310), same value. */
+  backing_score: number;
+  /** Signed share of graded money on the side, in [-1, 1]. Canonical spelling of smart_score (#16309, #16310), same value. */
+  side_share: number;
+  /** Raw Polymarket condition id. */
+  condition_id: string;
+  /** Provider-backed Polymarket CLOB token id for the piled outcome. Rows without a verified token terminate before emission. */
+  token_id: string;
+  /** Canonical sport bucket. */
+  category: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
+  /** Raw provider category as stored. */
+  raw_category: string | null;
+  /** Provider-backed market title. */
+  title: string;
+  event_slug: string | null;
+  /** Provider event id when available. */
+  event_id: string | null;
+  /** Provider parent-event id used as the first event-cap identity when available. */
+  parent_event_id: string | null;
+  /** Provider-backed kickoff time in UTC. */
+  game_start_time: string;
+  /** UTC instant when this row finished provider/holder evaluation. */
+  observed_at: string;
+  /** Source cohort or additive projection view. emerging_pile is projected from wider_holder after source computation, overlaps its funnel denominator, and uses the source row's directional evidence. */
+  cohort: "wider_holder" | "in_play" | "emerging_pile";
+  /** Always true. This row must not be routed to an order executor. */
+  observation_only: true;
+  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire. */
+  piled_side: string | null;
+  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
+  piled_outcome_index: 0 | 1;
+  /** Provider-backed implied price for the piled outcome at observation time. */
+  backed_price: number;
+  /** Piled-side graded-holder dollar concentration. */
+  sharp_pct: number;
+  /** Raw graded-holder USD on the piled outcome. */
+  backed_sharp_usd: number;
+  s_count: number;
+  a_count: number;
+  b_count: number;
+  /** Piled-side S/A/B holder count. */
+  graded_holders: number;
+  top_grade: "S" | "A" | "B";
+  /** Canonical signed holder-pile score. Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire. */
+  smart_score: number;
+  /** Strictly positive stored market volume in USD. Missing, zero, or non-finite volume terminates as invalid_market and is never emitted as an observation. */
+  volume: number;
+  /** Grade-weighted holder-pile score before directional enrichment. Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire. */
+  conviction_score: number;
+  /** Whether the provider holder page came from the shared cache or a live provider read. */
+  provider_read_source: "cached" | "live";
+  /** True only when neither provider outcome holder page hit the top-100 scan bound. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
+  holder_scan_complete: boolean;
+  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
+  holder_snapshot_at: string | null;
+  /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
+  directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
+  one_way_holder_count: number | null;
+  hedged_holder_count: number | null;
+  one_way_graded_usd: number | null;
+  directional_confidence: number | null;
+  /** Default cohort ordering key: conviction_score * (1 + 0.25 * directional_confidence), or conviction_score when confidence is null. */
+  directional_rank_score: number;
+  /** 1-based rank within this observation cohort and snapshot. */
+  rank: number;
+};
+
+/** Closed 25-value terminal-reason vocabulary for the accountable sports-edge observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
+export type PreGameSideObservationTerminalReason = "outside_horizon" | "resolved" | "provider_closed" | "provider_excluded" | "invalid_market" | "missing_token" | "missing_stored_market" | "not_provider_live" | "board_source_unavailable" | "board_deadline_unavailable" | "primary_slate_candidate" | "zero_indexed_holder_research" | "capacity_limited" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "holder_scan_incomplete" | "no_current_graded_holder" | "split_holder_pile" | "price_unavailable" | "wider_holder_emitted" | "in_play_emitted" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified";
+
+/** Independent sports-board supply plus stored-universe terminal accounting for one canonical sport. */
+export type PreGameSideSportFunnelReport = {
+  sport: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
+  /** Unique condition ids independently visible on the provider-first sports board. */
+  board_input: number;
+  /** Whether the always-applicable live-board source completed as available. False can mean a completed source failure (board_source_unavailable) or live-board work missing an internal configured-scope deadline or the outer fair-wave deadline (board_deadline_unavailable); inspect terminals to distinguish them. */
+  board_live_available: boolean;
+  /** Whether a provider-backed upcoming-board source is configured and applicable for this sport. False means not applicable, not provider failure. */
+  board_upcoming_configured: boolean;
+  /** Whether every configured upcoming-board scope completed as available. False with board_upcoming_configured=false means not applicable. When board_upcoming_configured is true and this flag is false, read board_upcoming_status for the cause (it reads unknown, i.e. no recorded cause, only on a snapshot cached before that field existed, which self-clears within one TTL): the board_source_unavailable and board_deadline_unavailable terminals are assigned only to already-started rows (the live half) and are structurally 0 for the upcoming source, so they never explain this flag. */
+  board_upcoming_available: boolean;
+  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to 3,000 rows or an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available. */
+  board_upcoming_status: "unknown" | "not_configured" | "available" | "capacity_limited" | "source_unavailable" | "cold_unavailable" | "deadline_unavailable";
+  /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
+  board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
+  /** Stored-universe rows plus provider-board rows missing from storage. */
+  input: number;
+  /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means exact admission by the funded route's raw shared signals query before provider/holder enrichment; recent-flow rows rejected by its event, bucket, or total caps remain eligible for wider_holder measurement. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means an attempted holder-provider read failed; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable. */
+  terminals: Record<string, number>;
+  /** Sum of every sparse terminal count. */
+  terminal_total: number;
+  /** True exactly when input equals terminal_total. */
+  reconciled: boolean;
+};
+
 /** One PUBLISHED same-day pick whose holder proof is not readable yet: its stable slot rank, the release and kickoff instants, and the instant before which a retry cannot succeed. Every item in `picks` carries its full required shape, so a pick that cannot meet it is listed here instead of being served with missing fields or a synthetic zero. */
 export type ProofPendingPickSlot = {
   /** Stable 1-based slot within the product day's ranked picks. The pick keeps this rank once its proof is readable and it moves into `picks`. */
@@ -1555,45 +2132,44 @@ export type ProofPendingPickSlot = {
   retry_at: string;
 };
 
-export type RadarFlag = {
-  /** Prefixed ID (rf_...). */
-  id: string;
-  /** Stored score that met the live flag threshold. */
-  suspicion_score: number;
-  /** The live scorer persists one threshold class. */
-  severity: "flag";
-  trader: {
-    id: string;
-    address: string;
-    username: string | null;
-  };
-  market: {
-    id: string;
-    condition_id: string;
-    /** Canonical market question when available. */
-    title: string | null;
-  };
-  scores: {
-    /** Null because the live scorer does not record this component. */
-    timing: number | null;
-    /** Null because the live scorer does not record this component. */
-    edge: number | null;
-    /** Numeric evidence.size when recorded; otherwise null. */
-    size: number | null;
-    /** Numeric evidence.fresh when recorded; otherwise null. */
-    fresh_wallet: number | null;
-  };
-  /** Stored whale_alerts.suspicion_signals JSON from the scorer. */
-  evidence: unknown;
-  /** Stored trade timestamp. */
-  created_at: string;
-};
-
 export type ReportPayload = {
+  /** Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value. */
+  total_large_trades: number | null;
   total_whale_trades: number | null;
+  /** Canonical key since #16304; total_whale_volume is its deprecated spelling, emitted beside it with the same value. */
+  total_large_trade_volume: number | null;
   total_whale_volume: number | null;
   biggest_trade_size: number | null;
   active_traders: number | null;
+  /** Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value. */
+  top_large_trades: ({
+    /** Provider outcome label for the traded side. */
+    outcome: string | null;
+    /** Trade direction (BUY or SELL), not the outcome side. */
+    side: string | null;
+    /** Market title. */
+    title: string | null;
+    /** Trade size in USD. */
+    size: number | null;
+    /** Trade price in provider [0, 1] units. */
+    price: number | null;
+    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets). */
+    token_id: string | null;
+    /** Whale trade id. */
+    id: number | null;
+    /** Trade timestamp (UTC). */
+    trade_time: string | null;
+    /** Provider market category. */
+    market_category: string | null;
+    /** Venue: polymarket. */
+    platform: string | null;
+    /** Trader display name, when known. */
+    name: string | null;
+    /** Trader pseudonym, when no display name is known. */
+    pseudonym: string | null;
+    /** Trader grade (S-F) at snapshot time. */
+    trader_grade: string | null;
+  })[] | null;
   top_whale_trades: ({
     /** Provider outcome label for the traded side. */
     outcome: string | null;
@@ -1623,6 +2199,7 @@ export type ReportPayload = {
     trader_grade: string | null;
   })[] | null;
   categories: Record<string, unknown>[] | null;
+  /** Counts of current grades for distinct Polymarket traders with at least one whale alert in the report's source date range. The grade is the current projection at snapshot materialization time, not a historical grade at trade time. Traders without a current ranking projection are omitted; a null grade entry means the active trader's current grade is unavailable. */
   grade_distribution: Record<string, unknown>[] | null;
 };
 
@@ -1661,9 +2238,9 @@ export type ResponseMeta = {
   ranking_generation?: number;
   /** Authoritative RFC3339 timestamp from cache_generations.updated_at for ranking_generation. It is read in the same repeatable-read snapshot as the leaderboard rows and is not request time, cache write time, or row insertion order. */
   ranking_as_of?: string;
-  /** Which path produced the team-directional read on this response. Only present on endpoints that compute one (today: GET /api/v1/sports-edge-signals). "live" means the read RAN. "degraded" means it FAILED, so nothing was measured and the ranking fell back to raw conviction. The flag describes the READ, not its consequence: a read that ran and found nothing groupable also leaves the directional fields null, and that is honestly "live" -- the per-signal nulls already say "nothing to enrich here", so this snapshot-level flag carries only what they cannot, namely whether the read ran at all. A degraded response is cached on the shorter degraded TTL so it self-heals. Reported SEPARATELY from ranking_source because the two degradations are independent -- a smart-money DB miss weakens the ranking DATA, a directional failure removes a ranking WEIGHT -- and a consumer down-weighting a degraded response needs to know which input it lost. Omitted on endpoints that compute no directional read. */
+  /** Which path produced the team-directional read on this response. Only present on endpoints that compute one (today: GET /api/v1/sports-edge-signals). "live" means the read RAN. "degraded" means it FAILED, so nothing was measured and the ranking fell back to raw conviction. The flag describes the READ, not its consequence: a read that ran and found nothing groupable also leaves the directional fields null, and that is honestly "live" -- the per-signal nulls already say "nothing to enrich here", so this snapshot-level flag carries only what they cannot, namely whether the read ran at all. A degraded response is cached on the shorter degraded TTL so it self-heals. Reported SEPARATELY from ranking_source because the two degradations are independent -- a sharp-money DB miss weakens the ranking DATA, a directional failure removes a ranking WEIGHT -- and a consumer down-weighting a degraded response needs to know which input it lost. Omitted on endpoints that compute no directional read. */
   directional_source?: "live" | "degraded";
-  /** Which ranking-data path produced this response. Only present on endpoints that can degrade a ranking (today: GET /api/v1/sports-edge-signals). "live" is the normal path (the current holder pile from the provider batch); "db_only" is the degraded fallback (a truthful but weaker trader_markets ranking) served when the live sharp-money ranking batch is unavailable (a smart-money DB read failure, not a Polymarket outage) and cached on a shorter TTL, so a consumer can down-weight or skip it. Omitted on endpoints that never degrade. */
+  /** Which ranking-data path produced this response. Only present on endpoints that can degrade a ranking (today: GET /api/v1/sports-edge-signals). "live" is the normal path (the current holder pile from the provider batch); "db_only" is the degraded fallback (a truthful but weaker trader_markets ranking) served when the live sharp-money ranking batch is unavailable (a sharp-money DB read failure, not a Polymarket outage) and cached on a shorter TTL, so a consumer can down-weight or skip it. Omitted on endpoints that never degrade. */
   ranking_source?: "live" | "db_only";
   /** Whole filtered snapshot category-evidence status before pagination. Operational live always remains partial source coverage. */
   category_skill_source?: "live" | "partial" | "degraded" | "unavailable";
@@ -1724,6 +2301,8 @@ export type SmartMoneyFlowMarket = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    large_trade_count?: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1734,6 +2313,8 @@ export type SmartMoneyFlowMarket = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    large_trade_count?: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1746,6 +2327,8 @@ export type SnapshotCompleteness = {
   status: "complete" | "partial" | "empty";
   reason: string;
   expected_days: number;
+  /** Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value. */
+  covered_days_with_large_trade_activity?: number;
   covered_days_with_whale_activity: number;
 };
 
@@ -1767,183 +2350,38 @@ export type SnapshotState = {
   source_read_started_at: string | null;
 };
 
-/** Per-sport accountable funnel for the full observation snapshot, returned on every page. */
-export type SportsEdgeFunnelReport = {
-  sports: SportsEdgeSportFunnelReport[];
-};
-
-/** One explicitly observation-only holder-pile measurement. It is evidence for cohort evaluation, not an execution instruction, and is isolated from the funded sports-edge-signals route. */
-export type SportsEdgeObservation = {
-  /** Raw Polymarket condition id. */
-  condition_id: string;
-  /** Provider-backed Polymarket CLOB token id for the piled outcome. Rows without a verified token terminate before emission. */
-  token_id: string;
-  /** Canonical sport bucket. */
-  category: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
-  /** Raw provider category as stored. */
-  raw_category: string | null;
-  /** Provider-backed market title. */
-  title: string;
-  event_slug: string | null;
-  /** Provider event id when available. */
-  event_id: string | null;
-  /** Provider parent-event id used as the first event-cap identity when available. */
-  parent_event_id: string | null;
-  /** Provider-backed kickoff time in UTC. */
-  game_start_time: string;
-  /** UTC instant when this row finished provider/holder evaluation. */
-  observed_at: string;
-  /** Source cohort or additive projection view. emerging_pile is projected from wider_holder after source computation, overlaps its funnel denominator, and uses the source row's directional evidence. */
-  cohort: "wider_holder" | "in_play" | "emerging_pile";
-  /** Always true. This row must not be routed to an order executor. */
-  observation_only: true;
-  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. */
-  piled_side: string | null;
-  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
-  piled_outcome_index: 0 | 1;
-  /** Provider-backed implied price for the piled outcome at observation time. */
-  backed_price: number;
-  /** Piled-side graded-holder dollar concentration. */
-  sharp_pct: number;
-  /** Raw graded-holder USD on the piled outcome. */
-  backed_sharp_usd: number;
-  s_count: number;
-  a_count: number;
-  b_count: number;
-  /** Piled-side S/A/B holder count. */
-  graded_holders: number;
-  top_grade: "S" | "A" | "B";
-  /** Canonical signed holder-pile score. */
-  smart_score: number;
-  /** Strictly positive stored market volume in USD. Missing, zero, or non-finite volume terminates as invalid_market and is never emitted as an observation. */
-  volume: number;
-  /** Grade-weighted holder-pile score before directional enrichment. */
-  conviction_score: number;
-  /** Whether the provider holder page came from the shared cache or a live provider read. */
-  provider_read_source: "cached" | "live";
-  /** True only when neither provider outcome holder page hit the top-100 scan bound. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
-  holder_scan_complete: boolean;
-  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
-  holder_snapshot_at: string | null;
-  /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
-  directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
-  one_way_holder_count: number | null;
-  hedged_holder_count: number | null;
-  one_way_graded_usd: number | null;
-  directional_confidence: number | null;
-  /** Default cohort ordering key: conviction_score * (1 + 0.25 * directional_confidence), or conviction_score when confidence is null. */
-  directional_rank_score: number;
-  /** 1-based rank within this observation cohort and snapshot. */
-  rank: number;
-};
-
-/** Closed 25-value terminal-reason vocabulary for the accountable sports-edge observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
-export type SportsEdgeObservationTerminalReason = "outside_horizon" | "resolved" | "provider_closed" | "provider_excluded" | "invalid_market" | "missing_token" | "missing_stored_market" | "not_provider_live" | "board_source_unavailable" | "board_deadline_unavailable" | "primary_slate_candidate" | "zero_indexed_holder_research" | "capacity_limited" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "holder_scan_incomplete" | "no_current_graded_holder" | "split_holder_pile" | "price_unavailable" | "wider_holder_emitted" | "in_play_emitted" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified";
-
-/** One ranked pre-game sports market where graded sharp money is piled on one side, with required-status shadow category evidence from partial forward-observed Polymarket fills. */
-export type SportsEdgeSignal = {
-  /** Polymarket condition id. */
-  condition_id: string;
-  /** UTC time at which the immutable signal snapshot was computed. Every row from one snapshot shares this value; it is not provider market creation time and is not rewritten at request time. */
-  signal_created_at: string;
-  /** Polymarket CLOB token id (ERC1155 asset id, decimal string) for the PILED outcome; null when unavailable. */
-  token_id: string | null;
-  /** Canonical sport bucket (e.g. Basketball, Tennis); null when the raw category has no canonical mapping. */
-  category: string | null;
-  /** Raw provider category as stored (e.g. NBA, EPL). */
-  raw_category: string | null;
-  title: string | null;
-  event_slug: string | null;
-  /** Kickoff (UTC). In the future at SNAPSHOT time and within the requested horizon; because the response is served from a shared snapshot cached up to the ~180s TTL, a served kickoff can be up to ~180s in the past relative to the response time. Not a live guarantee that the game has not yet started. */
-  game_start_time: string | null;
-  /** Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. */
-  piled_side: string | null;
-  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
-  piled_outcome_index: number;
-  /** Piled-side dollar concentration backed_usd / (yes_usd + no_usd), in (0.5, 1] for a real pile; null when there is no sharp USD. */
-  sharp_pct: number | null;
-  /** Raw piled-side sharp-money USD. */
-  backed_sharp_usd: number;
-  /** S-grade graded holders on the piled side. */
-  s_count: number;
-  /** A-grade graded holders on the piled side. */
-  a_count: number;
-  /** B-grade graded holders on the piled side. */
-  b_count: number;
-  /** Piled-side graded holder count (s_count + a_count + b_count). */
-  graded_holders: number;
-  /** Best grade present on the piled side; null when none. */
-  top_grade: "S" | "A" | "B" | null;
-  /** Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative); a lower-order ranking tiebreak (after directional_rank_score and conviction_score). */
-  smart_score: number | null;
-  /** Market volume (USD). */
-  volume: number | null;
-  /** Aggregate recent flow direction on the market; null when unavailable. */
-  net_side: "BUY" | "SELL" | null;
-  /** Grade-weighted pile score (5*s + 4*a + 3*b) * sharp_pct; the raw conviction input to the ranking (see directional_rank_score). */
-  conviction_score: number;
-  /** Piled-side graded holders read one-way: their fresh open legs across the signal game's markets (cross-market within the one game; moneyline+spread family only) all back the same team, or, when the market's holder scan was complete, Polymarket's currentValue shows no opposite leg on this market worth 10% of the backed leg and no fresh leg opposes it. Null when the directional read was not computed (no groupable game, no holder-level data on this ranking path, or the enrichment read failed) or classified nobody. */
-  one_way_holder_count: number | null;
-  /** Piled-side graded holders classified HEDGED across the game by fresh legs (they back two or more distinct teams). A wallet long both outcomes of this market is not one-way and not counted here. Null when the directional read was not computed or classified nobody. */
-  hedged_holder_count: number | null;
-  /** Piled-side graded USD held by one-way wallets (share-weighted allocation of backed_sharp_usd). Null when the directional read was not computed or classified nobody. */
-  one_way_graded_usd: number | null;
-  /** One-way fraction of the piled graded dollars, in [0, 1] -- the metric orthogonal to sharp_pct. Stale, unknown, hedged, and two-sided dollars dilute it toward zero (conservative). Null when the directional read was not computed or classified nobody. */
-  directional_confidence: number | null;
-  /** The ranking key, descending: conviction_score * (1 + 0.25 * directional_confidence). Equals conviction_score when the directional read is null/zero, so signals without the read rank exactly as before. */
-  directional_rank_score: number;
-  category_skill: SportsEdgeSignalCategorySkill;
-  /** 1-based rank within the (min_grade-filtered) ranked result. */
-  rank: number;
-};
-
-/** Shadow-only category evidence over the full uncapped piled-side S/A/B holder allocation. It never changes signal membership, ordering, routing, or sizing. */
-export type SportsEdgeSignalCategorySkill = {
-  status: "live" | "insufficient" | "stale" | "unknown" | "degraded";
-  model_version: string;
-  taxonomy_version: string | null;
-  platform: "polymarket";
-  scope: "observed_goldsky_primary_taker_fill";
-  source_coverage: "partial_whale_threshold_fills" | "graded_wallet_fills";
-  observation_started_at: string;
-  as_of: string;
-  canonical_category: string | null;
-  eligible_holders: number;
-  covered_holders: number;
-  backed_sharp_usd: number | null;
-  covered_backed_usd: number | null;
-  coverage_pct: number | null;
-  weighted_edge_mean: number | null;
-  weighted_holder_lower_mean: number | null;
-  specialist_backed_usd: number | null;
-  specialist_backed_usd_pct: number | null;
-  largest_holder_backed_usd_pct: number | null;
-  minimum_holder_event_count: number | null;
-};
-
-/** Independent sports-board supply plus stored-universe terminal accounting for one canonical sport. */
-export type SportsEdgeSportFunnelReport = {
-  sport: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
-  /** Unique condition ids independently visible on the provider-first sports board. */
-  board_input: number;
-  /** Whether the always-applicable live-board source completed as available. False can mean a completed source failure (board_source_unavailable) or live-board work missing an internal configured-scope deadline or the outer fair-wave deadline (board_deadline_unavailable); inspect terminals to distinguish them. */
-  board_live_available: boolean;
-  /** Whether a provider-backed upcoming-board source is configured and applicable for this sport. False means not applicable, not provider failure. */
-  board_upcoming_configured: boolean;
-  /** Whether every configured upcoming-board scope completed as available. False with board_upcoming_configured=false means not applicable. When board_upcoming_configured is true and this flag is false, read board_upcoming_status for the cause (it reads unknown, i.e. no recorded cause, only on a snapshot cached before that field existed, which self-clears within one TTL): the board_source_unavailable and board_deadline_unavailable terminals are assigned only to already-started rows (the live half) and are structurally 0 for the upcoming source, so they never explain this flag. */
-  board_upcoming_available: boolean;
-  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to 3,000 rows or an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available. */
-  board_upcoming_status: "unknown" | "not_configured" | "available" | "capacity_limited" | "source_unavailable" | "cold_unavailable" | "deadline_unavailable";
-  /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
-  board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
-  /** Stored-universe rows plus provider-board rows missing from storage. */
-  input: number;
-  /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means exact admission by the funded route's raw shared signals query before provider/holder enrichment; recent-flow rows rejected by its event, bucket, or total caps remain eligible for wider_holder measurement. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means an attempted holder-provider read failed; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable. */
-  terminals: Record<string, number>;
-  /** Sum of every sparse terminal count. */
-  terminal_total: number;
-  /** True exactly when input equals terminal_total. */
-  reconciled: boolean;
+export type SuspiciousTrade = {
+  /** Prefixed ID (rf_...). */
+  id: string;
+  /** Stored score that met the live flag threshold. */
+  suspicion_score: number;
+  /** The live scorer persists one threshold class. */
+  severity: "flag";
+  trader: {
+    id: string;
+    address: string;
+    username: string | null;
+  };
+  market: {
+    id: string;
+    condition_id: string;
+    /** Canonical market question when available. */
+    title: string | null;
+  };
+  scores: {
+    /** Null because the live scorer does not record this component. */
+    timing: number | null;
+    /** Null because the live scorer does not record this component. */
+    edge: number | null;
+    /** Numeric evidence.size when recorded; otherwise null. */
+    size: number | null;
+    /** Numeric evidence.fresh when recorded; otherwise null. */
+    fresh_wallet: number | null;
+  };
+  /** Stored whale_alerts.suspicion_signals JSON from the scorer. */
+  evidence: unknown;
+  /** Stored trade timestamp. */
+  created_at: string;
 };
 
 export type Trader = {
@@ -1955,6 +2393,10 @@ export type Trader = {
   /** Hot-streak tier (trailing-7d cross-sectional percentile); a separate axis from the all-time grade. Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
   score?: number;
+  /** Capital-normalized forecasting score: the cohort percentile (0-100) of the EB-shrunk calibration edge. Omitted when the forecasting signal is unavailable; never replaced with zero. */
+  forecast_score?: number;
+  /** Share of forecast_score supported by the trader's own resolved-market record rather than the cohort prior: n / (n + 30). Omitted when forecast_score is unavailable. */
+  forecast_evidence?: number;
   rank?: number;
   pnl: {
     total?: number;
@@ -1965,13 +2407,17 @@ export type Trader = {
     last_7d?: number;
     /** DEPRECATED, never sent. The local pnl_30d rollup over-counted P&L (#5416 class) and is no longer emitted. Read the provider-native monthly window from GET /api/trader/{address}/profile-summary instead. */
     last_30d?: number;
+    /** Additive lossless counterpart. Omitted when the trusted native realized-P&L source is unavailable; existing numeric fields keep their display-safe v1 semantics. */
+    exact?: TraderPnlExact;
   };
   stats: {
     markets_traded?: number;
     win_rate?: number;
     daily_win_rate?: number;
-    /** Full-history both-sides USD cash volume from Polymarket user-volume. Omitted without a verified observation; never leaderboard shares. Volume freshness is unknown in this DTO and does not use synced_at. */
+    /** Full-history both-sides USD cash volume from Polymarket user-volume. Omitted without a verified observation; never leaderboard shares. Its observation time is published as the volume group in data_quality and as trust.total_volume.freshness.as_of, both trader_usd_volume.observed_at; synced_at is a different clock and is never a substitute for it. */
     total_volume?: number;
+    /** Additive lossless counterpart to `total_volume`. Omitted when the verified provider observation is unavailable. */
+    exact?: TraderStatsExact;
   };
   strategy?: {
     strategy_type?: string;
@@ -1992,7 +2438,7 @@ export type Trader = {
     sharpe_7d: number | null;
     /** Gross profit divided by gross loss; greater than 1 is profitable. Capped at 1000 when there are effectively no losses. null when insufficient history. */
     profit_factor: number | null;
-    /** Stability of the trader's edge over time, 0-1 (higher is more consistent). null when insufficient history. */
+    /** Share of the trader's last 30 days with realized P&L that closed positive, 0-1 (higher is more consistent). A day with no realized P&L is not one of them, so the window can span months. null below 10 such days; null never means 0. */
     edge_consistency: number | null;
     /** Cross-sectional percentile rank of the trader's Sharpe ratio versus all traders, 0-100. null when insufficient history. */
     sharpe_percentile: number | null;
@@ -2005,6 +2451,8 @@ export type Trader = {
   synced_at?: string;
   /** synced, unknown, or pending. */
   sync_status?: string;
+  /** Data age and coverage for this trader body. Always present. Its five groups are sync (traders.last_synced, covering pnl.total, pnl.realized, stats.markets_traded, stats.win_rate, stats.daily_win_rate, last_active, synced_at and sync_status), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (trader_usd_volume.observed_at, covering stats.total_volume) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync; it does not date closed or native accounting values. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
+  data_quality: DataQuality;
   /** Field-level trust metadata. Present only when expand=trust or expand[]=trust is requested. */
   trust?: TraderTrust;
   /** Current evidence for observed and known categories (expand=categories or expand[]=categories). Omitted unless expanded. Includes insufficient, stale, unknown and degraded rows; absence of a category is not proof of skill. The global grade is unchanged. */
@@ -2094,18 +2542,109 @@ export type TraderEsportsGameRecord = {
   status: "measured" | "not_enough_data";
 };
 
+export type TraderExportArtifactManifest = {
+  /** Version of the artifact manifest contract. */
+  manifest_version: string;
+  /** Serialization used for the decompressed content. */
+  format: "json" | "ndjson" | "csv";
+  /** Stable schema identifier for the selected serialization. */
+  schema_version: "trader-export-json-v1" | "trader-export-ndjson-v1" | "trader-export-csv-v1";
+  /** Sections represented by the artifact. JSON and NDJSON carry the full envelope and trades; CSV carries trade rows only. */
+  coverage: "full_envelope_and_trades" | "trades_only";
+  generation: TraderExportGeneration;
+  /** Number of trade rows written. */
+  row_count: number;
+  /** Exact byte count of the decompressed content stream clients receive. */
+  content_size_bytes: number;
+  /** Lowercase SHA-256 of the decompressed content bytes. */
+  content_sha256: string;
+  /** Exact byte count of the gzip-compressed bytes stored by the object provider. */
+  compressed_size_bytes: number;
+  /** Lowercase SHA-256 of the stored gzip bytes; the multipart ETag is not used as this checksum. */
+  compressed_sha256: string;
+};
+
+export type TraderExportCategoryWatermark = {
+  source: string;
+  coverage: string;
+  publication_fence: string | null;
+  data_as_of: string | null;
+};
+
+export type TraderExportGeneration = {
+  /** Opaque generation identity selected for the coherent read snapshot. */
+  id: string;
+  selected_at: string;
+  consistency: "repeatable_read";
+  source_watermarks: TraderExportSourceWatermarks;
+};
+
 export type TraderExportJob = {
   object: "trader_export_job";
   data: {
     job_id: number;
-    status: "queued" | "running" | "ready" | "failed";
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
     total_trades: number | null;
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** What the file is a snapshot of: the trader's served-data clock (the latest position refresh, else the last completed sync) when the file was written; the same value as export_metadata.data_as_of inside the file. null until the file is written, or when the trader had neither. Read this, not ready_at, to decide whether a reused job is fresh enough; submit with fresh=true for a newer snapshot. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/json" | "application/x-ndjson" | "text/csv";
+      content_encoding: "gzip";
+      /** Immutable manifest for artifacts generated with manifest support; null on historical artifacts written before this contract. */
+      manifest: TraderExportArtifactManifest | null;
+    };
   };
   meta: ResponseMeta;
+};
+
+export type TraderExportPnlWatermark = {
+  source: string;
+  coverage: string;
+  revision: number | null;
+  observed_at: string | null;
+};
+
+export type TraderExportPositionWatermark = {
+  source: string;
+  coverage: string;
+  generation: number | null;
+  data_as_of: string | null;
 };
 
 export type TraderExportSnapshot = {
@@ -2118,13 +2657,83 @@ export type TraderExportSnapshot = {
   large_export_policy: LargeExportPolicy;
 };
 
+export type TraderExportSourceWatermarks = {
+  positions: TraderExportPositionWatermark;
+  pnl: TraderExportPnlWatermark;
+  categories: TraderExportCategoryWatermark;
+  trades: TraderExportTradeWatermark;
+};
+
+export type TraderExportTradeWatermark = {
+  source: string;
+  coverage: string;
+  rows: number;
+  first_activity_date: string | null;
+};
+
+export type TraderGradeAt = {
+  /** Prefixed trader id (trd_<wallet>). */
+  id: string;
+  /** Resolved wallet address, lowercased. */
+  address: string;
+  /** Requested event or decision time. */
+  as_of: string;
+  /** graded has a proven grade; ungraded is a proven null grade; unknown has no valid historical observation. */
+  status: "graded" | "ungraded" | "unknown";
+  /** Grade only when status is graded; null otherwise. */
+  grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** First proven visibility instant for this trader. Null when no observation exists. Earlier times remain unknown. */
+  available_from: string | null;
+  /** Proof row when status is graded or ungraded. Null when history is unknown. */
+  observation: {
+    /** Immutable grade_forward_history observation id. */
+    id: number;
+    /** Previous immutable observation id when retained. A later grade change supersedes that observation but never erases it; this link does not assert why the grade changed. */
+    previous_observation_id: number | null;
+    /** Lower bound: the grade writer had started the transition at this instant. */
+    observed_at: string;
+    /** Upper bound: a later snapshot confirmed the observation was committed. This is not an exact commit timestamp. */
+    published_by: string;
+    /** Writer-proven model family, such as grading-v4. Null when unknown. */
+    model_version: string | null;
+    /** Exact writer build SHA when recorded. Null on old and non-model observations. */
+    model_build_sha: string | null;
+    /** Database-clock upper bound on when the grading pass read its cohort inputs. Not the event time or source freshness of every input; null when unknown. */
+    source_observed_by: string | null;
+  } | null;
+};
+
+/** A trader's daily P&L object. `id` is always present. The five sections -- `entries`, `stats`, `monthly`, `year_totals`, `drawdown` -- are present unless the request's `sections` parameter excluded them, so a request that sends no `sections` always carries all five. An excluded section is absent from the object, never null and never an empty array. */
 export type TraderPnl = {
   /** Prefixed trader ID (`trd_...`). */
   id: string;
+  /** Representation parameters applied to this body. Present only when the request sent `from`, `to` or `sections`; omitted otherwise, which is what keeps a no-parameter response identical to the one this route served before the parameters existed. */
+  view?: {
+    /** Inclusive UTC lower bound applied to the daily series; null when the request left the series unbounded below. */
+    from: string | null;
+    /** Inclusive UTC upper bound applied to the daily series; null when the request left the series unbounded above. */
+    to: string | null;
+    /** Sections this body carries, in the order the object publishes them, whatever order the query listed. */
+    sections: ("entries" | "stats" | "monthly" | "year_totals" | "drawdown")[];
+    /** Points in the full stored daily series, before the window. Compare with entries_in_window to tell a clipped chart from a wallet that really has that many days. */
+    entries_total: number;
+    /** Points of the daily series inside the window. Equal to entries_total when no bound narrowed it, and reported whether or not entries was among the requested sections. */
+    entries_in_window: number;
+    /** The last daily point strictly before `from`: the cumulative baseline the window was cut away from. null when the request set no lower bound, or when the window starts at or before the first stored point and the slice already begins at the start of the history. Cumulative values in `entries` and `drawdown` are never rebased to the window, so this is the figure to subtract for a window-relative change. */
+    anchor: {
+      date: string;
+      /** Cumulative profit carried into the window; null when the stored point has none, the same nullability entries[].cumulative_profit has. */
+      cumulative_profit: number | null;
+      /** Cumulative total P&L carried into the window; null on the same terms. */
+      total_pnl: number | null;
+      /** Underwater value at the anchor date; null when that date has no drawdown point, which happens exactly when its cumulative_profit is null. The running peak behind the window is cumulative_profit minus drawdown (drawdown is zero or negative). */
+      drawdown: number | null;
+    } | null;
+  };
   /** RFC3339 served-freshness clock for this trader's PnL history = traders.daily_pnl_recomputed_at, when the daily_pnl read model this response is served from was last rebuilt; null when it has never been recomputed for the trader. Always present, so read it as a value that can be null rather than a key that can be missing. */
   freshness_at: string | null;
-  /** Daily cumulative-P&L series (oldest-first). */
-  entries: {
+  /** Daily cumulative-P&L series (oldest-first). Present unless the request's `sections` excluded it, and clipped to `from`/`to` when either is set. cumulative_profit and total_pnl stay cumulative from the start of the stored history, so a clipped slice keeps the same economic meaning; view.anchor carries the point before the window. */
+  entries?: {
     date: string;
     markets_traded?: number;
     total_volume?: number;
@@ -2132,7 +2741,8 @@ export type TraderPnl = {
     total_pnl?: number;
     daily_change: number;
   }[];
-  stats: {
+  /** Pre-derived period stats. Present unless the request's `sections` excluded it. Always the published all/90d/30d/7d windows over the full stored history; `from`/`to` never recompute them over the request's range. */
+  stats?: {
     all: {
       current: number;
       change: number;
@@ -2186,24 +2796,36 @@ export type TraderPnl = {
       rebase_anchor: number;
     };
   };
-  /** Per-month P&L aggregation. */
-  monthly: {
+  /** Per-month P&L aggregation. Present unless the request's `sections` excluded it. Whole months over the full stored history, never clipped to `from`/`to`, so a month is never a partial month. */
+  monthly?: {
     year: number;
     month: number;
     pnl: number;
     markets_traded: number;
   }[];
-  /** Per-year P&L totals (ascending by year). */
-  year_totals: {
+  /** Per-year P&L totals (ascending by year). Present unless the request's `sections` excluded it. Whole years over the full stored history, never clipped to `from`/`to`. */
+  year_totals?: {
     year: number;
     pnl: number;
   }[];
-  /** Underwater (drawdown) series. */
-  drawdown: {
+  /** Underwater (drawdown) series. Present unless the request's `sections` excluded it, and clipped to `from`/`to` when either is set. The running peak behind each point is the full-history peak, so a clipped slice is not rebased; view.anchor.drawdown carries the value at the point before the window. */
+  drawdown?: {
     date: string;
     cumulative_profit: number;
     drawdown: number;
   }[];
+};
+
+/** Lossless counterparts for trader P&L values. The object is omitted when no trusted native realized-P&L snapshot is available. */
+export type TraderPnlExact = {
+  /** Native Polymarket realized P&L plus credited maker and taker rebates, with fees included, from the trusted matching `trader_trading_pnl.net_realized_pnl` snapshot. */
+  realized: ExactDecimal;
+};
+
+/** Lossless counterparts for trader statistics. The object is omitted when the verified provider observation is unavailable. */
+export type TraderStatsExact = {
+  /** Full-history both-sides Polymarket user-volume atom from the verified `trader_usd_volume` observation. */
+  total_volume: ExactDecimal;
 };
 
 /** Field-level trust metadata returned only when GET /api/v1/trader/{address} includes expand=trust. */
@@ -2217,6 +2839,8 @@ export type TraderTrust = {
   total_volume: TrustMetadata;
   grade: TrustMetadata;
   score: TrustMetadata;
+  forecast_score: TrustMetadata;
+  forecast_evidence: TrustMetadata;
   rank: TrustMetadata;
   streak_tier: TrustMetadata;
   strategy: TrustMetadata;
@@ -2304,6 +2928,7 @@ export type UpdateWebhookRequest = {
   /** Replacement public HTTPS callback URL on the default port 443, validated and checked for uniqueness exactly like the create url. HTTPS scheme/host case, trailing DNS dots and port 443 normalize; path/query case is preserved. Changing it resets status to pending_verification and returns a new verification token; the new destination must pass the verification challenge before deliveries resume. */
   url?: string;
   event_types?: WebhookEventType[];
+  trade_filters?: LargeTradeSubscriptionFilters;
   enabled?: boolean;
 };
 
@@ -2382,6 +3007,7 @@ export type WebhookEndpoint = {
   name: string;
   url: string;
   event_types: WebhookEventType[];
+  trade_filters: LargeTradeSubscriptionFilters;
   status: WebhookStatus;
   verified_at: string | null;
   verification_token_expires_at: string;
@@ -2395,7 +3021,7 @@ export type WebhookEndpoint = {
   verification?: WebhookVerification;
 };
 
-/** Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (whale_trades_inserted, wallet_grade_changed, insider_radar_flag_raised, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. */
+/** Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (large_trades_inserted, whale_trades_inserted, wallet_grade_changed, suspicious_trade_flagged, insider_radar_flag_raised, sharp_money_flow_detected, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. Export lifecycle event types (export_job_ready, export_job_failed, export_job_expired, export_job_cancelled) are owner-scoped to the API-key account that created the export and contain no download URL; use the authorized export status/download routes. Some entries are two spellings of one event: large_trades_inserted and whale_trades_inserted, trader_synced and whale_trader_synced, suspicious_trade_flagged and insider_radar_flag_raised, sharp_money_flow_detected and smart_money_flow_detected. Either spelling subscribes, and an endpoint receives deliveries under the spelling it registered. */
 export type WebhookEventDescriptor = {
   id: WebhookEventType;
   /** One-line description of when the event fires. */
@@ -2406,7 +3032,7 @@ export type WebhookEventDescriptor = {
   status: "active" | "dormant";
 };
 
-export type WebhookEventType = "whale_trades_inserted" | "live_sports_updated" | "whale_trader_synced" | "large_positions_updated" | "wallet_grade_changed" | "insider_radar_flag_raised" | "smart_money_flow_detected";
+export type WebhookEventType = "large_trade_inserted_v2" | "large_trades_inserted" | "whale_trades_inserted" | "live_sports_updated" | "trader_synced" | "whale_trader_synced" | "large_positions_updated" | "wallet_grade_changed" | "suspicious_trade_flagged" | "insider_radar_flag_raised" | "sharp_money_flow_detected" | "smart_money_flow_detected" | "export_job_ready" | "export_job_failed" | "export_job_expired" | "export_job_cancelled";
 
 export type WebhookRetryPolicy = {
   max_attempts: 8;
@@ -2432,70 +3058,6 @@ export type WebhookVerification = {
   expires_at: string;
 };
 
-export type WhaleTrade = {
-  /** Prefixed ID (wt_...). */
-  id: string;
-  traded_at: string;
-  size_usd: number;
-  side: "BUY" | "SELL";
-  /** Traded outcome label (e.g. "Yes"/"No"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, whose stored outcome_index is not trusted (a defaulted 0 for about a third of those rows; the side is unknown, not defaulted). */
-  outcome: string | null;
-  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, where the traded side is unknown. */
-  token_id: string | null;
-  price: number;
-  /** Current 0.0–1.0 normalized signal score, computed at request time from the trader's win rate today and the trade's age now. On a historical row it is today's view of the trade, not what a reader saw then; use recorded_signal_score for that. */
-  signal_score: number;
-  /** 0.0–1.0 signal score written once when the trade row is inserted, from the trader's statistics at that moment. Populated from 2026-08-03T11:59Z; older rows return null and are never backfilled, because a backfill could only read today's statistics. If a trade is added later, its time-sensitive recorded score reflects that delay. */
-  recorded_signal_score: number | null;
-  /** Persisted live suspicion score from the scorer. Null when the row has no persisted score. */
-  suspicion_score: number | null;
-  /** Persisted scorer track. Null when a legacy row has no stored track label. */
-  suspicion_track: "whale" | "fresh_conviction" | "sliced_position" | null;
-  /** This fill's size relative to its market: size_usd divided by the market's volume at the moment the trade was inserted. A $10,000 fill is 0.00005 of a $200M market and 0.125 of an $80,000 one, which size_usd alone cannot distinguish. Absent when the market carried no volume figure and on rows written before 2026-09-16; never 0 as a stand-in. Not capped at 1: a fill larger than the stored trailing volume is real, and that is the most significant case. */
-  market_volume_share?: number;
-  trader: {
-    id: string;
-    address: string;
-    username?: string;
-    /** The trader's grade today, on every row however old. For what the grade was when the trade happened, read grade_at_trade. */
-    grade?: string;
-    /** The grade the trader held when the trade happened, from recorded grade history (recorded from 2026-09-19T23:00Z). Null unless grade_at_trade_status is graded. Never today's grade projected backward. */
-    grade_at_trade: "S" | "A" | "B" | "C" | "D" | "F" | null;
-    /** graded: grade_at_trade holds the recorded grade. ungraded: the trader was recorded without a grade at that moment. unknown: no record covers the moment, which is every trade before 2026-09-19T23:00Z and a trade that fell between a grade change and its confirmation. unknown never means ungraded. */
-    grade_at_trade_status: "graded" | "ungraded" | "unknown";
-  };
-  market: {
-    id: string;
-    condition_id: string;
-    title: string;
-    slug?: string;
-    /** Provider-backed market_canonical category. */
-    category?: string;
-  };
-};
-
-export type WhaleTradeDetail = WhaleTrade & {
-  counterparty_analysis: CounterpartyAnalysis;
-};
-
-export type WhaleTradeHistoryMeta = {
-  /** Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines. */
-  request_id: string;
-  cached: boolean;
-  /** Cache age in seconds; the key is absent when the response was not cached. */
-  cache_age_s?: number;
-  source: {
-    kind: "local_replay";
-    table: "whale_alerts";
-    provider_fetch_at_request_time: false;
-  };
-  completeness: {
-    status: "best_effort";
-    /** Explains that local replay completeness can vary by market and time window. */
-    reason: string;
-  };
-};
-
 /**
  * The `data` payload each operation answers with: what
  * `ApiClient.call<T>` resolves to, and the default `T` of every
@@ -2503,8 +3065,58 @@ export type WhaleTradeHistoryMeta = {
  */
 export interface OperationData {
   activateWebhookSecret: WebhookEndpoint;
-  batchGetMarketIntel: BatchMarketIntelItem[];
+  batchGetMarketFlow: BatchMarketFlowItem[];
+  batchGetMarketIntel: BatchMarketFlowItem[];
   batchGetTraders: BatchTraderItem[];
+  cancelTraderExport: {
+    job_id: number;
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
+    format: "json" | "ndjson" | "csv";
+    total_trades: number | null;
+    processed_trades: number | null;
+    file_size: number | null;
+    error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** What the file is a snapshot of: the trader's served-data clock (the latest position refresh, else the last completed sync) when the file was written; the same value as export_metadata.data_as_of inside the file. null until the file is written, or when the trader had neither. Read this, not ready_at, to decide whether a reused job is fresh enough; submit with fresh=true for a newer snapshot. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/json" | "application/x-ndjson" | "text/csv";
+      content_encoding: "gzip";
+      /** Immutable manifest for artifacts generated with manifest support; null on historical artifacts written before this contract. */
+      manifest: TraderExportArtifactManifest | null;
+    };
+  };
   createMcpJsonRpcResponse: {
     jsonrpc: "2.0";
     id: string | number | null;
@@ -2532,8 +3144,10 @@ export interface OperationData {
     scopes: string[] | null;
   };
   getApiDiscovery: ApiDiscovery;
+  getCoverage: Platforms;
   getDailyReportSnapshot: ReportSnapshot;
   getEventReplaySince: EventReplayEvent[];
+  getGame: Game;
   getHealth: {
     status?: "ok" | "degraded" | "down" | "maintenance";
     db?: boolean;
@@ -2556,11 +3170,13 @@ export interface OperationData {
       };
     };
   };
-  getInsiderRadarFlag: RadarFlag;
+  getInsiderRadarFlag: SuspiciousTrade;
+  getLargeTrade: LargeTradeDetail;
   getMarketCandles: MarketCandles;
   getMarketContextMarkdown: string;
+  getMarketFlow: MarketFlow;
   getMarketHolders: MarketHolder[];
-  getMarketIntel: MarketIntel;
+  getMarketIntel: MarketFlow;
   getMarketSnapshot: MarketSnapshot;
   getMonthlyReportSnapshot: ReportSnapshot;
   getPickOfTheDay: PickOfTheDay;
@@ -2571,6 +3187,7 @@ export interface OperationData {
   getPositionTimelineById: PositionTimelineEvent[];
   getReports: ReportSnapshot;
   getStream: string;
+  getSuspiciousTrade: SuspiciousTrade;
   getTrader: Trader;
   getTraderCategoryRecords: TraderCategoryRecords;
   getTraderContext: TraderContext;
@@ -2578,13 +3195,54 @@ export interface OperationData {
   getTraderExportSnapshot: TraderExportSnapshot;
   getTraderExportStatus: {
     job_id: number;
-    status: "queued" | "running" | "ready" | "failed";
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
     total_trades: number | null;
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** What the file is a snapshot of: the trader's served-data clock (the latest position refresh, else the last completed sync) when the file was written; the same value as export_metadata.data_as_of inside the file. null until the file is written, or when the trader had neither. Read this, not ready_at, to decide whether a reused job is fresh enough; submit with fresh=true for a newer snapshot. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/json" | "application/x-ndjson" | "text/csv";
+      content_encoding: "gzip";
+      /** Immutable manifest for artifacts generated with manifest support; null on historical artifacts written before this contract. */
+      manifest: TraderExportArtifactManifest | null;
+    };
   };
+  getTraderGradeAt: TraderGradeAt;
   getTraderPnl: TraderPnl;
   getUsage: {
     rate_limit: {
@@ -2623,23 +3281,31 @@ export interface OperationData {
   };
   getWebhook: WebhookEndpoint;
   getWeeklyReportSnapshot: ReportSnapshot;
-  getWhaleTrade: WhaleTradeDetail;
-  listInsiderRadar: RadarFlag[];
+  getWhaleTrade: LargeTradeDetail;
+  listGames: Game[];
+  listInsiderRadar: SuspiciousTrade[];
   listLargePositions: LargePosition[];
+  listLargeTradeCounterpartyExecutions: CounterpartyAnalysis;
+  listLargeTradeCounterpartyMakers: CounterpartyMakerPage;
+  listLargeTradeHistory: LargeTrade[];
+  listLargeTrades: LargeTrade[];
   listLeaderboard: LeaderboardEntry[];
   listPositions: Position[];
+  listPreGameSideObservations: PreGameSideObservation[];
+  listPreGameSides: PreGameSide[];
   listSharpMoneyFlows: SmartMoneyFlowMarket[];
   listSmartMoneyFlows: SmartMoneyFlowMarket[];
-  listSportsEdgeObservations: SportsEdgeObservation[];
-  listSportsEdgeSignals: SportsEdgeSignal[];
+  listSportsEdgeObservations: PreGameSideObservation[];
+  listSportsEdgeSignals: PreGameSide[];
+  listSuspiciousTrades: SuspiciousTrade[];
   listTrendingWallets: TrendingWallet[];
   listWebhookDeliveries: WebhookDelivery[];
   listWebhookEvents: WebhookEventDescriptor[];
   listWebhooks: WebhookEndpoint[];
   listWhaleTradeCounterpartyExecutions: CounterpartyAnalysis;
   listWhaleTradeCounterpartyMakers: CounterpartyMakerPage;
-  listWhaleTradeHistory: WhaleTrade[];
-  listWhaleTrades: WhaleTrade[];
+  listWhaleTradeHistory: LargeTrade[];
+  listWhaleTrades: LargeTrade[];
   prepareWebhookSecret: WebhookEndpoint;
   redeliverWebhookDelivery: WebhookDelivery;
   registerAgent: AgentRegistration;
@@ -2649,12 +3315,52 @@ export interface OperationData {
   searchMarkets: MarketSearchResult[];
   submitTraderExport: {
     job_id: number;
-    status: "queued" | "running" | "ready" | "failed";
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
     total_trades: number | null;
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** What the file is a snapshot of: the trader's served-data clock (the latest position refresh, else the last completed sync) when the file was written; the same value as export_metadata.data_as_of inside the file. null until the file is written, or when the trader had neither. Read this, not ready_at, to decide whether a reused job is fresh enough; submit with fresh=true for a newer snapshot. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/json" | "application/x-ndjson" | "text/csv";
+      content_encoding: "gzip";
+      /** Immutable manifest for artifacts generated with manifest support; null on historical artifacts written before this contract. */
+      manifest: TraderExportArtifactManifest | null;
+    };
   };
   updateWebhook: WebhookEndpoint;
   verifyWebhook: WebhookEndpoint;
@@ -2663,37 +3369,43 @@ export interface OperationData {
 /** Each operation's documented query parameters. */
 export interface OperationQuery {
   activateWebhookSecret: Record<string, never>;
+  batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
+  cancelTraderExport: {
+    /** Export job id returned by the submit route. */
+    job_id: number;
+  };
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
   deleteWebhook: Record<string, never>;
   exploreMarkets: {
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. */
     category?: string;
-    /** Filter by market status. */
+    /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
     /** Filter by source platform. Explore is Polymarket-only; polymarket is the only supported value and the parameter is accepted for backward-compatibility but does not change the result set. */
     platform?: "polymarket";
-    /** Sort order for the discovery feed. */
-    sort?: "trending" | "hot" | "expiring" | "whales" | "volume" | "newest";
+    /** Sort order for the discovery feed. `large_trades` ranks by large-trade activity; `whales` is its deprecated spelling and selects the same order. */
+    sort?: "trending" | "hot" | "expiring" | "large_trades" | "whales" | "volume" | "newest";
     /** Opaque pagination cursor from the previous response. */
     cursor?: string;
-    /** Page size. */
+    /** Page size. Out-of-range values are clamped to 1..48. */
     limit?: number;
     /** Keyword search against market titles. At most 64 characters before whitespace trimming. */
     q?: string;
   };
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCoverage: Record<string, never>;
   getDailyReportSnapshot: {
-    /** UTC report date in YYYY-MM-DD format. */
+    /** UTC report date in YYYY-MM-DD format, from 2024-03-01 (the first day report data covers) through tomorrow UTC. Any other date returns 400 bad_request with error.param=date. */
     date: string;
   };
   getEventReplaySince: {
     /** Opaque event replay cursor returned as next_cursor by a prior response. The cursor maps to the global (whale_alerts.inserted_xid, whale_alerts.id) commit-order position, is valid across backend replicas, and is bound to the filter set the walk ran with (trader, condition_id, min_grade, min_size): presenting it under different filters answers 400 bad_request with error.reason cursor_expired, and the walk restarts without a cursor. Cursors issued before 2026-09-22 (id-only) stay accepted and are bound to no filters. Omit to fetch the latest durable public suffix. */
     cursor?: string;
-    /** Maximum durable public whale-trade events to return. */
+    /** Maximum durable public whale-trade events to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Only this wallet's trades: a wallet address, trd_-prefixed trader id or username resolved against the traders table. Bound to the cursor: a cursor issued under other filters answers 400 with error.reason cursor_expired. An unknown trader matches nothing and the walk still advances. */
     trader?: string;
@@ -2703,11 +3415,15 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Only trades of at least this size in USD (compared in cents). Bound to the cursor. */
     min_size?: number;
+    /** Backward-compatible alias for expand. Repeatable: trade. */
+    "expand[]"?: "trade"[];
     /** Repeatable. trade adds the public trade read to every event (the object GET /api/v1/whale-trades/{id} returns for it), from one query per page, so a page of 100 events needs no per-event detail request. Not bound to the cursor: switch it on or off mid-walk. */
     expand?: "trade"[];
   };
+  getGame: Record<string, never>;
   getHealth: Record<string, never>;
   getInsiderRadarFlag: Record<string, never>;
+  getLargeTrade: Record<string, never>;
   getMarketCandles: {
     /** Bucketing granularity. 1d aggregates by UTC calendar day, 1w by ISO week (Monday 00:00 UTC start). Defaults to 1d. */
     resolution?: "1d" | "1w";
@@ -2717,12 +3433,16 @@ export interface OperationQuery {
     to?: number;
   };
   getMarketContextMarkdown: Record<string, never>;
+  getMarketFlow: {
+    /** Lookback window for whale flow aggregation. */
+    timeframe?: "1h" | "4h" | "24h" | "7d";
+  };
   getMarketHolders: {
     /** Keep holders netting one side. `all` (default) lists both. */
     outcome?: "yes" | "no" | "all";
     /** Narrow within the graded cohort: `S` keeps S, `A` keeps S and A, `B` (default) keeps S, A and B. `C`, `D` and `F` are rejected with 400: the route lists the S/A/B cohort only. The cohort is the wallet's current grade (`traders.latest_grade`), so no value here reaches a C, D, F or ungraded holder; those are counted only in `scan.wallet_count`. `min_grade=D` on GET /api/v1/positions does return C and D, which is one of the three reasons the two routes' counts differ for the same market. */
     min_grade?: "S" | "A" | "B";
-    /** Maximum holders per page. */
+    /** Maximum holders per page. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque pagination cursor from the previous response's next_cursor. It encodes a page of one shared roster, so it stays valid across the roster's refresh, but a page read after a refresh can repeat or skip a holder. */
     cursor?: string;
@@ -2738,7 +3458,7 @@ export interface OperationQuery {
     expand?: "trust"[];
   };
   getMonthlyReportSnapshot: {
-    /** UTC report month in YYYY-MM format. */
+    /** UTC report month in YYYY-MM format. A month that ends before 2024-03-01, the first day report data covers, or starts after tomorrow UTC returns 400 bad_request with error.param=month. */
     month: string;
   };
   getPickOfTheDay: Record<string, never>;
@@ -2748,7 +3468,7 @@ export interface OperationQuery {
   getPositionTimeline: {
     /** Market condition_id. One timeline per (trader, market). */
     condition_id: string;
-    /** Maximum number of timeline events to return. */
+    /** Maximum number of timeline events to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. */
     cursor?: string;
@@ -2756,7 +3476,7 @@ export interface OperationQuery {
   getPositionTimelineById: {
     /** Market condition_id. One timeline per (trader, market). */
     condition_id: string;
-    /** Maximum number of timeline events to return. */
+    /** Maximum number of timeline events to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. */
     cursor?: string;
@@ -2764,7 +3484,7 @@ export interface OperationQuery {
   getReports: {
     /** Report granularity selector. */
     granularity: "daily" | "weekly" | "monthly";
-    /** Period token for the granularity. daily: UTC date YYYY-MM-DD. weekly: ISO week YYYY-WW for a durable canonical snapshot, or a from,to YYYY-MM-DD pair for an exact ephemeral range limited to 31 inclusive UTC days. A wider explicit range returns 400 invalid_query. monthly: UTC month YYYY-MM. */
+    /** Period token for the granularity. daily: UTC date YYYY-MM-DD. weekly: ISO week YYYY-WW for a durable canonical snapshot, or a from,to YYYY-MM-DD pair for an exact ephemeral range limited to 31 inclusive UTC days. A wider explicit range returns 400 invalid_query. monthly: UTC month YYYY-MM. A period that ends before 2024-03-01, the first day report data covers, or starts after tomorrow UTC returns 400 bad_request with error.param=period. */
     period: string;
   };
   getStream: {
@@ -2776,14 +3496,21 @@ export interface OperationQuery {
     event?: string;
     /** Optional per-connection subscribe-time filter. Raw provider condition_id or mkt_-prefixed market id (normalized the same way the other v1 market endpoints normalize). A frame passes only when it carries a matching condition_id field; frames that carry no condition_id (e.g. whale-pulse events) are EXCLUDED while this is set. An empty value after normalization returns HTTP 400. Combines with event and min_grade as a logical AND; an absent param adds no constraint. */
     condition_id?: string;
-    /** Optional per-connection subscribe-time filter. A frame passes only when it carries a grade field whose grade is better-or-equal to this minimum (S is best). Frames that carry no grade field (every frame except wallet_grade_changed) are EXCLUDED while this is set. An invalid grade returns HTTP 400. Combines with event and condition_id as a logical AND; an absent param adds no constraint. */
+    /** Optional per-connection subscribe-time filter. A frame passes only when it carries a grade field whose grade is better-or-equal to this minimum (S is best). Frames without a grade (every frame except wallet_grade_changed and LargeTradeInsertedV2) are excluded. An invalid grade returns HTTP 400. Combines with the other filters as a logical AND. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Filter LargeTradeInsertedV2 frames to this Polymarket wallet. Other event types have no wallet and are excluded when set. Applied to live and retained Redis frames after privacy checks. */
+    wallet?: string;
+    /** Filter LargeTradeInsertedV2 frames to trades at or above this USD notional. Positive decimal with at most six places; other event types are excluded when set. */
+    min_size?: string;
   };
+  getSuspiciousTrade: Record<string, never>;
   getTrader: {
     /** Backward-compatible alias for expand. Repeatable: strategy, categories, quant_metrics, trust. */
     "expand[]"?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
     /** Include heavy fields and trust metadata. Repeatable: strategy, categories, quant_metrics, trust. */
     expand?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
+    /** Opt into a whole-response freshness ceiling in seconds. The server returns 200 only when data_quality.status is fresh and data_quality.as_of is no older than this value; otherwise it returns 409 with error.reason=freshness_ceiling_unsatisfied. No refresh or alternate read is attempted. */
+    max_age_s?: number;
   };
   getTraderCategoryRecords: {
     /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A value that matches no record answers 200 with an empty records array, never 404. */
@@ -2796,20 +3523,49 @@ export interface OperationQuery {
     /** Export job id returned by the submit route. */
     job_id: number;
   };
-  getTraderPnl: Record<string, never>;
+  getTraderGradeAt: {
+    /** RFC3339 instant whose historically visible grade is requested. Future instants are refused. Send the trade or decision time, not the ranking date. */
+    as_of: string;
+  };
+  getTraderPnl: {
+    /** Inclusive UTC calendar-date lower bound in YYYY-MM-DD form for the daily series (entries and drawdown). Omit for the whole stored history. A value that is not a calendar date, or a from later than to, returns 400 bad_request with error.param from. Does not change stats, monthly or year_totals, which stay defined over the full history. */
+    from?: string;
+    /** Inclusive UTC calendar-date upper bound in YYYY-MM-DD form for the daily series (entries and drawdown). Omit for the whole stored history. A value that is not a calendar date returns 400 bad_request with error.param to. Does not change stats, monthly or year_totals. */
+    to?: string;
+    /** Which sections of the object to return. Repeatable and comma-separated: entries, stats, monthly, year_totals, drawdown. Omit it, or send it empty, for all five. A section left out is absent from data. An unrecognized name returns 400 bad_request with error.param sections rather than being ignored, so a typo cannot look like a successful request that silently dropped the section you came for. */
+    sections?: ("entries" | "stats" | "monthly" | "year_totals" | "drawdown")[];
+    /** Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated: entries, stats, monthly, year_totals, drawdown. */
+    "sections[]"?: ("entries" | "stats" | "monthly" | "year_totals" | "drawdown")[];
+  };
   getUsage: Record<string, never>;
   getWebhook: Record<string, never>;
   getWeeklyReportSnapshot: {
-    /** UTC source-range start in YYYY-MM-DD format; required with to. Together with to, selects an exact ephemeral range of at most 31 inclusive UTC days. */
+    /** UTC source-range start in YYYY-MM-DD format; required with to. Together with to, selects an exact ephemeral range of at most 31 inclusive UTC days. A start after tomorrow UTC returns 400 bad_request with error.param=from. */
     from?: string;
-    /** UTC source-range end in YYYY-MM-DD format; required with from. Together with from, selects an exact ephemeral range of at most 31 inclusive UTC days. */
+    /** UTC source-range end in YYYY-MM-DD format; required with from. Together with from, selects an exact ephemeral range of at most 31 inclusive UTC days. An end before 2024-03-01, the first day report data covers, returns 400 bad_request with error.param=to. */
     to?: string;
-    /** ISO week selector in YYYY-WW format; alternative to from/to. Selects a durable canonical snapshot. */
+    /** ISO week selector in YYYY-WW format; alternative to from/to. Selects a durable canonical snapshot. A week that ends before 2024-03-01, the first day report data covers, or starts after tomorrow UTC returns 400 bad_request with error.param=week. */
     week?: string;
   };
   getWhaleTrade: Record<string, never>;
+  listGames: {
+    /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
+    sport?: string;
+    /** League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2. Omit for every league inside the selected sports. */
+    league?: string;
+    /** Keep only games in this state. A value outside the enum returns an empty page. */
+    status?: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
+    /** RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. */
+    starts_after?: string;
+    /** RFC 3339 instant. Keep only games whose kickoff is at or before it. Must be at or after starts_after. */
+    starts_before?: string;
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
+  };
   listInsiderRadar: {
-    /** Maximum number of radar flags to return. */
+    /** Maximum number of radar flags to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response. */
     cursor?: string;
@@ -2821,7 +3577,7 @@ export interface OperationQuery {
     mode?: "live" | "stable";
   };
   listLargePositions: {
-    /** Maximum number of large positions to return. */
+    /** Maximum number of large positions to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque pagination cursor from a previous response. */
     cursor?: string;
@@ -2834,8 +3590,70 @@ export interface OperationQuery {
     /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id (round-trips a value from a list response). Polymarket-only; an unknown id returns []. */
     condition_id?: string;
   };
+  listLargeTradeCounterpartyExecutions: {
+    /** Counterparty snapshot ID from the large trade detail response. */
+    snapshot_id: string;
+    /** Opaque cursor from the previous response's next_cursor. */
+    cursor?: string;
+    /** Maximum number of counterparty execution rows to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+  };
+  listLargeTradeCounterpartyMakers: {
+    /** Counterparty snapshot ID from the large trade detail response. */
+    snapshot_id: string;
+    /** Opaque cursor from the previous response's next_cursor. */
+    cursor?: string;
+    /** Maximum number of maker rows to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+  };
+  listLargeTradeHistory: {
+    /** Maximum number of historical large trades to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Pagination cursor from previous response's next_cursor. Prefix: wth_. URL-encode when replaying as a query parameter. */
+    cursor?: string;
+    /** Minimum trade size in USD. The capture floor was 3,000 USD before 2026-07-06 and 10,000 USD from then (1,000 USD in earnings markets), so 10000 gives one size rule across the whole archive. From 2026-09-23 a fill must also be at least 0.1% of its market's recorded traded volume (Polymarket's own share count); rows written before that date were not re-filtered. */
+    min_size?: number;
+    /** Exact raw provider condition_id. Unknown markets return an empty list. */
+    condition_id?: string;
+    /** Trader wallet address, timestamp-suffixed wallet alias, username, or trd_-prefixed trader ID, resolved against the traders table. Unknown traders return an empty list. */
+    trader?: string;
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    category?: string;
+    /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule filter on trader.grade_at_trade instead. A means S or A, B means S, A or B. */
+    min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    suspicious_only?: boolean;
+    /** Filter by whale_alerts.platform. all is equivalent to omitted. */
+    platform?: "polymarket" | "all";
+    /** Inclusive RFC3339 lower bound on whale_alerts.traded_at. */
+    from?: string;
+    /** Exclusive RFC3339 upper bound on whale_alerts.traded_at. Must be after from when both are present. */
+    to?: string;
+    /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
+    min_market_volume_share?: number;
+    /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
+    sort?: "recent" | "market_volume_share";
+  };
+  listLargeTrades: {
+    /** Maximum number of recent large trades to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Pagination cursor from previous response's next_cursor. */
+    cursor?: string;
+    /** Minimum trade size in USD. */
+    min_size?: number;
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    category?: string;
+    /** Minimum trader grade. */
+    min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    suspicious_only?: boolean;
+    /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
+    min_market_volume_share?: number;
+    /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads the last 30 days, because the share is computed for each request and an unbounded ranking cannot be served inside the documented latency budget. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
+    sort?: "recent" | "market_volume_share";
+  };
   listLeaderboard: {
-    /** Maximum number of ranked traders to return. */
+    /** Maximum number of ranked traders to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the committed leaderboard generation and the effective category/strategy filters; legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
     cursor?: string;
@@ -2845,10 +3663,12 @@ export interface OperationQuery {
     strategy?: "accumulator" | "algo_trader" | "arbitrageur" | "directional" | "event_driven" | "market_maker" | "momentum" | "scalper" | "speculator" | "swing_trader";
   };
   listPositions: {
-    /** Maximum number of current positions to return. */
+    /** Maximum number of current positions to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. */
     cursor?: string;
+    /** live (default) reads the current value-ordered board. snapshot requires wallet and freezes up to 500 matching rows and 2 MB for up to five minutes. Keep consistency=snapshot and the same effective filters on every page; changing filters returns 400. A new first page from the same API key replaces its prior snapshot; replacement or expiry returns cursor_expired. */
+    consistency?: "live" | "snapshot";
     /** Minimum current position value in USD. Defaults to 100 when omitted, or to 0 when wallet is present; send 0 to include every reconciled position. */
     min_size?: number;
     /** Exact match against provider-backed market_canonical.category. */
@@ -2864,10 +3684,32 @@ export interface OperationQuery {
     /** Filter by the binary outcome side. `yes` maps to outcome_index=0, `no` to outcome_index=1. */
     side?: "yes" | "no";
   };
+  listPreGameSideObservations: {
+    /** Observation cohort. wider_holder measures pre-game holder piles outside the funded route's exact raw signals admission. in_play admits only provider-confirmed live games and excludes stale or unavailable provider live-board, holder, or directional evidence. emerging_pile is a post-compute wider_holder projection for finite sharp_pct in [0.75, 0.85) with holder_scan_complete=true and a kickoff after its pinned projection cutoff; it overlaps wider_holder, is not an independent denominator, and is not arrival history. */
+    cohort: "wider_holder" | "in_play" | "emerging_pile";
+    /** Optional canonical sport bucket. Omitted or blank selects all registered sports. Raw provider categories resolve through the canonical taxonomy, including table-tennis or table tennis to Table Tennis and pickleball to Pickleball; a non-sport category returns an empty list. */
+    category?: string;
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Server-authenticated opaque seo_v2_ cursor from next_cursor. Pins snapshot_as_of, cohort, rank, and condition_id; pre-deploy unsigned seo_ cursors are rejected, so clients must request the first page after this contract ships; emerging_pile cursors also pin the first-page projection_now cutoff so kickoff filtering cannot renumber continuation pages. Client edits fail closed; it cannot cross cohorts; a refreshed snapshot invalidates it with 400. */
+    cursor?: string;
+  };
+  listPreGameSides: {
+    /** Optional canonical sport bucket filter (e.g. Basketball, Tennis, Soccer). A raw provider value (NBA) resolves to its canonical bucket. A non-sport category returns an empty list. */
+    category?: string;
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque cursor from a previous response's next_cursor. Encodes the snapshot anchor plus the last row's directional_rank_score, conviction_score, smart_score and condition_id. A cursor from an expired snapshot returns 400. */
+    cursor?: string;
+    /** Kickoff ceiling in hours from now; the floor is now (only games not yet started). Clamped to 1..48. */
+    horizon_hours?: number;
+    /** Minimum trader grade required on the piled side. Only S, A, B are accepted (the piled-side grade distribution is S/A/B only; C, D, F return 400). Default B means at least one S/A/B holder is piled; S requires an S holder, A requires an S or A holder. */
+    min_grade?: "S" | "A" | "B";
+  };
   listSharpMoneyFlows: {
     /** Lookback window for grade-filtered whale flow aggregation. */
     timeframe?: "1h" | "4h" | "24h" | "7d";
-    /** Page size. */
+    /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
@@ -2883,7 +3725,7 @@ export interface OperationQuery {
   listSmartMoneyFlows: {
     /** Lookback window for grade-filtered whale flow aggregation. */
     timeframe?: "1h" | "4h" | "24h" | "7d";
-    /** Page size. */
+    /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
@@ -2901,7 +3743,7 @@ export interface OperationQuery {
     cohort: "wider_holder" | "in_play" | "emerging_pile";
     /** Optional canonical sport bucket. Omitted or blank selects all registered sports. Raw provider categories resolve through the canonical taxonomy, including table-tennis or table tennis to Table Tennis and pickleball to Pickleball; a non-sport category returns an empty list. */
     category?: string;
-    /** Page size. */
+    /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Server-authenticated opaque seo_v2_ cursor from next_cursor. Pins snapshot_as_of, cohort, rank, and condition_id; pre-deploy unsigned seo_ cursors are rejected, so clients must request the first page after this contract ships; emerging_pile cursors also pin the first-page projection_now cutoff so kickoff filtering cannot renumber continuation pages. Client edits fail closed; it cannot cross cohorts; a refreshed snapshot invalidates it with 400. */
     cursor?: string;
@@ -2909,7 +3751,7 @@ export interface OperationQuery {
   listSportsEdgeSignals: {
     /** Optional canonical sport bucket filter (e.g. Basketball, Tennis, Soccer). A raw provider value (NBA) resolves to its canonical bucket. A non-sport category returns an empty list. */
     category?: string;
-    /** Page size. */
+    /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque cursor from a previous response's next_cursor. Encodes the snapshot anchor plus the last row's directional_rank_score, conviction_score, smart_score and condition_id. A cursor from an expired snapshot returns 400. */
     cursor?: string;
@@ -2918,8 +3760,20 @@ export interface OperationQuery {
     /** Minimum trader grade required on the piled side. Only S, A, B are accepted (the piled-side grade distribution is S/A/B only; C, D, F return 400). Default B means at least one S/A/B holder is piled; S requires an S holder, A requires an S or A holder. */
     min_grade?: "S" | "A" | "B";
   };
+  listSuspiciousTrades: {
+    /** Maximum number of suspicious trades to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Pagination cursor from previous response. */
+    cursor?: string;
+    /** Minimum suspicion score (0-100). The live flag floor of 60 also applies. */
+    min_suspicion?: number;
+    /** Compatible filter. flag selects live threshold crossings. watch returns no rows because no live watch policy exists. */
+    severity?: "flag" | "watch";
+    /** Pagination mode. live (default) keeps the 120-second response cache; stable pins the walk to one published scoring generation and binds the cursor to the limit and filters. */
+    mode?: "live" | "stable";
+  };
   listTrendingWallets: {
-    /** Polymarket's weekly leaderboard caps the ranked set at 50 wallets; requests above 50 still return at most 50. */
+    /** Polymarket's weekly leaderboard caps the ranked set at 50 wallets; requests above 50 still return at most 50. Out-of-range values are clamped to 1..50. */
     limit?: number;
     /** Opaque pagination cursor from a previous response, bound to its effective limit, window and ranked-board generation. A changed board or request scope returns error.reason=cursor_expired; legacy page-only cursors must restart from page one. */
     cursor?: string;
@@ -2939,7 +3793,7 @@ export interface OperationQuery {
     snapshot_id: string;
     /** Opaque cursor from the previous response's next_cursor. */
     cursor?: string;
-    /** Maximum number of counterparty execution rows to return. */
+    /** Maximum number of counterparty execution rows to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
   };
   listWhaleTradeCounterpartyMakers: {
@@ -2947,23 +3801,23 @@ export interface OperationQuery {
     snapshot_id: string;
     /** Opaque cursor from the previous response's next_cursor. */
     cursor?: string;
-    /** Maximum number of maker rows to return. */
+    /** Maximum number of maker rows to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
   };
   listWhaleTradeHistory: {
-    /** Maximum number of historical large trades to return. */
+    /** Maximum number of historical large trades to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. Prefix: wth_. URL-encode when replaying as a query parameter. */
     cursor?: string;
-    /** Minimum trade size in USD. The capture floor was 3,000 USD before 2026-07-06 and 10,000 USD from then (1,000 USD in earnings markets), so 10000 gives one size rule across the whole archive. */
+    /** Minimum trade size in USD. */
     min_size?: number;
     /** Exact raw provider condition_id. Unknown markets return an empty list. */
     condition_id?: string;
-    /** Trader wallet address, timestamp-suffixed wallet alias, username, or trd_-prefixed trader ID, resolved against the traders table. Unknown traders return an empty list. */
+    /** Trader wallet address, timestamp-suffixed wallet alias, or username resolved against the traders table. Unknown traders return an empty list. */
     trader?: string;
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
     category?: string;
-    /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule filter on trader.grade_at_trade instead. A means S or A, B means S, A or B. */
+    /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
@@ -2973,9 +3827,13 @@ export interface OperationQuery {
     from?: string;
     /** Exclusive RFC3339 upper bound on whale_alerts.traded_at. Must be after from when both are present. */
     to?: string;
+    /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
+    min_market_volume_share?: number;
+    /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
+    sort?: "recent" | "market_volume_share";
   };
   listWhaleTrades: {
-    /** Maximum number of recent large trades to return. */
+    /** Maximum number of recent large trades to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. */
     cursor?: string;
@@ -2987,6 +3845,10 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
+    /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
+    min_market_volume_share?: number;
+    /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads the last 30 days, because the share is computed for each request and an unbounded ranking cannot be served inside the documented latency budget. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
+    sort?: "recent" | "market_volume_share";
   };
   prepareWebhookSecret: Record<string, never>;
   redeliverWebhookDelivery: Record<string, never>;
@@ -2996,17 +3858,17 @@ export interface OperationQuery {
   searchContent: {
     /** Search query. Must be 1-256 characters before whitespace trimming and non-empty after trimming. */
     q: string;
-    /** Maximum content items to return. */
+    /** Maximum content items to return. Out-of-range values are clamped to 1..50. */
     limit?: number;
   };
   searchMarkets: {
     /** Search query. Must be 1-512 characters before whitespace trimming and non-empty after trimming. */
     q: string;
-    /** Maximum number of matching markets to return. */
+    /** Maximum number of matching markets to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Pagination cursor from previous response's next_cursor. */
     cursor?: string;
-    /** Filter by market status. */
+    /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
     /** Filter by category. */
     category?: string;
@@ -3014,6 +3876,8 @@ export interface OperationQuery {
   submitTraderExport: {
     /** Output serialization. json = full envelope document (default); ndjson = full envelope as line 1 then one trade object per line; csv = flat trades rows only. */
     format?: "json" | "ndjson" | "csv";
+    /** true: do not reuse a finished, running or reconciling job; only a queued job is reused, so the file is a snapshot read after this submit. Consumes quota when nothing is queued. Default false. */
+    fresh?: boolean;
   };
   updateWebhook: Record<string, never>;
   verifyWebhook: Record<string, never>;
@@ -3025,8 +3889,13 @@ export interface OperationPath {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
   };
+  batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
+  cancelTraderExport: {
+    /** Trader wallet address (0x...), known trader username-style lookup, or trd_-prefixed trader ID emitted by this API. */
+    address: string;
+  };
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
   deleteWebhook: {
@@ -3036,11 +3905,20 @@ export interface OperationPath {
   exploreMarkets: Record<string, never>;
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCoverage: Record<string, never>;
   getDailyReportSnapshot: Record<string, never>;
   getEventReplaySince: Record<string, never>;
+  getGame: {
+    /** The game's event slug, for example nfl-buf-nyj-2026-09-22. Matched case-insensitively. */
+    event_slug: string;
+  };
   getHealth: Record<string, never>;
   getInsiderRadarFlag: {
     /** Raw whale_alerts.id or rf_-prefixed radar flag id. */
+    id: string;
+  };
+  getLargeTrade: {
+    /** Raw whale_alerts.id or wt_-prefixed large trade id. */
     id: string;
   };
   getMarketCandles: {
@@ -3049,6 +3927,10 @@ export interface OperationPath {
   };
   getMarketContextMarkdown: {
     /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses. */
+    condition_id: string;
+  };
+  getMarketFlow: {
+    /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or the mkt_-prefixed market.id emitted by V1 responses. */
     condition_id: string;
   };
   getMarketHolders: {
@@ -3078,6 +3960,10 @@ export interface OperationPath {
   };
   getReports: Record<string, never>;
   getStream: Record<string, never>;
+  getSuspiciousTrade: {
+    /** Raw whale_alerts.id or rf_-prefixed suspicious trade id. */
+    id: string;
+  };
   getTrader: {
     /** Ethereum wallet address (0x...), known trader username, or trd_-prefixed trader ID emitted by this API. */
     address: string;
@@ -3102,6 +3988,10 @@ export interface OperationPath {
     /** Trader wallet address (0x...), known trader username-style lookup, or trd_-prefixed trader ID emitted by this API. */
     address: string;
   };
+  getTraderGradeAt: {
+    /** Wallet address (0x...), username, or trd_-prefixed trader id. */
+    address: string;
+  };
   getTraderPnl: {
     /** Wallet address (0x...), username, or trd_-prefixed trader id. */
     address: string;
@@ -3116,14 +4006,30 @@ export interface OperationPath {
     /** Raw whale_alerts.id or wt_-prefixed whale trade id. */
     id: string;
   };
+  listGames: Record<string, never>;
   listInsiderRadar: Record<string, never>;
   listLargePositions: Record<string, never>;
+  listLargeTradeCounterpartyExecutions: {
+    /** Large trade ID. Accepts wt_-prefixed or raw whale_alerts.id. */
+    id: string;
+  };
+  listLargeTradeCounterpartyMakers: {
+    /** Large trade ID. Accepts wt_-prefixed or raw whale_alerts.id. */
+    id: string;
+    /** Counterparty execution ID from the parent response. */
+    execution_id: string;
+  };
+  listLargeTradeHistory: Record<string, never>;
+  listLargeTrades: Record<string, never>;
   listLeaderboard: Record<string, never>;
   listPositions: Record<string, never>;
+  listPreGameSideObservations: Record<string, never>;
+  listPreGameSides: Record<string, never>;
   listSharpMoneyFlows: Record<string, never>;
   listSmartMoneyFlows: Record<string, never>;
   listSportsEdgeObservations: Record<string, never>;
   listSportsEdgeSignals: Record<string, never>;
+  listSuspiciousTrades: Record<string, never>;
   listTrendingWallets: Record<string, never>;
   listWebhookDeliveries: {
     /** Webhook endpoint id owned by the authenticated API key user. */
@@ -3181,6 +4087,12 @@ export interface OperationPath {
 /** Each operation's JSON request body; `never` when it takes none. */
 export interface OperationBody {
   activateWebhookSecret: never;
+  batchGetMarketFlow: {
+    /** Market condition IDs to resolve in input order. */
+    condition_ids: string[];
+    /** Lookback window used for flow and trade-count context. */
+    timeframe?: "1h" | "4h" | "24h" | "7d";
+  };
   batchGetMarketIntel: {
     /** Market condition IDs to resolve in input order. */
     condition_ids: string[];
@@ -3193,6 +4105,7 @@ export interface OperationBody {
     /** Shared expand flags applied to every trader item. */
     expand?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
   };
+  cancelTraderExport: never;
   createMcpJsonRpcResponse: {
     /** JSON-RPC protocol version; this server accepts 2.0. */
     jsonrpc: "2.0";
@@ -3208,12 +4121,16 @@ export interface OperationBody {
   exploreMarkets: never;
   getAccountIdentity: never;
   getApiDiscovery: never;
+  getCoverage: never;
   getDailyReportSnapshot: never;
   getEventReplaySince: never;
+  getGame: never;
   getHealth: never;
   getInsiderRadarFlag: never;
+  getLargeTrade: never;
   getMarketCandles: never;
   getMarketContextMarkdown: never;
+  getMarketFlow: never;
   getMarketHolders: never;
   getMarketIntel: never;
   getMarketSnapshot: never;
@@ -3226,25 +4143,35 @@ export interface OperationBody {
   getPositionTimelineById: never;
   getReports: never;
   getStream: never;
+  getSuspiciousTrade: never;
   getTrader: never;
   getTraderCategoryRecords: never;
   getTraderContext: never;
   getTraderContextMarkdown: never;
   getTraderExportSnapshot: never;
   getTraderExportStatus: never;
+  getTraderGradeAt: never;
   getTraderPnl: never;
   getUsage: never;
   getWebhook: never;
   getWeeklyReportSnapshot: never;
   getWhaleTrade: never;
+  listGames: never;
   listInsiderRadar: never;
   listLargePositions: never;
+  listLargeTradeCounterpartyExecutions: never;
+  listLargeTradeCounterpartyMakers: never;
+  listLargeTradeHistory: never;
+  listLargeTrades: never;
   listLeaderboard: never;
   listPositions: never;
+  listPreGameSideObservations: never;
+  listPreGameSides: never;
   listSharpMoneyFlows: never;
   listSmartMoneyFlows: never;
   listSportsEdgeObservations: never;
   listSportsEdgeSignals: never;
+  listSuspiciousTrades: never;
   listTrendingWallets: never;
   listWebhookDeliveries: never;
   listWebhookEvents: never;
@@ -3276,6 +4203,11 @@ export interface OperationResponse {
     data: OperationData["activateWebhookSecret"];
     meta: ResponseMeta;
   };
+  batchGetMarketFlow: {
+    object: "market_flow_batch";
+    data: OperationData["batchGetMarketFlow"];
+    meta: BatchResponseMeta;
+  };
   batchGetMarketIntel: {
     object: "market_intel_batch";
     data: OperationData["batchGetMarketIntel"];
@@ -3286,6 +4218,7 @@ export interface OperationResponse {
     data: OperationData["batchGetTraders"];
     meta: BatchResponseMeta;
   };
+  cancelTraderExport: TraderExportJob;
   createMcpJsonRpcResponse: {
     jsonrpc: "2.0";
     id: string | number | null;
@@ -3325,6 +4258,11 @@ export interface OperationResponse {
     data: OperationData["getApiDiscovery"];
     meta: ResponseMeta;
   };
+  getCoverage: {
+    object: "platforms";
+    data: OperationData["getCoverage"];
+    meta: ResponseMeta;
+  };
   getDailyReportSnapshot: {
     object: "report_snapshot";
     data: OperationData["getDailyReportSnapshot"];
@@ -3337,6 +4275,13 @@ export interface OperationResponse {
     next_cursor: string;
     meta: EventReplayMeta;
   };
+  getGame: {
+    object: "game";
+    data: OperationData["getGame"];
+    /** When this read assembled the catalog. Per-source vintage is on freshness. */
+    as_of: string;
+    meta: ResponseMeta;
+  };
   getHealth: {
     object: "health";
     data: OperationData["getHealth"];
@@ -3347,12 +4292,22 @@ export interface OperationResponse {
     data: OperationData["getInsiderRadarFlag"];
     meta: ResponseMeta;
   };
+  getLargeTrade: {
+    object: "large_trade";
+    data: OperationData["getLargeTrade"];
+    meta: ResponseMeta;
+  };
   getMarketCandles: {
     object: "market_candles";
     data: OperationData["getMarketCandles"];
     meta: ResponseMeta;
   };
   getMarketContextMarkdown: string;
+  getMarketFlow: {
+    object: "market_flow";
+    data: OperationData["getMarketFlow"];
+    meta: ResponseMeta;
+  };
   getMarketHolders: {
     object: "list";
     data: OperationData["getMarketHolders"];
@@ -3425,6 +4380,11 @@ export interface OperationResponse {
     meta: ResponseMeta;
   };
   getStream: string;
+  getSuspiciousTrade: {
+    object: "suspicious_trade";
+    data: OperationData["getSuspiciousTrade"];
+    meta: ResponseMeta;
+  };
   getTrader: {
     object: "trader";
     data: OperationData["getTrader"];
@@ -3447,6 +4407,11 @@ export interface OperationResponse {
     meta: ResponseMeta;
   };
   getTraderExportStatus: TraderExportJob;
+  getTraderGradeAt: {
+    object: "trader_grade_at";
+    data: OperationData["getTraderGradeAt"];
+    meta: ResponseMeta;
+  };
   getTraderPnl: {
     object: "trader_pnl";
     data: OperationData["getTraderPnl"];
@@ -3468,6 +4433,17 @@ export interface OperationResponse {
     data: OperationData["getWhaleTrade"];
     meta: ResponseMeta;
   };
+  listGames: {
+    object: "list";
+    data: OperationData["listGames"];
+    has_more: boolean;
+    /** Pass as cursor for the next page. Present only when has_more is true. */
+    next_cursor?: string;
+    /** When this read assembled the catalog. Per-source vintage is on each game's freshness. */
+    as_of: string;
+    coverage: GamesCoverage;
+    meta: ResponseMeta;
+  };
   listInsiderRadar: {
     object: "list";
     data: OperationData["listInsiderRadar"];
@@ -3487,6 +4463,38 @@ export interface OperationResponse {
     total?: number;
     meta: ResponseMeta;
   };
+  listLargeTradeCounterpartyExecutions: {
+    object: "counterparty_analysis";
+    data: OperationData["listLargeTradeCounterpartyExecutions"];
+    meta: ResponseMeta;
+  };
+  listLargeTradeCounterpartyMakers: {
+    object: "counterparty_maker_page";
+    data: OperationData["listLargeTradeCounterpartyMakers"];
+    meta: ResponseMeta;
+  };
+  listLargeTradeHistory: {
+    object: "list";
+    data: OperationData["listLargeTradeHistory"];
+    /** Writer-backed age and coverage for this page; it is part of the representation and the ETag, while transport cache facts remain in meta. */
+    data_quality: DataQuality;
+    has_more: boolean;
+    next_cursor?: string;
+    /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
+    total?: number;
+    meta: LargeTradeHistoryMeta;
+  };
+  listLargeTrades: {
+    object: "list";
+    data: OperationData["listLargeTrades"];
+    /** Writer-backed age and coverage for this page; it is part of the representation and the ETag, while transport cache facts remain in meta. */
+    data_quality: DataQuality;
+    has_more: boolean;
+    next_cursor?: string;
+    /** Total matching rows when the read model exposes a count; absent (or null) when it does not. */
+    total?: number;
+    meta: ResponseMeta;
+  };
   listLeaderboard: {
     object: "list";
     data: OperationData["listLeaderboard"];
@@ -3499,9 +4507,38 @@ export interface OperationResponse {
   listPositions: {
     object: "list";
     data: OperationData["listPositions"];
+    /** Writer-backed age and coverage for this page; it is part of the representation and the ETag, while transport cache facts remain in meta. */
+    data_quality: DataQuality;
     has_more: boolean;
     next_cursor?: string;
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
+    total?: number;
+    /** Present only with consistency=snapshot. Dates the frozen response rows, not the provider's underlying observations. */
+    snapshot?: {
+      as_of: string;
+      expires_at: string;
+      row_count: number;
+    };
+    meta: ResponseMeta;
+  };
+  listPreGameSideObservations: {
+    object: "list";
+    data: OperationData["listPreGameSideObservations"];
+    has_more: boolean;
+    /** Pass as cursor for the next page. Always sent; null on the last page. */
+    next_cursor: string | null;
+    /** Completion time of the shared observation snapshot pinned by the cursor. */
+    snapshot_as_of: string;
+    /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field. */
+    degraded: boolean;
+    funnel: PreGameSideFunnelReport;
+    meta: ResponseMeta;
+  };
+  listPreGameSides: {
+    object: "list";
+    data: OperationData["listPreGameSides"];
+    has_more: boolean;
+    next_cursor?: string;
     total?: number;
     meta: ResponseMeta;
   };
@@ -3525,12 +4562,13 @@ export interface OperationResponse {
     object: "list";
     data: OperationData["listSportsEdgeObservations"];
     has_more: boolean;
-    next_cursor?: string;
+    /** Pass as cursor for the next page. Always sent; null on the last page. */
+    next_cursor: string | null;
     /** Completion time of the shared observation snapshot pinned by the cursor. */
     snapshot_as_of: string;
     /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field. */
     degraded: boolean;
-    funnel: SportsEdgeFunnelReport;
+    funnel: PreGameSideFunnelReport;
     meta: ResponseMeta;
   };
   listSportsEdgeSignals: {
@@ -3538,6 +4576,15 @@ export interface OperationResponse {
     data: OperationData["listSportsEdgeSignals"];
     has_more: boolean;
     next_cursor?: string;
+    total?: number;
+    meta: ResponseMeta;
+  };
+  listSuspiciousTrades: {
+    object: "list";
+    data: OperationData["listSuspiciousTrades"];
+    has_more: boolean;
+    next_cursor?: string;
+    /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
     total?: number;
     meta: ResponseMeta;
   };
@@ -3588,15 +4635,19 @@ export interface OperationResponse {
   listWhaleTradeHistory: {
     object: "list";
     data: OperationData["listWhaleTradeHistory"];
+    /** Writer-backed age and coverage for this page; it is part of the representation and the ETag, while transport cache facts remain in meta. */
+    data_quality: DataQuality;
     has_more: boolean;
     next_cursor?: string;
-    /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
+    /** Total matching rows when the read model exposes a count; absent (or null) when it does not. */
     total?: number;
-    meta: WhaleTradeHistoryMeta;
+    meta: LargeTradeHistoryMeta;
   };
   listWhaleTrades: {
     object: "list";
     data: OperationData["listWhaleTrades"];
+    /** Writer-backed age and coverage for this page; it is part of the representation and the ETag, while transport cache facts remain in meta. */
+    data_quality: DataQuality;
     has_more: boolean;
     next_cursor?: string;
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
