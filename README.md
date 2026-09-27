@@ -73,7 +73,10 @@ client.listInsiderRadar({ min_grade: "S" }); // compile error: the route takes m
 
 Every method forwards the same transport options, so a conditional read,
 a deadline or a cancellation looks the same everywhere:
-`client.listWhaleTrades({ min_grade: "S" }, { signal, timeoutMs: 5_000, maxRetries: 0, headers: { "If-None-Match": etag } })`.
+`client.listLargeTradesConditional({ min_grade: "S", since }, { signal, timeoutMs: 5_000, maxRetries: 0, headers: { "If-None-Match": etag } })`.
+A list method such as `listLargeTrades()` throws on a `304`; send
+`If-None-Match` through a `...Conditional` method or `call()`, which return the
+typed `not_modified` result instead.
 
 `call`, `list`, `paginate`, `paginatePages` and `collect` are typed the same
 way when the operation id is a literal. Given an id chosen at runtime, or an
@@ -342,6 +345,45 @@ try {
   else throw err;
 }
 ```
+
+### Polling for new large trades
+
+`since` asks `listLargeTrades` for only the trades recorded after one you
+already hold (#18507). Pair it with `If-None-Match` and a poll that finds
+nothing new is a `304` with no body:
+
+```ts
+import { isApiNotModifiedResponse, paginate } from "@0xinsider/sdk";
+
+let since: string | undefined; // first trade of the last answer that had trades
+let etag: string | undefined;
+for (;;) {
+  const page = await client.listLargeTradesConditional(
+    { since, limit: 100 },
+    { headers: etag ? { "If-None-Match": etag } : {} },
+  );
+  if (!isApiNotModifiedResponse(page)) {
+    etag = page.meta.etag;
+    const trades = [...page.data];
+    if (since && page.has_more && page.next_cursor) {
+      // More than one page is new: read the rest under the same since.
+      for await (const trade of paginate(client, "listLargeTrades", {
+        query: { since, limit: 100, cursor: page.next_cursor },
+      })) trades.push(trade);
+    }
+    for (const trade of trades) handle(trade); // a late trade can repeat: dedupe on id
+    since = page.data[0]?.id ?? since;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 5_000));
+}
+```
+
+"After" is commit order, so a trade recorded late with an earlier `traded_at`
+still arrives, and one whose write is still open arrives on a later poll. Move
+`since` only to the first trade of the first page. A `since` that names no
+trade, or one more than 10,000 trades behind, is a `400` with `error.param`
+`since`: poll once without it and continue from its first trade. `since` works
+with `sort: "recent"` only.
 
 ### Live stream (SSE)
 
