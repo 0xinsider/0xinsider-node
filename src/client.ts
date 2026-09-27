@@ -2575,6 +2575,20 @@ export class OxinsiderApiClient {
     return this.list("listLargeTrades", { ...options, query: params });
   }
 
+  /**
+   * Typed conditional-read variant of {@link listLargeTrades}, for polling
+   * (#18507). Returns the list envelope on 200 or the typed `not_modified`
+   * result on 304, where {@link listLargeTrades} throws on a 304. Pass
+   * `since` (the id of the first trade of your last answer that had trades)
+   * with `If-None-Match`: a poll that finds no new trade is a 304 with no body.
+   */
+  listLargeTradesConditional(
+    params: LargeTradeListParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("listLargeTrades", { ...options, query: params });
+  }
+
   listLargeTradeHistory(
     params: LargeTradeHistoryParams = {},
     options: ConvenienceOptions = {},

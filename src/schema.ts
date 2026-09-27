@@ -417,7 +417,8 @@ export type ExploreGroup = {
   event_slug: string;
   parent_title: string;
   image: string | null;
-  platform: string | null;
+  /** Provider platform. Always polymarket, or null when the row carries no stored value. */
+  platform: "polymarket" | null;
   category: string | null;
   /** Markets in the event cluster, ranked by volume with condition_id as the tie-breaker. The selected representative is retained within the 12-market cap. */
   markets: ExploreMarket[];
@@ -439,7 +440,8 @@ export type ExploreMarket = {
   image: string | null;
   icon: string | null;
   category: string | null;
-  platform: string | null;
+  /** Provider platform. Always polymarket, or null when the row carries no stored value. */
+  platform: "polymarket" | null;
   /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
   volume: number | null;
@@ -638,7 +640,7 @@ export type GameMarket = {
   /** The raw provider condition id. */
   condition_id: string;
   /** Always polymarket. */
-  platform: string;
+  platform: "polymarket";
   /** The provider's market slug. Omitted when the provider sent none. */
   slug?: string;
   /** The provider's own market type, for example moneyline or spread. Omitted when the provider sent none. Not an enum: the provider owns this vocabulary and adds to it. */
@@ -953,7 +955,8 @@ export type LeaderboardEntry = {
   /** The wallet's win rate across ALL categories, not the filtered one. ?category= decides WHICH wallets are listed (the wallet must be ranked in that category); it does not rescope this field, so a soccer-filtered list still reports each wallet's overall rate. For a per-category record use GET /api/v1/trader/{address}/categories. */
   win_rate?: number;
   strategy_type?: string;
-  platform: string;
+  /** Provider platform. Always polymarket. */
+  platform: "polymarket";
   last_active?: string;
 };
 
@@ -974,7 +977,8 @@ export type MarketFlow = {
     title: string;
     slug: string | null;
     category: string | null;
-    platform: string | null;
+    /** Provider platform. Always polymarket, or null when the row carries no stored value. */
+    platform: "polymarket" | null;
   };
   /** Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias. */
   sharp_money: {
@@ -1136,7 +1140,8 @@ export type MarketSearchResult = {
   title: string;
   slug: string | null;
   category: string | null;
-  platform: string | null;
+  /** Provider platform. Always polymarket, or null when the row carries no stored value. */
+  platform: "polymarket" | null;
   /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
 };
@@ -1301,8 +1306,8 @@ export type PickOfTheDay = {
   category?: string;
   /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
   display_category?: string;
-  /** Provider platform (e.g. "polymarket"). */
-  platform?: string;
+  /** Provider platform. Always polymarket. */
+  platform?: "polymarket";
   /** The pick's stored release instant. Normally the current provider kickoff minus one hour; an operator may override it. The actual publish instant can trail it because of worker or claim delay. */
   release_at?: string;
   /** True only before the pick's stored release instant (a pre-release embargo flag); effectively always false on a served, already-published pick. To detect that the backed game has kicked off, use `game_started`. */
@@ -1561,8 +1566,8 @@ export type PickOfTheDayCommitmentPayload = {
   pick_outcome_label: string;
   /** 1-based daily slot. */
   pick_rank: number;
-  /** Provider platform. */
-  platform: string;
+  /** Provider platform. Always polymarket. */
+  platform: "polymarket";
 };
 
 export type PickOfTheDayHitRate = {
@@ -1746,8 +1751,8 @@ export type PickOfTheDayUncommittedPayload = {
   pick_outcome_label: string;
   /** 1-based daily slot. */
   pick_rank: number;
-  /** Provider platform. */
-  platform: string;
+  /** Provider platform. Always polymarket. */
+  platform: "polymarket";
 };
 
 /** Provider-first sports context for a Pick of the Day market: team crests, league branding, and live score. Team logos and league logo are provider-owned (Polymarket /teams crests for clubs, country flags for national teams and tennis players); no local derivation. */
@@ -1822,7 +1827,8 @@ export type PlatformCapabilities = {
   market_snapshot: PlatformCapabilityStatus;
 };
 
-export type PlatformCapabilityStatus = "supported" | "partial" | "unsupported";
+/** Every capability the API serves reports supported. The field names a per-capability status so a client can branch on coverage; no other value is emitted. */
+export type PlatformCapabilityStatus = "supported";
 
 export type Platforms = {
   platforms: {
@@ -2200,8 +2206,8 @@ export type ReportPayload = {
     trade_time: string | null;
     /** Provider market category. */
     market_category: string | null;
-    /** Venue: polymarket. */
-    platform: string | null;
+    /** Always polymarket, or null when the row carries no stored value. */
+    platform: "polymarket" | null;
     /** Trader display name, when known. */
     name: string | null;
     /** Trader pseudonym, when no display name is known. */
@@ -2228,8 +2234,8 @@ export type ReportPayload = {
     trade_time: string | null;
     /** Provider market category. */
     market_category: string | null;
-    /** Venue: polymarket. */
-    platform: string | null;
+    /** Always polymarket, or null when the row carries no stored value. */
+    platform: "polymarket" | null;
     /** Trader display name, when known. */
     name: string | null;
     /** Trader pseudonym, when no display name is known. */
@@ -2332,7 +2338,8 @@ export type SmartMoneyFlowMarket = {
     title: string | null;
     slug: string | null;
     category: string | null;
-    platform: string | null;
+    /** Provider platform. Always polymarket, or null when the row carries no stored value. */
+    platform: "polymarket" | null;
   };
   /** Sharp-money flow aggregate for the market (canonical; smart_money is a deprecated byte-identical alias). */
   sharp_money: {
@@ -2906,7 +2913,7 @@ export type TrendingWallet = {
   profile_image_url?: string;
   /** Real provider platform; surfaced, never coerced. Polymarket only. */
   platform: "polymarket";
-  /** Polymarket weekly/monthly P&L for the wallet in USD, taken from Polymarket's canonical leaderboard (data-api.polymarket.com/v1/leaderboard?timePeriod=week|month&orderBy=PNL). This is the ranking axis and the rows are returned in Polymarket's by-PNL order; it is the provider's number, not a locally summed realized-leaf total. */
+  /** Polymarket weekly/monthly P&L for the wallet in USD, taken from Polymarket's canonical leaderboard (data-api.polymarket.com/v2/leaderboard?time_period=week|month&sort_by=PNL). This is the ranking axis and the rows are returned in Polymarket's by-PNL order; it is the provider's number, not a locally summed realized-leaf total. */
   trending_pnl_usd: number;
   /** Both-sides cash volume over the window in USD, from Polymarket GET /v2/user-volume (volume_usdc). Omitted when Polymarket served no volume for the wallet: an absent observation, never zero. Polymarket tracks volume in whole UTC days, so this window is the whole-day span covering the requested one, which is not the exact span trending_pnl_usd was scored over. */
   window_volume_usd?: number;
@@ -3629,7 +3636,7 @@ export interface OperationQuery {
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id (round-trips a value from a list response). Polymarket-only; an unknown id returns []. */
+    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id (round-trips a value from a list response). Must be 0x followed by 64 hexadecimal characters after any mkt_ prefix is stripped; any other value returns 400. Polymarket-only; an unknown but well-formed id returns []. */
     condition_id?: string;
   };
   listLargeTradeCounterpartyExecutions: {
@@ -3693,6 +3700,8 @@ export interface OperationQuery {
     min_market_volume_share?: number;
     /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads the last 30 days, because the share is computed for each request and an unbounded ranking cannot be served inside the documented latency budget. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
     sort?: "recent" | "market_volume_share";
+    /** Return only the trades recorded after this one. Pass the id of a large trade this API returned (wt_<n>, or the bare integer). The answer keeps the list shape and newest-first order, and next_cursor pages within it. After means commit order: a trade recorded late with an earlier traded_at is still returned, and a trade whose write has not committed yet is returned on a later poll, never skipped. To poll, send the id of the first trade on the first page of your last answer that had trades, with If-None-Match set to the ETag you last received; when nothing new was recorded the answer is 304 with an empty body. A late trade can come back once, so deduplicate on id. Only with sort=recent. An id that names no trade, or one more than 10000 trades behind the newest, answers 400 with error.param since; request the list without since and continue from its first trade. */
+    since?: string;
   };
   listLeaderboard: {
     /** Maximum number of ranked traders to return. Out-of-range values are clamped to 1..100. */
@@ -3891,6 +3900,8 @@ export interface OperationQuery {
     min_market_volume_share?: number;
     /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads the last 30 days, because the share is computed for each request and an unbounded ranking cannot be served inside the documented latency budget. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
     sort?: "recent" | "market_volume_share";
+    /** Return only the trades recorded after this one. Pass the id of a large trade this API returned (wt_<n>, or the bare integer). The answer keeps the list shape and newest-first order, and next_cursor pages within it. After means commit order: a trade recorded late with an earlier traded_at is still returned, and a trade whose write has not committed yet is returned on a later poll, never skipped. To poll, send the id of the first trade on the first page of your last answer that had trades, with If-None-Match set to the ETag you last received; when nothing new was recorded the answer is 304 with an empty body. A late trade can come back once, so deduplicate on id. Only with sort=recent. An id that names no trade, or one more than 10000 trades behind the newest, answers 400 with error.param since; request the list without since and continue from its first trade. */
+    since?: string;
   };
   prepareWebhookSecret: Record<string, never>;
   redeliverWebhookDelivery: Record<string, never>;
