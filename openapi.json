@@ -10336,10 +10336,23 @@
       "get": {
         "operationId": "listTrendingWallets",
         "summary": "List trending wallets",
-        "description": "Returns wallets ranked by Polymarket weekly/monthly P&L (Polymarket-only discovery), with opaque page-cursor pagination. trending_pnl_usd and the by-PNL row order come from Polymarket's canonical leaderboard (data-api.polymarket.com/v2/leaderboard?time_period=week|month&sort_by=PNL), not a locally summed realized-leaf total. Each row also carries window volume, distinct markets, grade, hot-streak tier, and a shape-only daily P&L sparkline derived from the Polymarket user-pnl cumulative curve (per-day deltas; not guaranteed to sum to trending_pnl_usd). The underlying read model is warmed into Redis; a cold read returns 503 (warming, retry-after), never a 500 or a fabricated ranking. Polymarket-only: the read model filters platform = 'polymarket'. Cursors are bound to the effective limit, window and ranked-board generation; a changed board or request scope returns 400 with error.reason=cursor_expired, and legacy page-only cursors must restart from page one.",
-        "tags": ["Leaderboard"],
+        "description": "Returns wallets ranked by Polymarket weekly/monthly P&L (Polymarket-only discovery), with opaque page-cursor pagination. trending_pnl_usd and the by-PNL row order come from Polymarket's canonical leaderboard (data-api.polymarket.com/v2/leaderboard?time_period=week|month&sort_by=PNL), not a locally summed realized-leaf total. Each row also carries window volume, distinct markets, grade, hot-streak tier, and a shape-only daily P&L sparkline derived from the Polymarket user-pnl cumulative curve (per-day deltas; not guaranteed to sum to trending_pnl_usd). The response comes from a retained Redis board: meta.cached is true, and meta.cache_age_s reports the original board age when known (omitted when unknown). A backend read of a board at least 120 seconds old attempts a detached refresh; after a quiet spell a product board may be up to a day old. HTTP freshness ends at 120 seconds; max-age plus stale-while-revalidate cannot exceed the remaining original retention. Unknown age grants no cache window. A true cold read returns 503 (warming, retry-after), never a fabricated ranking. Polymarket-only: the read model filters platform = 'polymarket'. Cursors are bound to the effective limit, window and ranked-board generation; a changed board or request scope returns 400 with error.reason=cursor_expired, and legacy page-only cursors must restart from page one.",
+        "tags": [
+          "Leaderboard"
+        ],
         "parameters": [
-          {"name": "X-Query-Validation", "in": "header", "required": false, "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.", "schema": {"type": "string", "enum": ["strict"]}},
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
           {
             "name": "limit",
             "in": "query",
@@ -10365,7 +10378,10 @@
             "description": "Trailing window.",
             "schema": {
               "type": "string",
-              "enum": ["7d", "30d"],
+              "enum": [
+                "7d",
+                "30d"
+              ],
               "default": "7d"
             }
           }
@@ -10409,13 +10425,24 @@
               },
               "Server-Timing": {
                 "$ref": "#/components/headers/Server-Timing"
+              },
+              "Cache-Control": {
+                "description": "Private age-aware freshness with at most 120 seconds from the original board computation. Any stale replay is capped by remaining original retention; unknown or expired backing grants max-age=0 and no stale replay. The same policy applies to 304.",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["object", "data", "has_more", "meta"],
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "meta"
+                  ],
                   "properties": {
                     "object": {
                       "type": "string",
@@ -10452,8 +10479,9 @@
                       "has_more": false,
                       "meta": {
                         "request_id": "req_example",
-                        "cached": false,
-                        "cost": 1
+                        "cached": true,
+                        "cost": 1,
+                        "cache_age_s": 180
                       }
                     }
                   }
@@ -10502,6 +10530,12 @@
               },
               "Server-Timing": {
                 "$ref": "#/components/headers/Server-Timing"
+              },
+              "Cache-Control": {
+                "description": "Private age-aware freshness with at most 120 seconds from the original board computation. Any stale replay is capped by remaining original retention; unknown or expired backing grants max-age=0 and no stale replay. The same policy applies to 304.",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "x-empty-body": true
@@ -31137,7 +31171,7 @@
           "category_strengths": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Per-category performance breakdown (expand=categories or expand[]=categories). Omitted unless expanded. Object keyed by category name; each value is the precomputed trader_rankings.category_ranks payload (rank, total_in_category, total_pnl, scaled_total_pnl, n_markets, wins, losses, win_rate; scaled_total_pnl is a legacy alias that currently equals total_pnl). BASIS: the calibration sample, which admits a position only above a 20 USD notional floor and with a chosen-side entry price strictly inside (0,1), because the ranks and the calibration edge derived from it depend on both rules. That is a different sample from GET /api/v1/trader/{address}/categories, which counts every settled market at any size, and the two differ in both directions. Measured on production 2026-09-22 over the 122,497 wallet-category pairs with at least 20 decided markets on both bases: the floored rate was higher in 56.5% of pairs, lower in 34.5% and equal in 9.0%, median +0.6 points, p10 -4.6, p90 +9.8, and 14.0% of pairs differ by 10 points or more. The difference is not only small positions: on a 1-in-250 wallet sample the same day, admitted markets won 56.6% while markets dropped by the notional floor alone won 45.2% and markets dropped by the entry-price rule alone won 48.7%. n_markets counts every admitted market including the ones that resolved at exactly zero P&L, so it is not the denominator of win_rate: it differed from wins + losses in 15.8% of pairs with at least 5 decided markets. The two tables also run on different clocks, this one updated incrementally and that route rebuilt daily, so a same-day read can differ on timing alone. Use this for rank context and that route for the wallet's plain record. Pass-through DB JSON: keys and value shape are DB-owned, so the inner shape is intentionally unconstrained and may carry additional compatibility fields."
+            "description": "Per-category performance breakdown (expand=categories or expand[]=categories). Omitted unless expanded. Object keyed by category name; each value is the precomputed trader_rankings.category_ranks payload (rank, total_in_category, total_pnl, scaled_total_pnl, n_markets, wins, losses, win_rate; scaled_total_pnl is a legacy alias that currently equals total_pnl). RANK BASIS: rank and total_in_category use the same hourly breakpoint publication; categories absent from that publication are omitted until a later publication includes them. Current trader performance values update separately, so this is not a frozen historical record. BASIS: the calibration sample, which admits a position only above a 20 USD notional floor and with a chosen-side entry price strictly inside (0,1), because the ranks and the calibration edge derived from it depend on both rules. That is a different sample from GET /api/v1/trader/{address}/categories, which counts every settled market at any size, and the two differ in both directions. Measured on production 2026-09-22 over the 122,497 wallet-category pairs with at least 20 decided markets on both bases: the floored rate was higher in 56.5% of pairs, lower in 34.5% and equal in 9.0%, median +0.6 points, p10 -4.6, p90 +9.8, and 14.0% of pairs differ by 10 points or more. The difference is not only small positions: on a 1-in-250 wallet sample the same day, admitted markets won 56.6% while markets dropped by the notional floor alone won 45.2% and markets dropped by the entry-price rule alone won 48.7%. n_markets counts every admitted market including the ones that resolved at exactly zero P&L, so it is not the denominator of win_rate: it differed from wins + losses in 15.8% of pairs with at least 5 decided markets. The two tables also run on different clocks, this one updated incrementally and that route rebuilt daily, so a same-day read can differ on timing alone. Use this for rank context and that route for the wallet's plain record. Pass-through DB JSON: keys and value shape are DB-owned, so the inner shape is intentionally unconstrained and may carry additional compatibility fields."
           },
           "quant_metrics": {
             "type": "object",
