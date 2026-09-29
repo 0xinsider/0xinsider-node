@@ -641,8 +641,8 @@ uses the same owner-scoped lifecycle as trader exports.
 Rows contain exact decimal strings and detected whale-alert facts, not all
 provider fills or current wallet grades. For continuation, send the manifest's
 cursor and normalized condition/size filters through
-`client.call("getEventReplaySince", { query: { cursor, condition_id, min_size } })`.
-Deltas
+`client.call("getEventReplaySince", { query })`. Omit null filters and keep the
+`min_size` decimal string unchanged. Deltas
 include already committed post-window arrivals, late trades, and intentional
 overlap: deduplicate on the `wt_` ID (or `payload.whale_alert_id`). This is an
 insertion feed, not updates or deletions. See the OpenAPI manifest for retention,
