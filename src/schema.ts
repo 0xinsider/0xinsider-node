@@ -2473,7 +2473,7 @@ export type Trader = {
     description?: string;
     confidence?: number;
   };
-  /** Per-category performance breakdown (expand=categories or expand[]=categories). Omitted unless expanded. Object keyed by category name; each value is the precomputed trader_rankings.category_ranks payload (rank, total_in_category, total_pnl, scaled_total_pnl, n_markets, wins, losses, win_rate; scaled_total_pnl is a legacy alias that currently equals total_pnl). BASIS: the calibration sample, which admits a position only above a 20 USD notional floor and with a chosen-side entry price strictly inside (0,1), because the ranks and the calibration edge derived from it depend on both rules. That is a different sample from GET /api/v1/trader/{address}/categories, which counts every settled market at any size, and the two differ in both directions. Measured on production 2026-09-22 over the 122,497 wallet-category pairs with at least 20 decided markets on both bases: the floored rate was higher in 56.5% of pairs, lower in 34.5% and equal in 9.0%, median +0.6 points, p10 -4.6, p90 +9.8, and 14.0% of pairs differ by 10 points or more. The difference is not only small positions: on a 1-in-250 wallet sample the same day, admitted markets won 56.6% while markets dropped by the notional floor alone won 45.2% and markets dropped by the entry-price rule alone won 48.7%. n_markets counts every admitted market including the ones that resolved at exactly zero P&L, so it is not the denominator of win_rate: it differed from wins + losses in 15.8% of pairs with at least 5 decided markets. The two tables also run on different clocks, this one updated incrementally and that route rebuilt daily, so a same-day read can differ on timing alone. Use this for rank context and that route for the wallet's plain record. Pass-through DB JSON: keys and value shape are DB-owned, so the inner shape is intentionally unconstrained and may carry additional compatibility fields. */
+  /** Per-category performance breakdown (expand=categories or expand[]=categories). Omitted unless expanded. Object keyed by category name; each value is the precomputed trader_rankings.category_ranks payload (rank, total_in_category, total_pnl, scaled_total_pnl, n_markets, wins, losses, win_rate; scaled_total_pnl is a legacy alias that currently equals total_pnl). RANK BASIS: rank and total_in_category use the same hourly breakpoint publication; categories absent from that publication are omitted until a later publication includes them. Current trader performance values update separately, so this is not a frozen historical record. BASIS: the calibration sample, which admits a position only above a 20 USD notional floor and with a chosen-side entry price strictly inside (0,1), because the ranks and the calibration edge derived from it depend on both rules. That is a different sample from GET /api/v1/trader/{address}/categories, which counts every settled market at any size, and the two differ in both directions. Measured on production 2026-09-22 over the 122,497 wallet-category pairs with at least 20 decided markets on both bases: the floored rate was higher in 56.5% of pairs, lower in 34.5% and equal in 9.0%, median +0.6 points, p10 -4.6, p90 +9.8, and 14.0% of pairs differ by 10 points or more. The difference is not only small positions: on a 1-in-250 wallet sample the same day, admitted markets won 56.6% while markets dropped by the notional floor alone won 45.2% and markets dropped by the entry-price rule alone won 48.7%. n_markets counts every admitted market including the ones that resolved at exactly zero P&L, so it is not the denominator of win_rate: it differed from wins + losses in 15.8% of pairs with at least 5 decided markets. The two tables also run on different clocks, this one updated incrementally and that route rebuilt daily, so a same-day read can differ on timing alone. Use this for rank context and that route for the wallet's plain record. Pass-through DB JSON: keys and value shape are DB-owned, so the inner shape is intentionally unconstrained and may carry additional compatibility fields. */
   category_strengths?: Record<string, unknown>;
   /** Curated advanced risk/performance metrics (expand=quant_metrics or expand[]=quant_metrics). Omitted unless expanded and backed by a computed row strictly under six hours old; a missing row, NULL computed_at, or age of exactly six hours or more is stale and omitted. Provider-input changes may intentionally lag inside the bounded six-hour window. When present, all listed fields are present (each is a number or null); null means insufficient trade history and must not be treated as 0. The fixed field shape is unchanged. */
   quant_metrics?: {
@@ -3107,6 +3107,142 @@ export type WebhookVerification = {
   expires_at: string;
 };
 
+export type WhaleDatasetArtifactManifest = {
+  /** Version of the artifact manifest contract. */
+  manifest_version: string;
+  format: "ndjson";
+  schema_version: "whale_dataset_v1";
+  coverage: "best_effort_detected_whale_alerts";
+  generation: WhaleDatasetGeneration;
+  /** Number of trade rows written. */
+  row_count: number;
+  /** Exact byte count of the decompressed content stream clients receive. */
+  content_size_bytes: number;
+  /** Lowercase SHA-256 of the decompressed content bytes. */
+  content_sha256: string;
+  /** Exact byte count of the gzip-compressed bytes stored by the object provider. */
+  compressed_size_bytes: number;
+  /** Lowercase SHA-256 of the stored gzip bytes; the multipart ETag is not used as this checksum. */
+  compressed_sha256: string;
+};
+
+export type WhaleDatasetContinuation = {
+  path: "/api/v1/events/feed/since";
+  /** Opaque commit-safe replay cursor; replay the same condition_id and min_size. */
+  cursor: string;
+  /** Writer floor included by the replay cursor. It can precede the snapshot horizon to include arrivals after the finite window end. */
+  from_commit_xid: string;
+  condition_id: string | null;
+  /** Normalized USD threshold; pass it to the replay query. */
+  min_size: string | null;
+  deduplication_identity: string;
+  time_window_applies_to_deltas: false;
+  delivery: string;
+};
+
+/** Normalized immutable request; [from, to), maximum 31 days; min_size rounded to cents like durable replay. */
+export type WhaleDatasetFilters = {
+  from: string;
+  to: string;
+  condition_id: string | null;
+  min_size_cents: number | null;
+};
+
+export type WhaleDatasetGeneration = {
+  dataset_schema_version: "whale_dataset_v1";
+  id: string;
+  selected_at: string;
+  consistency: "repeatable_read_commit_horizon";
+  filters: WhaleDatasetFilters;
+  /** All snapshot rows have a writer xid strictly below this closed visibility horizon. Decimal string preserves integer precision. */
+  commit_horizon_xid: string;
+  continuation: WhaleDatasetContinuation;
+  source: "whale_alerts";
+  /** Best-effort detected whale alerts only; not all provider fills. No trader or market enrichment. */
+  coverage: string;
+  expires_at: string;
+  extraction_elapsed_ms: number;
+};
+
+export type WhaleDatasetJob = {
+  object: "whale_dataset_job";
+  data: {
+    job_id: number;
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
+    format: "ndjson";
+    total_trades: number | null;
+    processed_trades: number | null;
+    file_size: number | null;
+    error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** Snapshot selection clock, null until the artifact is written; not provider completeness. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/x-ndjson";
+      content_encoding: "gzip";
+      /** Immutable source, window, replay handoff, count and hashes of both content and gzip bytes. */
+      manifest: WhaleDatasetArtifactManifest | null;
+    };
+    filters: WhaleDatasetFilters;
+  };
+  meta: ResponseMeta;
+};
+
+export type WhaleDatasetTrade = {
+  /** wt_<whale_alert_id>; deduplication identity shared with expanded replay. */
+  id: string;
+  /** Decimal whale-alert ID. */
+  sequence: string;
+  /** trd_<local trader ID>. */
+  trader_id: string;
+  condition_id: string;
+  platform: "polymarket";
+  traded_at: string;
+  side: "BUY" | "SELL";
+  /** Provider outcome index, null before the canonical outcome trust boundary. */
+  outcome_index: number | null;
+  /** Exact stored NUMERIC price; decimal string. */
+  price: string;
+  /** Exact stored NUMERIC USD notional; decimal string. */
+  size_usd: string;
+  /** Writer transaction ID, decimal string. */
+  inserted_xid: string;
+  /** Stored source trade identity. */
+  trade_event_id: string;
+  source_trade_ingested_at: string | null;
+};
+
 /**
  * The `data` payload each operation answers with: what
  * `ApiClient.call<T>` resolves to, and the default `T` of every
@@ -3165,6 +3301,56 @@ export interface OperationData {
       /** Immutable manifest for artifacts generated with manifest support; null on historical artifacts written before this contract. */
       manifest: TraderExportArtifactManifest | null;
     };
+  };
+  cancelWhaleDataset: {
+    job_id: number;
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
+    format: "ndjson";
+    total_trades: number | null;
+    processed_trades: number | null;
+    file_size: number | null;
+    error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** Snapshot selection clock, null until the artifact is written; not provider completeness. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/x-ndjson";
+      content_encoding: "gzip";
+      /** Immutable source, window, replay handoff, count and hashes of both content and gzip bytes. */
+      manifest: WhaleDatasetArtifactManifest | null;
+    };
+    filters: WhaleDatasetFilters;
   };
   createMcpJsonRpcResponse: {
     jsonrpc: "2.0";
@@ -3330,6 +3516,56 @@ export interface OperationData {
   };
   getWebhook: WebhookEndpoint;
   getWeeklyReportSnapshot: ReportSnapshot;
+  getWhaleDatasetStatus: {
+    job_id: number;
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
+    format: "ndjson";
+    total_trades: number | null;
+    processed_trades: number | null;
+    file_size: number | null;
+    error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** Snapshot selection clock, null until the artifact is written; not provider completeness. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/x-ndjson";
+      content_encoding: "gzip";
+      /** Immutable source, window, replay handoff, count and hashes of both content and gzip bytes. */
+      manifest: WhaleDatasetArtifactManifest | null;
+    };
+    filters: WhaleDatasetFilters;
+  };
   getWhaleTrade: LargeTradeDetail;
   listGames: Game[];
   listInsiderRadar: SuspiciousTrade[];
@@ -3411,6 +3647,56 @@ export interface OperationData {
       manifest: TraderExportArtifactManifest | null;
     };
   };
+  submitWhaleDataset: {
+    job_id: number;
+    /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
+    status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
+    format: "ndjson";
+    total_trades: number | null;
+    processed_trades: number | null;
+    file_size: number | null;
+    error: string | null;
+    /** True when status never changes again (ready, failed, expired, cancelled). Stop polling. */
+    terminal: boolean;
+    /** What to do next: poll the status route after poll_after_s, follow the download route, or submit a new export. Published beside status so a status value added later does not strand a client. */
+    next_action: "poll" | "download" | "resubmit";
+    /** Seconds to wait before polling again. Absent when terminal. 5 while queued, running or cancel_requested; 300 while reconcile_required, the cadence that state can change at. */
+    poll_after_s?: number;
+    created_at: string;
+    /** When the worker last claimed the job; null while queued. */
+    started_at: string | null;
+    /** When the file became downloadable. null before ready, and on jobs finalized before this field existed. */
+    ready_at: string | null;
+    failed_at: string | null;
+    /** The retention window: 24 hours from submit. A ready file downloads until this instant; a job that has not reached ready by it fails. A reused job (200 on submit) keeps its original window. */
+    expires_at: string;
+    /** When the job became expired; null until then. */
+    expired_at: string | null;
+    /** Snapshot selection clock, null until the artifact is written; not provider completeness. */
+    data_as_of: string | null;
+    /** When the owner asked to cancel the job; null otherwise. Set on every cancelled job, including one cancelled while queued. While status is cancel_requested this is the instant the worker was asked to stop. */
+    cancel_requested_at: string | null;
+    /** When the job reached cancelled; null until then. */
+    cancelled_at: string | null;
+    /** Worker claims so far. */
+    attempt: number;
+    /** The job fails when attempt reaches this. */
+    max_attempts: number;
+    /** Present only while status is ready: the stored object's identity, so a client can check the download it receives. */
+    artifact?: {
+      /** Stable identity for this completed export artifact; unchanged when a temporary download URL is renewed. */
+      artifact_id: string;
+      /** The storage ETag of the object. */
+      etag: string | null;
+      /** Bytes on the wire (gzip); file_size is the decompressed size. */
+      compressed_size_bytes: number | null;
+      content_type: "application/x-ndjson";
+      content_encoding: "gzip";
+      /** Immutable source, window, replay handoff, count and hashes of both content and gzip bytes. */
+      manifest: WhaleDatasetArtifactManifest | null;
+    };
+    filters: WhaleDatasetFilters;
+  };
   updateWebhook: WebhookEndpoint;
   verifyWebhook: WebhookEndpoint;
 }
@@ -3425,6 +3711,7 @@ export interface OperationQuery {
     /** Export job id returned by the submit route. */
     job_id: number;
   };
+  cancelWhaleDataset: Record<string, never>;
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
   deleteWebhook: Record<string, never>;
@@ -3596,6 +3883,7 @@ export interface OperationQuery {
     /** ISO week selector in YYYY-WW format; alternative to from/to. Selects a durable canonical snapshot. A week that ends before 2024-03-01, the first day report data covers, or starts after tomorrow UTC returns 400 bad_request with error.param=week. */
     week?: string;
   };
+  getWhaleDatasetStatus: Record<string, never>;
   getWhaleTrade: Record<string, never>;
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
@@ -3932,6 +4220,7 @@ export interface OperationQuery {
     /** true: do not reuse a finished, running or reconciling job; only a queued job is reused, so the file is a snapshot read after this submit. Consumes quota when nothing is queued. Default false. */
     fresh?: boolean;
   };
+  submitWhaleDataset: Record<string, never>;
   updateWebhook: Record<string, never>;
   verifyWebhook: Record<string, never>;
 }
@@ -3948,6 +4237,10 @@ export interface OperationPath {
   cancelTraderExport: {
     /** Trader wallet address (0x...), known trader username-style lookup, or trd_-prefixed trader ID emitted by this API. */
     address: string;
+  };
+  cancelWhaleDataset: {
+    /** Dataset job ID returned by submit; another owner or a trader export returns 404. */
+    job_id: number;
   };
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
@@ -4055,6 +4348,10 @@ export interface OperationPath {
     id: number;
   };
   getWeeklyReportSnapshot: Record<string, never>;
+  getWhaleDatasetStatus: {
+    /** Dataset job ID returned by submit; another owner or a trader export returns 404. */
+    job_id: number;
+  };
   getWhaleTrade: {
     /** Raw whale_alerts.id or wt_-prefixed whale trade id. */
     id: string;
@@ -4127,6 +4424,7 @@ export interface OperationPath {
     /** Trader wallet address (0x...), known trader username-style lookup, or trd_-prefixed trader ID emitted by this API. */
     address: string;
   };
+  submitWhaleDataset: Record<string, never>;
   updateWebhook: {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
@@ -4159,6 +4457,7 @@ export interface OperationBody {
     expand?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
   };
   cancelTraderExport: never;
+  cancelWhaleDataset: never;
   createMcpJsonRpcResponse: {
     /** JSON-RPC protocol version; this server accepts 2.0. */
     jsonrpc: "2.0";
@@ -4208,6 +4507,7 @@ export interface OperationBody {
   getUsage: never;
   getWebhook: never;
   getWeeklyReportSnapshot: never;
+  getWhaleDatasetStatus: never;
   getWhaleTrade: never;
   listGames: never;
   listInsiderRadar: never;
@@ -4241,6 +4541,14 @@ export interface OperationBody {
   searchContent: never;
   searchMarkets: never;
   submitTraderExport: never;
+  submitWhaleDataset: {
+    from: string;
+    to: string;
+    /** Raw provider condition id or mkt_-prefixed id. */
+    condition_id?: string;
+    /** USD minimum, normalized to cents like replay. */
+    min_size?: number;
+  };
   updateWebhook: UpdateWebhookRequest;
   verifyWebhook: VerifyWebhookRequest;
 }
@@ -4272,6 +4580,7 @@ export interface OperationResponse {
     meta: BatchResponseMeta;
   };
   cancelTraderExport: TraderExportJob;
+  cancelWhaleDataset: WhaleDatasetJob;
   createMcpJsonRpcResponse: {
     jsonrpc: "2.0";
     id: string | number | null;
@@ -4481,6 +4790,7 @@ export interface OperationResponse {
     data: OperationData["getWeeklyReportSnapshot"];
     meta: ResponseMeta;
   };
+  getWhaleDatasetStatus: WhaleDatasetJob;
   getWhaleTrade: {
     object: "whale_trade";
     data: OperationData["getWhaleTrade"];
@@ -4752,6 +5062,7 @@ export interface OperationResponse {
     meta: ResponseMeta;
   };
   submitTraderExport: TraderExportJob;
+  submitWhaleDataset: WhaleDatasetJob;
   updateWebhook: {
     object: "webhook";
     data: OperationData["updateWebhook"];
