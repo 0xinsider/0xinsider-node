@@ -19968,10 +19968,19 @@
             "name": "min_size",
             "in": "query",
             "required": false,
-            "description": "Only trades of at least this size in USD (compared in cents). Bound to the cursor.",
+            "description": "Only trades of at least this USD amount. Decimal and scientific query spellings normalize exactly to cents, rounding half away from zero; maximum 1e15 USD. Pass the dataset continuation decimal string unchanged to preserve the bound. Bound to the cursor.",
             "schema": {
-              "type": "number",
-              "minimum": 0
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000000.0
+                },
+                {
+                  "type": "string",
+                  "description": "Exact decimal query spelling, including scientific notation."
+                }
+              ]
             }
           },
           {

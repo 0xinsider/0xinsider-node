@@ -3749,8 +3749,8 @@ export interface OperationQuery {
     condition_id?: string;
     /** Only trades by wallets at this grade or better (S best), read from the wallet's newest ranking at request time; a wallet with no grade never passes. Bound to the cursor. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** Only trades of at least this size in USD (compared in cents). Bound to the cursor. */
-    min_size?: number;
+    /** Only trades of at least this USD amount. Decimal and scientific query spellings normalize exactly to cents, rounding half away from zero; maximum 1e15 USD. Pass the dataset continuation decimal string unchanged to preserve the bound. Bound to the cursor. */
+    min_size?: number | string;
     /** Backward-compatible alias for expand. Repeatable: trade. */
     "expand[]"?: "trade"[];
     /** Repeatable. trade adds the public trade read to every event (the object GET /api/v1/whale-trades/{id} returns for it), from one query per page, so a page of 100 events needs no per-event detail request. Not bound to the cursor: switch it on or off mid-walk. */
