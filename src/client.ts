@@ -148,6 +148,10 @@ export interface ApiUnsupportedOperation {
  * operation belongs in `REDIRECT_OPERATIONS` below, not here.
  */
 export const API_CLIENT_OPERATIONS = [
+  { method: "POST", path: "/api/v1/datasets/whale-trades", operationId: "submitWhaleDataset", auth: "bearer" },
+  { method: "GET", path: "/api/v1/datasets/whale-trades/{job_id}", operationId: "getWhaleDatasetStatus", auth: "bearer" },
+  { method: "POST", path: "/api/v1/datasets/whale-trades/{job_id}/cancel", operationId: "cancelWhaleDataset", auth: "bearer" },
+
   { method: "GET", path: "/api/v1/me", operationId: "getAccountIdentity", auth: "bearer" },
   {
     method: "GET",
@@ -676,6 +680,7 @@ export type SseOperationId = Extract<
  * operation to be declared here, so one cannot go missing in silence again.
  */
 export const REDIRECT_OPERATIONS = [
+
   {
     method: "GET",
     path: "/api/v1/trader/{address}/export/download",
@@ -685,6 +690,7 @@ export const REDIRECT_OPERATIONS = [
     handledBy:
       "getTraderExportDownloadUrl() resolves the Location; downloadTraderExport() then fetches the object with no Authorization header.",
   },
+  { method: "GET", path: "/api/v1/datasets/whale-trades/{job_id}/download", operationId: "downloadWhaleDataset", auth: "bearer", status: 302, handledBy: "getWhaleDatasetDownloadUrl() resolves Location; fetch it without Authorization and verify the manifest hashes." },
   {
     method: "GET",
     path: "/api/v1/openapi.json",
@@ -761,6 +767,7 @@ export const READ_ONLY_POST_OPERATIONS = [
  * an `Idempotency-Key` on them, so one is refused like on any other write.
  */
 export const CONVERGENT_WRITE_OPERATIONS = [
+  "cancelWhaleDataset",
   "cancelTraderExport",
 ] as const satisfies readonly ApiOperationId[];
 
@@ -2106,6 +2113,62 @@ export class OxinsiderApiClient {
    * job. The manifest is immutable for the artifact; the download URL remains
    * temporary and is resolved separately.
    */
+  /** Submit a bounded cross-market snapshot; repeated identical live requests reuse it. */
+  submitWhaleDataset(body: OperationBody["submitWhaleDataset"], options: ConvenienceOptions = {}) {
+    return this.call("submitWhaleDataset", { ...options, body });
+  }
+
+  getWhaleDatasetStatus(jobId: number, options: ConvenienceOptions = {}) {
+    return this.call("getWhaleDatasetStatus", { ...options, path: { job_id: jobId } });
+  }
+
+  cancelWhaleDataset(jobId: number, options: ConvenienceOptions = {}) {
+    return this.call("cancelWhaleDataset", { ...options, path: { job_id: jobId } });
+  }
+
+  /** Resolve only the signed URL. Never log it or forward API credentials to storage. */
+  async getWhaleDatasetDownloadUrl(jobId: number, options: ConvenienceOptions = {}): Promise<TraderExportDownloadTarget> {
+    return this.request(
+      { method: "GET", path: "/api/v1/datasets/whale-trades/{job_id}/download", operationId: "downloadWhaleDataset", auth: "bearer" },
+      { ...options, path: { job_id: jobId } },
+      async (response) => {
+        const location = response.headers.get("location");
+        if (!location) throw new InvalidResponseError(response.status, "Dataset redirect has no readable Location; use a server runtime.", null);
+        return presignedTarget(location);
+      },
+      { isSuccess: (response) => response.status === 302, redirect: "manual" },
+    );
+  }
+
+  /** Stream decoded NDJSON, validating its manifest hash when the body finishes. */
+  async downloadWhaleDataset(jobId: number, options: TraderExportDownloadOptions = {}): Promise<TraderExportDownload> {
+    const { downloadTimeoutMs, verifyChecksum = true, ...requestOptions } = options;
+    const status = await this.getWhaleDatasetStatus(jobId, requestOptions);
+    if (isApiNotModifiedResponse(status) || status.data.status !== "ready" || !status.data.artifact?.manifest) {
+      throw new InvalidResponseError(200, "Dataset has no ready manifest; follow next_action on the status resource.", status);
+    }
+    const manifest = status.data.artifact.manifest;
+    const target = await this.getWhaleDatasetDownloadUrl(jobId, requestOptions);
+    const signal = composeRequestSignal(downloadTimeoutMs ?? null, options.signal);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(target.url, { method: "GET", signal: signal.signal });
+      if (!response.ok) throw new InvalidResponseError(response.status, "Dataset signed URL failed; request a fresh download URL.", null);
+      if (verifyChecksum) response = verifyExportBody(response, jobId, manifest.content_sha256, manifest.content_size_bytes);
+      response = releaseWhenBodySettles(response, signal.dispose);
+    } catch (error: unknown) {
+      signal.dispose?.();
+      throw error;
+    }
+    const length = response.headers.get("content-length");
+    return {
+      ...target, response, filename: filenameFromDisposition(response.headers.get("content-disposition")),
+      contentLength: length === null ? null : Number.parseInt(length, 10),
+      contentType: response.headers.get("content-type"),
+      integrity: verifyChecksum ? { algorithm: "sha256", expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes } : null,
+    };
+  }
+
   getTraderExportStatus(
     address: OperationPath["getTraderExportStatus"]["address"],
     jobId: OperationQuery["getTraderExportStatus"]["job_id"],
@@ -2524,10 +2587,15 @@ export class OxinsiderApiClient {
    *
    * The response `data` keeps request order and one row per input, duplicates
    * included; a row is `status: "ok"` with `data`, or `status: "error"` with
-   * the item's own `error` (an unknown identity is a per-item `not_found`, not
-   * a request failure). `meta` is the batch's `BatchResponseMeta`:
-   * `request_cost` and `rate_limit` follow the batch item quota, not the
-   * per-request one.
+   * the item's own `error`. An identity that resolves to nothing is a per-item
+   * error, never a request failure, and since #18135 the route answers the
+   * `not_found` this comment already promised: a username, `trd_` id or
+   * numeric trader id that names no trader is `not_found` with `error.param`
+   * `"traders"`, where it used to be an `ok` row with the input echoed into
+   * `address`. A wallet address the API does not track yet stays `ok` with
+   * `sync_status: "unknown"`, because that address is real and may still be
+   * graded. `meta` is the batch's `BatchResponseMeta`: `request_cost` and
+   * `rate_limit` follow the batch item quota, not the per-request one.
    */
   batchGetTraders(
     traders: OperationBody["batchGetTraders"]["traders"],

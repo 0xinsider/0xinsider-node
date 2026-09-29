@@ -628,3 +628,22 @@ Compare `OPENAPI_SHA256` with `curl -s https://0xinsider.com/api/v1/openapi.json
 ## License
 
 MIT
+
+## Immutable whale datasets
+
+`submitWhaleDataset({ from, to, condition_id?, min_size? })` submits a past
+window up to 31 days. Poll `getWhaleDatasetStatus(jobId)` according to
+`next_action` and `poll_after_s`. `downloadWhaleDataset(jobId)` streams decoded
+NDJSON and verifies the immutable content checksum when the body finishes.
+The signed URL is never sent your API credential. `cancelWhaleDataset(jobId)`
+uses the same owner-scoped lifecycle as trader exports.
+
+Rows contain exact decimal strings and detected whale-alert facts, not all
+provider fills or current wallet grades. For continuation, send the manifest's
+cursor and normalized condition/size filters through
+`client.call("getEventReplaySince", { query })`. Omit null filters and keep the
+`min_size` decimal string unchanged. Deltas
+include already committed post-window arrivals, late trades, and intentional
+overlap: deduplicate on the `wt_` ID (or `payload.whale_alert_id`). This is an
+insertion feed, not updates or deletions. See the OpenAPI manifest for retention,
+row/byte bounds and source coverage.
