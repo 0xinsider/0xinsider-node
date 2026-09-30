@@ -145,6 +145,7 @@ export {
   PickNotReleasedError,
   RateLimitUnavailableError,
   RequestTimeoutError,
+  ResponseBodyReadError,
   ServerTimeoutError,
   RateLimitedError,
   ReadModelWarmingError,

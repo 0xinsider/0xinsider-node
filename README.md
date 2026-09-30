@@ -570,7 +570,9 @@ A delivery that exhausts its retries, or that was queued when its endpoint was d
 
 ## Errors
 
-Every non-2xx response throws an `OxinsiderApiError`. The SDK dispatches to a specific subclass by the documented error code:
+Every readable non-2xx response throws an `OxinsiderApiError`. The SDK dispatches to a specific subclass by the documented error code:
+
+An owned JSON/text body that fails during consumption throws `ResponseBodyReadError`, carrying `responseStatus`, `phase: "response_body"` and original transport `cause`. Its message includes no body or credential. Client deadlines keep `RequestTimeoutError`, caller cancellation keeps its exact reason, and invalid JSON remains a response-contract failure. Already consumed/locked custom-fetch responses and allocation failures keep their local rejection. Body failures gain no automatic retry; reconcile an uncertain write before replaying it.
 
 | Code | Subclass |
 | --- | --- |

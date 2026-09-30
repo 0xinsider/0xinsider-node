@@ -25,6 +25,7 @@ import { createHash } from "node:crypto";
 import { errorFromResponse, ExportIntegrityError, OxinsiderApiError,
   InvalidResponseError,
   RequestTimeoutError,
+  ResponseBodyReadError,
 } from "./errors.js";
 import {
   RETRY_AFTER_CEILING_MS,
@@ -2091,7 +2092,7 @@ export class OxinsiderApiClient {
     return this.request(
       operation,
       options,
-      async (response) => response.text(),
+      async (response) => readResponseText(response),
       { accept: "text/markdown, text/plain;q=0.9, */*;q=0.1" },
     );
   }
@@ -3339,8 +3340,20 @@ export function interpolatePath(
   });
 }
 
+async function readResponseText(response: Response): Promise<string> {
+  const unusable = response.bodyUsed || response.body?.locked === true;
+  try {
+    return await response.text();
+  } catch (error) {
+    // A consumed/locked custom-fetch response or failed allocation is a local
+    // contract failure, rather than evidence of a transport interruption.
+    if (unusable || error instanceof RangeError) throw error;
+    throw new ResponseBodyReadError(response.status, error);
+  }
+}
+
 async function parseJson(response: Response): Promise<unknown> {
-  const text = await response.text();
+  const text = await readResponseText(response);
   if (text === "") {
     return null;
   }

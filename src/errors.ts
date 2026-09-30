@@ -176,6 +176,21 @@ export class RequestTimeoutError extends Error {
 }
 
 /**
+ * An owned JSON/text response failed while its body was being read.
+ * Headers may have arrived successfully; no body, URL or credential is copied.
+ * The native read failure is retained as cause. Client deadlines and caller
+ * abort reasons take precedence, and this failure does not trigger a retry.
+ */
+export class ResponseBodyReadError extends Error {
+  readonly phase = "response_body" as const;
+
+  constructor(readonly responseStatus: number, cause: unknown) {
+    super("0xinsider API response body could not be read", { cause });
+    this.name = "ResponseBodyReadError";
+  }
+}
+
+/**
  * The export object was read, but its streamed bytes did not match the
  * immutable manifest returned by the status route. The partial file must be
  * discarded before requesting a fresh download.
