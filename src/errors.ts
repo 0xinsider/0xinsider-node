@@ -157,10 +157,9 @@ export interface ApiErrorMeta {
 }
 
 /**
- * The request missed its deadline (`timeoutMs`) before any response arrived.
- * Not an `OxinsiderApiError`: there is no status, body, or request id. Retry
- * with backoff; a persistent timeout is a network or service problem, not a
- * rejected request (#11115).
+ * The SDK's deadline (`timeoutMs`) expired during the request, body read, or
+ * retry backoff. Caller cancellation preserves the caller's exact reason.
+ * Not an `OxinsiderApiError`: there is no status, body, or request id.
  */
 export class RequestTimeoutError extends Error {
   readonly operationId: string;

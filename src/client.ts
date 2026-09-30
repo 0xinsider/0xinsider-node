@@ -1033,6 +1033,7 @@ export function composeSignals(
 
 interface RequestSignal {
   signal: AbortSignal | undefined;
+  timeout?: AbortSignal;
   dispose?: () => void;
 }
 
@@ -1044,9 +1045,9 @@ function composeRequestSignal(
   const timeout =
     timeoutMs === null ? undefined : AbortSignal.timeout(timeoutMs);
   if (!timeout) return { signal: caller };
-  if (!caller) return { signal: timeout };
+  if (!caller) return { signal: timeout, timeout };
   if (typeof AbortSignal.any === "function") {
-    return { signal: AbortSignal.any([caller, timeout]) };
+    return { signal: AbortSignal.any([caller, timeout]), timeout };
   }
   const controller = new AbortController();
   const dispose = () => {
@@ -1069,7 +1070,7 @@ function composeRequestSignal(
     caller.addEventListener("abort", onCallerAbort, { once: true });
     timeout.addEventListener("abort", onTimeoutAbort, { once: true });
   }
-  return { signal: controller.signal, dispose };
+  return { signal: controller.signal, timeout, dispose };
 }
 
 /**
@@ -2435,6 +2436,7 @@ export class OxinsiderApiClient {
       let response: Response;
       for (let attempt = 0; ; attempt += 1) {
         try {
+          requestSignal.signal?.throwIfAborted();
           response = await this.fetchImpl(url, {
             method: operation.method,
             headers,
@@ -2467,10 +2469,12 @@ export class OxinsiderApiClient {
     } catch (error: unknown) {
       if (
         timeoutMs !== null &&
-        (isTimeoutAbort(error) ||
-          (requestSignal.signal?.aborted &&
-            isTimeoutAbort(requestSignal.signal.reason)))
+        requestSignal.timeout?.aborted &&
+        requestSignal.signal?.aborted &&
+        requestSignal.signal.reason === requestSignal.timeout.reason
       ) {
+        // Composition preserves the first abort reason. Identity records which
+        // source won even when both have fired before this catch runs (#19749).
         throw new RequestTimeoutError(operationId, timeoutMs);
       }
       if (requestSignal.signal?.aborted) {
