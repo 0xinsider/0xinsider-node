@@ -90,7 +90,7 @@ shipping as a stale type.
 
 ## Pick proof by stable identity
 
-`getPickOfTheDayLedgerEntry(pickId)` reads the public proof for one pick without an API key. Keep `pick_id` as its decimal string; converting it to `Number` can lose precision. `publication_order` is a scheduling slot, and `is_free_selection` names the free selection independently of the viewer. `supersedes_pick_id` links a replacement to its original row.
+`getPickOfTheDayLedgerEntry(pickId)` reads the public proof for one pick without an API key. Keep `pick_id` as its decimal string; converting it to `Number` can lose precision.
 
 ```ts
 const publicClient = new OxinsiderApiClient();
