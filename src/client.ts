@@ -849,6 +849,9 @@ export interface ApiRequestOptions {
    * when the outcome is unknown after a timeout or exhausted retries, send
    * the SAME key and body again to learn what happened; never mint a new key
    * for the same intent.
+   * The effective header, after this option overrides `headers`, must be
+   * nonempty after trimming and at most 255 UTF-8 bytes. Invalid keys throw
+   * before fetch, even with `maxRetries: 0`; omit the key for one attempt.
    */
   idempotencyKey?: string;
 }
@@ -2405,7 +2408,7 @@ export class OxinsiderApiClient {
     // request would be retried as though replayable while the route repeats
     // its effect (#16182). Refuse it here, before anything is sent.
     const eligibility = retryEligibility(operation);
-    const keyed = headers.has("idempotency-key");
+    const keyed = headers.get("idempotency-key") !== null;
     if (keyed && eligibility !== "keyed") {
       throw new Error(
         `${operationId} does not honour Idempotency-Key; the API replays only ${IDEMPOTENT_WRITE_OPERATIONS.join(", ")}. Remove idempotencyKey: a retry of this request could repeat its side effect.`,
@@ -3245,6 +3248,18 @@ export class OxinsiderApiClient {
     }
     if (options.idempotencyKey !== undefined) {
       headers.set("idempotency-key", options.idempotencyKey);
+    }
+    // Validate the effective value after the explicit option has overridden
+    // custom headers. The backend trims it before checking its byte limit;
+    // a blank header is treated as no durable replay key (#19748).
+    const idempotencyKey = headers.get("idempotency-key");
+    if (idempotencyKey !== null) {
+      const key = idempotencyKey.trim();
+      if (key.length === 0 || new TextEncoder().encode(key).byteLength > 255) {
+        throw new Error(
+          "Idempotency-Key must be nonempty after trimming and at most 255 UTF-8 bytes. Supply a stable nonempty key or omit it to send the mutation once.",
+        );
+      }
     }
     if (options.strictQuery) {
       headers.set("x-query-validation", "strict");
