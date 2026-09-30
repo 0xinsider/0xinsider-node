@@ -1698,7 +1698,7 @@ export interface TraderExportDownloadTarget {
   /**
    * When the link stops working, read from the URL's own SigV4
    * `X-Amz-Date` and `X-Amz-Expires`. Absent when the URL does not carry
-   * them; the API signs a one-hour link today.
+   * them. Links last at most one hour and cannot outlive artifact retention.
    */
   expiresAt?: string;
 }
@@ -2314,7 +2314,7 @@ export class OxinsiderApiClient {
       downloadSignal.dispose?.();
       throw new InvalidResponseError(
         response.status,
-        `The presigned export URL answered ${response.status}. A presigned link is valid for about an hour; request a fresh one with getTraderExportDownloadUrl.`,
+        `The presigned export URL answered ${response.status}. Links last at most one hour and cannot outlive artifact retention. Request a fresh link with getTraderExportDownloadUrl; if the job is expired, submit a new export.`,
         null,
       );
     }

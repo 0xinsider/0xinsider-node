@@ -251,7 +251,9 @@ const sandbox = OxinsiderApiClient.sandbox({ apiKey: registered.data.api_key });
 
 // A finished export. The second request carries no headers at all, so your
 // live key never reaches the object store; the presigned URL authorizes
-// itself and expires in about an hour.
+// itself. Read expiresAt: links last at most one hour and cannot outlive
+// artifact retention. Request a fresh link while retained, or a new export
+// after the job expires.
 const { response, filename, expiresAt } = await client.downloadTraderExport(address, jobId);
 await pipeline(Readable.fromWeb(response.body), createWriteStream(filename ?? "export.json"));
 ```
@@ -259,6 +261,8 @@ await pipeline(Readable.fromWeb(response.body), createWriteStream(filename ?? "e
 `meta.status` is on every envelope: `201` on `registerAgent`, `202` on a `submitTraderExport` that queued a new job and `200` on one that returned a job already running, `200` everywhere else. The body is identical either way, so this is the only way to tell them apart.
 
 The object fetch in `downloadTraderExport` has no deadline by default, the way the SSE stream has none: pass `signal` to cancel it or `downloadTimeoutMs` for one of your own, and read `response.body` as a stream rather than buffering a multi-gigabyte file. `getTraderExportDownloadUrl` reads the redirect with `redirect: "manual"`, which browsers answer with an opaque redirect no script can read; it says so rather than guessing, so run downloads from a server runtime.
+
+Signed download URLs last at most 1 hour and never past the export job's `expires_at`. Use the returned `expiresAt`, which comes from the URL's signing fields, rather than assuming every link lasts 1 hour. Request a fresh URL while the job is retained; after `410 export_expired`, submit a new export.
 
 `REDIRECT_OPERATIONS` and `UNSUPPORTED_OPERATIONS` are exported so you can see what is not wrapped and why. Today that is the public `GET /api/v1/openapi.json` redirect (fetch it directly) and `GET /api/v1/mcp`, which answers `405` by design because the endpoint offers no server-to-client stream.
 
