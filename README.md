@@ -24,7 +24,7 @@ The types are generated from the [published OpenAPI document](https://0xinsider.
 npm install @0xinsider/sdk
 ```
 
-The first npm release is pending. Until it lands, build the package from this repository and install it from the folder (npm 12 refuses git dependencies by default, so `npm install github:...` does not work):
+For local SDK development, build this repository and install it from the folder:
 
 ```bash
 git clone https://github.com/0xinsider/0xinsider-node
