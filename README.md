@@ -582,7 +582,9 @@ try {
 }
 ```
 
-Each error exposes `status`, `code`, `error` (the `{ code, message, doc_url, param }` body), `meta`, `requestId`, and the raw `body`.
+Each error exposes `status`, `code`, `error` (the `{ code, message, doc_url, param }` body), `meta`, `requestId`, `retryAfterSeconds`, and the raw `body`. `requestId` prefers JSON `meta.request_id`, falling back to a nonempty received `X-Request-ID` header. The header never creates a synthetic `meta` object. Every HTTP error retains parsed `Retry-After` guidance, including generic 502/504 errors and plain-text or empty bodies; an absent or invalid header gives `null`. This guidance does not authorize replaying a mutation or change which requests the SDK retries. `retryAt` remains the parsed body `error.retry_at`, or `null`.
+
+Direct error constructors accept optional `ApiErrorTransportMetadata` after their existing arguments. `errorFromResponse(status, body, retryAfterSeconds?, { requestId }?)` preserves the same subclass selection and all existing calls.
 
 ## Authentication
 

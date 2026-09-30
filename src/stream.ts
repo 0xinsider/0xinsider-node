@@ -294,6 +294,7 @@ export async function* streamFeed(
       response.status,
       tryParse(body),
       retryAfterSeconds(response),
+      { requestId: response.headers.get("x-request-id") },
     );
   }
   // A 2xx that is not an event stream (an HTML page from a proxy, a JSON body
