@@ -864,7 +864,7 @@
       "get": {
         "operationId": "getTrader",
         "summary": "Get trader",
-        "description": "Returns a trader's grade (S through F; ranked about 95% by realized profit, with calibration, track record, and consistency as a tie-breaker and proven-trader guardrails), P&L, win rate, and optional strategy/category data. The path accepts either an Ethereum wallet address, a known trader username, or a trd_-prefixed trader ID emitted by this API. A wallet address this API does not track yet returns 200 with sync_status \"unknown\" instead of 404, so it can be polled. A value that is not a wallet address and matches no username or trader ID this API knows returns 404 not_found with error.param address; it is never echoed back as a trader address. The additive `pnl.exact.realized` and `stats.exact.total_volume` fields carry decimal strings from verified source atoms with unit, scale and basis metadata; parse them with decimal-safe arithmetic and keep the existing numeric twins for display.",
+        "description": "Returns a trader's grade (S through F), P&L, win rate, and optional strategy/category data. The path accepts either an Ethereum wallet address, a known trader username, or a trd_-prefixed trader ID emitted by this API. A wallet address this API does not track yet returns 200 with sync_status \"unknown\" instead of 404, so it can be polled. A value that is not a wallet address and matches no username or trader ID this API knows returns 404 not_found with error.param address; it is never echoed back as a trader address. The additive `pnl.exact.realized` and `stats.exact.total_volume` fields carry decimal strings from verified source atoms with unit, scale and basis metadata; parse them with decimal-safe arithmetic and keep the existing numeric twins for display.",
         "tags": ["Traders"],
         "parameters": [
           {"name": "X-Query-Validation", "in": "header", "required": false, "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.", "schema": {"type": "string", "enum": ["strict"]}},
@@ -9336,7 +9336,7 @@
       "get": {
         "operationId": "getPickOfTheDay",
         "summary": "Get today's Pick of the Day",
-        "description": "Returns the published picks for the current product day. Pro tier.\n\n`picks` holds up to ten ranked picks. Each pick carries the backed side, the pre-game price, the flat stake (`stake_usd`, 1000) and its return (`return_usd`; `return_per_100` keeps the literal $100 basis), the sharp-money holders, the grade, and a thesis. The price is frozen before kickoff. A prior day's pick never appears here; read the archive for it.\n\n`scheduled_picks` lists same-day slots that are selected but not released yet. Each slot exposes only `pick_rank`, `release_at`, and `kickoff`.\n\nWhen no pick is published for the current product day, the endpoint returns `404` with `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason; the code is frozen. The `404` is a schedule, not an outage.\n\nDo not poll. Read `Retry-After` or `error.retry_at` and schedule one request for that instant. The `404` response below says how the instant is chosen.",
+        "description": "Returns published picks for the current product day. Pro tier.\n\n`picks` holds up to ten selections with the selected side, game context, frozen publication price, modeled stake and return, holder positions and grades, and execution permission when available. `publication_order` describes presentation, and `is_free_selection` describes access; neither is a quality rating.\n\nNew eligible selections use a neutral presentation order. Standing selections retain their identity, slot, and release schedule, and later additions fill available slots. Historical IDs, order, and proof bytes remain unchanged.\n\n`scheduled_picks` contains selected but unreleased slots with `pick_rank`, `release_at`, and `kickoff`. A prior day's pick never appears here; use the archive for past results.\n\nWhen no pick is published for the current product day, the endpoint returns `404` with `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason and schedule one request using `Retry-After` or `error.retry_at` instead of polling.",
         "tags": [
           "Pick of the Day"
         ],
@@ -9526,156 +9526,7 @@
                           "matchup_title": "Portugal – Uzbekistan"
                         },
                         "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research.",
-                        "trust": {
-                          "qualifying_expert": {
-                            "source": {
-                              "kind": "computed",
-                              "owner": "pick_of_the_day",
-                              "field": "qualifying_expert"
-                            },
-                            "freshness": {
-                              "status": "not_live"
-                            },
-                            "reconciliation": {
-                              "status": "not_applicable",
-                              "detail": "the selector evaluated this pick and no qualifying category expert was recorded on the backed side"
-                            },
-                            "completeness": {
-                              "status": "not_applicable",
-                              "detail": "the selector evaluated this pick and no qualifying category expert was recorded on the backed side"
-                            }
-                          }
-                        },
-                        "pick_id": "1000",
-                        "publication_order": 1,
-                        "is_free_selection": true,
-                        "supersedes_pick_id": null
-                      },
-                      "meta": {
-                        "request_id": "req_example",
 
-
-                        "cached": false,
-                        "cost": 1
-                      }
-                    }
-                  },
-                  "specialist_evidence_unavailable": {
-                    "summary": "Identical absent qualifying_expert, but the stored evidence is malformed. Read trust before concluding that no specialist backed the pick.",
-                    "value": {
-                      "object": "pick_of_the_day",
-                      "data": {
-                        "state": "full",
-                        "pick_date": "2026-06-23",
-                        "matchup": "Portugal vs. Uzbekistan",
-                        "category": "Soccer",
-                        "display_category": "Soccer",
-                        "platform": "polymarket",
-                        "release_at": "2026-06-23T17:00:00Z",
-                        "is_locked": false,
-                        "outcome": "pending",
-                        "pick_outcome_label": "Portugal",
-                        "position": "Portugal to win",
-                        "side_summary": "1 profitable wallet on Portugal",
-                        "sharp_wallet_count": 1,
-                        "smart_wallet_count": 1,
-                        "top_grade": "A",
-                        "sharp_usd": 48250,
-                        "smart_usd": 48250,
-                        "backed_price": 0.62,
-                        "stake_usd": 1000,
-                        "return_usd": 1612.9,
-                        "return_per_100": 161.29,
-                        "clv_status": "pending",
-                        "market_pct": 0.62,
-                        "traders": 1,
-                        "holders": [
-                          {
-                            "address": "0x0000000000000000000000000000000000000000",
-                            "name": "swisstony",
-                            "grade": "A",
-                            "last_traded_at": "2026-06-18T17:42:10Z",
-                            "shares": 12500
-                          }
-                        ],
-                        "display_holders": [
-                          {
-                            "address": "0x0000000000000000000000000000000000000000",
-                            "name": "swisstony",
-                            "grade": "A",
-                            "last_traded_at": "2026-06-18T17:42:10Z",
-                            "shares": 12500,
-                            "category_win_rate": 0.64,
-                            "category_win_record": {
-                              "wins": 16,
-                              "decided": 25
-                            },
-                            "category_win_rate_status": "measured"
-                          },
-                          {
-                            "address": "0x1111111111111111111111111111111111111111",
-                            "name": "marketmaker",
-                            "grade": "B",
-                            "last_traded_at": "2026-06-18T17:42:10Z",
-                            "shares": 9800,
-                            "category_win_rate_status": "not_enough_data"
-                          }
-                        ],
-                        "holder_count": 1,
-                        "thesis": "Profitable wallets hold Portugal, led by a grade-A trader.",
-                        "market_url": "https://0xinsider.com/event/portugal-vs-uzbekistan",
-                        "event_slug": "portugal-vs-uzbekistan",
-                        "event_link_slug": "portugal-vs-uzbekistan",
-                        "sports_context": {
-                          "league_name": "FIFA World Cup",
-                          "league_logo": "https://polymarket.com/leagues/fifa-world-cup.png",
-                          "yes_team": {
-                            "label": "Portugal",
-                            "short_label": "POR",
-                            "full_name": "Portugal national football team",
-                            "provider_id": 1421,
-                            "logo": "https://polymarket.com/teams/portugal.png",
-                            "logo_mark_dark": false,
-                            "color": "#C8102E",
-                            "record": null,
-                            "score": null
-                          },
-                          "no_team": {
-                            "label": "Uzbekistan",
-                            "short_label": "UZB",
-                            "full_name": "Uzbekistan national football team",
-                            "provider_id": 1738,
-                            "logo": "https://polymarket.com/teams/uzbekistan.png",
-                            "logo_mark_dark": false,
-                            "color": "#1EB53A",
-                            "record": null,
-                            "score": null
-                          },
-                          "game_id": 884213,
-                          "event_matchup": false,
-                          "matchup_title": "Portugal – Uzbekistan"
-                        },
-                        "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research.",
-                        "trust": {
-                          "qualifying_expert": {
-                            "source": {
-                              "kind": "unavailable",
-                              "owner": "pick_of_the_day",
-                              "field": "qualifying_expert"
-                            },
-                            "freshness": {
-                              "status": "unavailable"
-                            },
-                            "reconciliation": {
-                              "status": "unavailable",
-                              "detail": "frozen qualifying-expert evidence does not deserialize into the published shape; the specialist that decided this pick's selection rank cannot be described"
-                            },
-                            "completeness": {
-                              "status": "unavailable",
-                              "detail": "frozen qualifying-expert evidence does not deserialize into the published shape; the specialist that decided this pick's selection rank cannot be described"
-                            }
-                          }
-                        },
                         "pick_id": "1000",
                         "publication_order": 1,
                         "is_free_selection": true,
@@ -9986,27 +9837,7 @@
                 "event_matchup": false,
                 "matchup_title": "Portugal – Uzbekistan"
               },
-              "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research.",
-              "trust": {
-                "qualifying_expert": {
-                  "source": {
-                    "kind": "computed",
-                    "owner": "pick_of_the_day",
-                    "field": "qualifying_expert"
-                  },
-                  "freshness": {
-                    "status": "unknown"
-                  },
-                  "reconciliation": {
-                    "status": "not_applicable",
-                    "detail": "this pick was never evaluated for a qualifying category expert: it predates the field"
-                  },
-                  "completeness": {
-                    "status": "not_computed",
-                    "detail": "this pick was never evaluated for a qualifying category expert: it predates the field"
-                  }
-                }
-              }
+              "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research."
             },
             "meta": {
               "request_id": "req_example",
@@ -10028,7 +9859,7 @@
       "get": {
         "operationId": "getPickOfTheDayArchive",
         "summary": "Get the Pick of the Day track record",
-        "description": "Returns every published pick with its outcome, unit score, closing-line value, and the rolling hit rate.\n\nResolved picks are public. A pending pick's backed side appears only for an authenticated Pro key.\n\nEach row carries a CLV value or the reason it was not measured. Coverage divides measured rows by resolved rows published before kickoff. A post-kickoff publication is `not_applicable`.",
+        "description": "Returns every published pick with its outcome, modeled return, unit score, closing-line value, and the cumulative record.\n\nResolved picks are public. A pending pick's selected side appears only for an authenticated Pro key.\n\nHistorical picks retain their original IDs, order, and proof bytes. `publication_order` describes presentation, and `is_free_selection` records access designation; neither is a quality rating. New selections use a neutral presentation order, while standing selections retain their identity, slot, and release schedule.\n\nEach row carries a CLV value or the reason it was not measured. Coverage is the share of resolved picks published before kickoff that have measured CLV. A post-kickoff publication is `not_applicable`.",
         "tags": [
           "Pick of the Day"
         ],
@@ -32122,21 +31953,7 @@
           }
         }
       },
-      "PickTrust": {
-        "type": "object",
-        "description": "Field-level trust metadata for the full Pick of the Day payload. Present on the full shape only (omitted on the teaser and the no-pick state, because whether a specialist backs the pick is itself backed-side evidence). Unlike TraderTrust it is not gated behind expand=trust: it carries one member on an endpoint that returns a single object per day.",
-        "required": ["qualifying_expert"],
-        "properties": {
-          "qualifying_expert": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TrustMetadata"
-              }
-            ],
-            "description": "Provenance of the frozen qualifying category expert. source.kind=database with reconciliation.status=db_mirror means the evidence deserialized, still satisfies every frozen selection gate, and is being served. On that arm freshness.status is always not_live and never fresh, because this evidence is frozen at selection and never refreshed, so on an archived pick the as_of (the expert's own stats_computed_at) can be days or months old by design. source.kind=computed with reconciliation.status=not_applicable means the selector evaluated the backed side and nobody qualified -- a real negative. source.kind=computed with freshness.status=unknown and completeness.status=not_computed means the selector never evaluated this field, as on a pre-feature pick. source.kind=unavailable means the payload is malformed, violates a selection gate, or conflicts with its persisted status, or the public V1 adapter intentionally omitted a current-policy B-grade expert; read the reason before treating it as a negative. Do not read an omitted qualifying_expert as 'no specialist' without checking this field."
-          }
-        }
-      },
+
       "DataQualityGroup": {
         "type": "object",
         "description": "One group of response fields that share a writer and therefore share a clock.",
@@ -32515,13 +32332,13 @@
           },
           "forecast_score": {
             "type": "number",
-            "description": "Capital-normalized forecasting score: the cohort percentile (0-100) of the EB-shrunk calibration edge. Omitted when the forecasting signal is unavailable; never replaced with zero."
+            "description": "Optional forecast score on the documented display scale. Null when unavailable."
           },
           "forecast_evidence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "Share of forecast_score supported by the trader's own resolved-market record rather than the cohort prior: n / (n + 30). Omitted when forecast_score is unavailable."
+            "description": "Optional measured forecast context. Missing values remain unavailable rather than being inferred."
           },
           "rank": {
             "type": "integer"
@@ -32592,7 +32409,7 @@
           "category_strengths": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Per-category performance breakdown (expand=categories or expand[]=categories). Omitted unless expanded. Object keyed by category name; each value is the precomputed trader_rankings.category_ranks payload (rank, total_in_category, total_pnl, scaled_total_pnl, n_markets, wins, losses, win_rate; scaled_total_pnl is a legacy alias that currently equals total_pnl). RANK BASIS: rank and total_in_category use the same hourly breakpoint publication; categories absent from that publication are omitted until a later publication includes them. Current trader performance values update separately, so this is not a frozen historical record. BASIS: the calibration sample, which admits a position only above a 20 USD notional floor and with a chosen-side entry price strictly inside (0,1), because the ranks and the calibration edge derived from it depend on both rules. That is a different sample from GET /api/v1/trader/{address}/categories, which counts every settled market at any size, and the two differ in both directions. Measured on production 2026-09-22 over the 122,497 wallet-category pairs with at least 20 decided markets on both bases: the floored rate was higher in 56.5% of pairs, lower in 34.5% and equal in 9.0%, median +0.6 points, p10 -4.6, p90 +9.8, and 14.0% of pairs differ by 10 points or more. The difference is not only small positions: on a 1-in-250 wallet sample the same day, admitted markets won 56.6% while markets dropped by the notional floor alone won 45.2% and markets dropped by the entry-price rule alone won 48.7%. n_markets counts every admitted market including the ones that resolved at exactly zero P&L, so it is not the denominator of win_rate: it differed from wins + losses in 15.8% of pairs with at least 5 decided markets. The two tables also run on different clocks, this one updated incrementally and that route rebuilt daily, so a same-day read can differ on timing alone. Use this for rank context and that route for the wallet's plain record. Pass-through DB JSON: keys and value shape are DB-owned, so the inner shape is intentionally unconstrained and may carry additional compatibility fields."
+            "description": "Per-category rank context when expand=categories is requested. Values include available rank, category totals, performance and record counts; scaled_total_pnl is a legacy alias of total_pnl. Its measurement basis and update timing differ from the plain record returned by GET /api/v1/trader/{address}/categories, so the two need not agree. Use this for rank context and that route for the plain record. The inner key-set is intentionally unconstrained and may contain additional compatibility fields."
           },
           "quant_metrics": {
             "type": "object",
@@ -32613,7 +32430,7 @@
               "smart_score": {
                 "type": "number",
                 "nullable": true,
-                "description": "Composite skill score, 0-100. smart_score = clamp(0, 100, 30*sharpe_percentile_fraction + 20*profit_factor_percentile_fraction + 20*edge_consistency_percentile_fraction + 10*min(1, return_on_capital/2) + 10*equity_smoothness + 10*(1 - min(1, asset_concentration))). Higher is better. null when insufficient history."
+                "description": "Trader smart score on a 0..100 display scale; higher is stronger. Null when unavailable."
               },
               "copy_score": {
                 "type": "number",
@@ -32985,12 +32802,12 @@
           },
           "review_score": {
             "type": "number",
-            "description": "Current 0.0–1.0 review score, computed at request time from the trade's size, the trader's win rate today, a bonus when a trader with a win rate above 55% trades at a price below 30¢, and the trade's age now. A higher score means read this trade first; it does not measure edge or predict an outcome. On a historical row it is today's view of the trade, not what a reader saw then; use recorded_review_score for that. Canonical since #16311; signal_score carries the same value."
+            "description": "Current trade review score on a 0..1 scale; higher values indicate a stronger review signal. This is the current response value and can differ from the recorded score. Missing measurements remain unavailable."
           },
           "signal_score": {
             "deprecated": true,
             "type": "number",
-            "description": "Current 0.0–1.0 review score, computed at request time from the trader's win rate today and the trade's age now. Deprecated (#16311): `review_score` is the canonical spelling and carries the same value; this key stays on the wire."
+            "description": "Deprecated alias of review_score with the same current value and 0..1 scale."
           },
           "recorded_review_score": {
             "type": "number",
@@ -33380,9 +33197,6 @@
             "type": "string",
             "nullable": true,
             "description": "The wallet's X handle from its Polymarket profile, normalized to 1-15 characters of [A-Za-z0-9_] with no `@`. Link it as `https://x.com/<handle>`. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped."
-          },
-          "category_evidence": {
-            "$ref": "#/components/schemas/HolderCategoryEvidence"
           }
         }
       },
@@ -33465,7 +33279,7 @@
           },
           "picks": {
             "type": "array",
-            "description": "The complete ranked picks for this product day, ordered by pick_rank. Thin days contain fewer items; the selector never fabricates rows.",
+            "description": "Published picks for this product day in the returned display order. Use pick_id for identity.",
             "items": {
               "$ref": "#/components/schemas/PickOfTheDay"
             }
@@ -33489,7 +33303,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Frozen canonical calibration/report bucket (e.g. \"Basketball\", \"MMA\", or \"Soccer\"). Existing semantics are unchanged; presentation consumers should prefer display_category when present."
+            "description": "Recorded canonical sport category. Prefer display_category for the public competition label."
           },
           "display_category": {
             "type": "string",
@@ -33551,33 +33365,26 @@
           },
           "sharp_wallet_count": {
             "type": "integer",
-            "description": "Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. Canonical key since #16308; smart_wallet_count is its deprecated spelling, emitted beside it with the same value."
+            "description": "S/A wallet count on the backed side in the public V1 compatibility projection."
           },
           "smart_wallet_count": {
             "type": "integer",
             "deprecated": true,
-            "description": "Deprecated spelling of sharp_wallet_count, emitted beside it with the same value and never removed. Public V1 compatibility count of S/A sharp-money wallets on the backed side. The first-party/internal current policy counts S/A/B; historical rows retain their frozen policy's count. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof."
+            "description": "Deprecated spelling of sharp_wallet_count with the same value."
           },
           "top_grade": {
             "type": "string",
-            "description": "Best public V1-compatible S/A sharp-money grade on the backed side. The first-party/internal current policy can select B, but a current B-only grade is omitted by the stable V1 adapter. Historical rows retain their frozen policy's grade. A current-day published pick with pending legacy proof, unknown-future proof, or structurally invalid current-policy proof returns 503 before this success schema is served. Resolved legacy proof remains readable on both current-day and archive/history responses."
+            "description": "Best recorded S/A grade in the public V1 compatibility projection."
           },
-          "category_edge_pct": {
-            "type": "number",
-            "description": "Deprecated (#7170): no longer populated for picks selected on/after the calibration-edge change; omitted (absent) for new picks (the field uses skip_serializing_if, so a null value is dropped from the JSON rather than serialized as null). Permanently frozen-legacy -- retained for historical picks, with no removal or replacement planned, so no v2 is implied. Historical picks may still carry a value. Legacy meaning: category win-rate edge as a fraction (the backed-side cohort's win rate in this category minus the non-market-maker category baseline, e.g. 0.09 = +9 points), paired with category_edge_sample."
-          },
-          "category_edge_sample": {
-            "type": "integer",
-            "description": "Deprecated (#7170): no longer populated for picks selected on/after the calibration-edge change; omitted (absent) for new picks (the field uses skip_serializing_if, so a null value is dropped from the JSON rather than serialized as null). Permanently frozen-legacy -- retained for historical picks, with no removal or replacement planned, so no v2 is implied. Historical picks may still carry a value. Legacy meaning: pooled count of resolved markets behind category_edge_pct (the headline's n)."
-          },
+
           "sharp_usd": {
             "type": "number",
-            "description": "Recency-weighted graded-flow magnitude in USD; omitted when <= 0. Canonical key since #16308; smart_usd is its deprecated spelling, emitted beside it with the same value."
+            "description": "Recorded sharp-money magnitude in USD when available."
           },
           "smart_usd": {
             "type": "number",
             "deprecated": true,
-            "description": "Deprecated spelling of sharp_usd, emitted beside it with the same value and never removed. Recency-weighted graded-flow magnitude in USD; omitted when <= 0."
+            "description": "Deprecated spelling of sharp_usd with the same value."
           },
           "backed_price": {
             "type": "number",
@@ -33641,43 +33448,20 @@
           },
           "sharp_pct": {
             "type": "number",
-            "description": "First-party/internal backed-side sharp-money dollar consensus as a fraction 0..1: the share of current-policy sharp dollars on the backed side. Omitted on current public V1 rows when the B-inclusive value has no reconstructible S/A equivalent. A conviction signal, NOT a probability or expected-value claim. Frozen at generation."
+            "description": "Recorded sharp-money share as a 0..1 fraction when available. This is not a winning probability."
           },
           "market_pct": {
             "type": "number",
-            "description": "Market-implied probability of the backed side as a fraction 0..1 (equals backed_price), re-exposed alongside sharp_pct for the WHY breakdown."
+            "description": "Recorded market-implied probability as a 0..1 fraction when available."
           },
-          "consensus_edge_pct": {
-            "type": "number",
-            "description": "First-party/internal consensus edge = sharp_pct - market_pct, the conviction-vs-price gap (how much more of the current-policy sharp money sits on this side than the price implies). Omitted on current public V1 rows when the B-inclusive value has no reconstructible S/A equivalent. This is NOT an expected-value or guaranteed edge. Omitted when either input is unavailable."
-          },
-          "directional_confidence": {
-            "type": "number",
-            "description": "First-party/internal team-directional commitment read at selection time: the fraction (0..1) of the backed side's current-policy graded sharp-money DOLLARS held by wallets read one-way rather than hedged: no opposite leg on this market worth at least 10% of the backed leg (Polymarket's own currentValue pair), and no opposing team across the game's markets where the wallet's synced legs are fresh. Current public V1 rows omit this B-inclusive read because its historical S/A equivalent is not reconstructed. A high value means the graded pile is really committed to this side; a low one means much of it is hedged or unreadable. Omitted when the read was not computed (a pick selected before the field existed, an ungroupable game, an empty graded pile, or a pile where no holder carried usable evidence) -- which is NOT the same as 0.0, a computed reading that classified holders and found none one-way."
-          },
-          "one_way_holder_count": {
-            "type": "integer",
-            "description": "Graded backed-side holders read as one-way-committed on this game."
-          },
-          "hedged_holder_count": {
-            "type": "integer",
-            "description": "Graded backed-side holders read as HEDGED across the game's markets."
-          },
-          "one_way_graded_usd": {
-            "type": "number",
-            "description": "The one-way holders' share of the backed-side graded dollars (the confidence's numerator)."
-          },
-          "total_graded_usd": {
-            "type": "number",
-            "description": "Backed-side graded dollars the confidence is measured against (its denominator)."
-          },
+
           "qualifying_expert": {
             "type": "object",
-            "description": "The qualifying category expert whose sport-specific record and real position earned this pick its top selection tier. The first-party/internal current policy admits S/A/B; public V1 exposes a compatible S/A expert and omits a current-policy B-grade expert: a candidate backed by one outranks every candidate without one. Present only on the full payload. Omitted when no wallet qualified on the backed side, on picks generated before the field existed, and on the first-party web teaser, which withholds all backed-side evidence. Frozen at SELECTION time — the wallet's position can move before the pick renders.",
+            "description": "Optional recorded specialist facts. These describe the trader and do not disclose selection decisions. Present only on a full response when available.",
             "properties": {
               "address": {
                 "type": "string",
-                "description": "Wallet address of the qualifying expert."
+                "description": "Trader wallet address."
               },
               "name": {
                 "type": "string",
@@ -33687,7 +33471,7 @@
               "grade": {
                 "type": "string",
                 "nullable": true,
-                "description": "0xinsider grade letter. The first-party/internal current Pick of the Day policy counts S, A, and B; public V1 exposes only the compatible S/A expert."
+                "description": "Recorded trader grade. Public V1 preserves its S/A compatibility projection."
               },
               "canonical_category": {
                 "type": "string",
@@ -33696,66 +33480,26 @@
               "win_rate": {
                 "type": "number",
                 "nullable": true,
-                "description": "Share of this wallet's resolved markets in canonical_category whose realized P&L came out positive, as a 0..1 fraction. Above 0.60 by construction for a source=v1 expert; null for an expert who qualified on the category-skill v2 definition only. Deliberately NOT phrased as \"closed profitable\": the metric counts realized P&L above zero, so a resolved winner the wallet never redeemed sits at zero and counts against it."
+                "description": "Share of the trader’s resolved markets in canonical_category with positive realized P&L, as a 0..1 fraction. Null when not measured. This is a trader statistic, not the pick’s probability of winning."
               },
               "n_resolved": {
                 "type": "integer",
                 "nullable": true,
-                "description": "Resolved markets in canonical_category behind win_rate. At least 10 by construction for a source=v1 expert; null with win_rate."
+                "description": "Number of resolved markets behind win_rate; null when not measured."
               },
-              "source": {
-                "type": "string",
-                "enum": [
-                  "v1",
-                  "v2"
-                ],
-                "description": "Current expert policy 10 does not require a category-skill v2 specialist in any sport; in every sport a specialist raises the candidate's rank tier rather than gating it. Standard specialists need a positive edge_lower_95 over enough independent events and enough net backing on the backed side; the floors are not published. Fresh healthy records below the shared model's live sample floor can qualify; stale, unknown and degraded records cannot. Historical records preserve which definition qualified the wallet: v1, the profitability rate (win_rate over n_resolved), or v2, the forward-only category-skill calibration edge (edge_lower_95 over independent_event_count). Absent on picks frozen before the v2 definition existed; read absence as v1. A Tennis pick frozen under gate policy v4 or later carries v2 only: a v1 rate stopped qualifying a tennis expert at v4. A Tennis pick frozen under an earlier policy can still carry v1 with a win rate."
-              },
-              "edge_lower_95": {
-                "type": "number",
-                "description": "95% lower bound of the wallet's mean calibration edge over the market price in canonical_category, in probability units (0.08 is 8 points). Positive by construction for a v2 expert; present on a v1 expert only when the wallet also holds a live v2 row."
-              },
-              "edge_mean": {
-                "type": "number",
-                "description": "Point estimate behind edge_lower_95."
-              },
-              "independent_event_count": {
-                "type": "integer",
-                "description": "Independent canonical events behind the edge. At least 10 by construction for a v2 expert."
-              },
+
               "position_usd": {
                 "type": "number",
-                "description": "Polymarket's own currentValue for this wallet on the backed outcome, in USD, as of selection. At least 1000 by construction through gate policy v7; the standard floor is 500 from v8. From gate policy v5 the floor is read on the net: position_usd minus opposite_position_usd is at least that floor, and the pick re-verifies that net against the live holder snapshot when it is released."
+                "description": "Recorded Polymarket position value on the backed outcome, in USD. It can change after this snapshot."
               },
               "opposite_position_usd": {
                 "type": "number",
-                "description": "The same wallet's currentValue on the OTHER outcome of this market, in USD, as of selection. Present from gate policy v5, when the floor moved to net exposure; a wallet long both sides does not qualify. Absent on picks frozen before v5, which never read the leg. 0 is a measured one-way position, not an absence."
+                "description": "Recorded position value on the other outcome of this market, in USD. Omitted when not recorded; zero is a measured value."
               },
               "stats_computed_at": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the skill read model behind the evidence was last rebuilt: trader_category_stats.computed_at for a source=v1 expert, category_skill_v2_current.as_of for a source=v2 expert."
-              },
-              "lane": {
-                "type": "string",
-                "enum": [
-                  "standard",
-                  "longshot_specialist"
-                ],
-                "description": "Present from expert policy 6. Current expert policy 10 retains the longshot requirement of live v2 only, with a positive lower bound over a large sample, large net backed value and no meaningful opposite value. Historical policy 6: a specialist required large net backed value, no meaningful opposite value, and either a live v2 positive lower bound over a large sample or a high v1 rate over enough resolved markets. Tennis requires v2. The floors are not published."
-              },
-              "lane_probability": {
-                "type": "number",
-                "minimum": 0.1,
-                "maximum": 1,
-                "description": "Answered, spread-gated, index-scoped backed probability frozen only on a specialist exception."
-              },
-              "lane_probability_source": {
-                "type": "string",
-                "enum": [
-                  "p"
-                ],
-                "description": "Canonical provider probability pair branch; absent on standard experts."
+                "description": "Timestamp of the recorded trader statistics."
               }
             },
             "required": [
@@ -33769,34 +33513,32 @@
               "stats_computed_at"
             ]
           },
-          "trust": {
-            "$ref": "#/components/schemas/PickTrust"
-          },
+
           "traders": {
             "type": "integer",
-            "description": "Public V1 S/A compatibility count on the backed side (equals the adapted sharp_wallet_count). The first-party/internal current policy counts S/A/B. Historical rows retain their frozen policy's count."
+            "description": "Public V1 S/A wallet count on the backed side, equal to sharp_wallet_count."
           },
           "backed_sharp_usd": {
             "type": "number",
-            "description": "Raw backed-side sharp-money USD frozen at generation. This is the Sharp USD value, not the recency-weighted sharp_usd which decays. Omitted on current public V1 rows when the B-inclusive value has no reconstructible S/A equivalent."
+            "description": "Recorded backed-side sharp-money value in USD when available."
           },
           "holders": {
             "type": "array",
-            "description": "Bounded S/A compatibility projection of the frozen sharp-money holders on the backed side. Current full payloads expose the complete S/A/B roster in display_holders; historical rows can retain their earlier frozen shape.",
+            "description": "Bounded S/A holder display projection. Historical rows retain their recorded display shape.",
             "items": {
               "$ref": "#/components/schemas/PickHolder"
             }
           },
           "display_holders": {
             "type": "array",
-            "description": "Full-only complete provider-confirmed S/A/B holder roster for the current Pick of the Day backing policy. Omitted for teaser, no-pick, and historical rows whose frozen holder proof predates this policy. Each entry may additionally carry `category_win_rate` / `category_win_rate_status`: the wallet's win rate in the pick's canonical `category`, stamped at serve time from the current category read model (the same annotation the sports sharp-money chips carry). The bounded `holders` compatibility projection never carries these fields.",
+            "description": "Optional complete holder display roster. Each entry carries ordinary trader and recorded position facts.",
             "items": {
               "$ref": "#/components/schemas/PickHolder"
             }
           },
           "holder_count": {
             "type": "integer",
-            "description": "Exact S/A sharp-money proof count on the backed side. The current display_holders roster can be longer because it also carries B-grade sharp-money holders."
+            "description": "S/A holder count for the public V1 compatibility projection. display_holders can include additional grades."
           },
           "editorial_note": {
             "type": "string",
@@ -33841,17 +33583,10 @@
               "$ref": "#/components/schemas/ProofPendingPickSlot"
             }
           },
-          "selection_lane": {
-            "type": "string",
-            "enum": [
-              "standard",
-              "longshot_specialist"
-            ],
-            "description": "Frozen admission classification, full payload only. The specialist lane exempts two probability rejects and adds no rank bonus. Historical rows remain standard."
-          },
+
           "entry_authorization": {
             "$ref": "#/components/schemas/PotdEntryAuthorization",
-            "description": "Optional full-only authorization for newly issued policy-7 picks; omitted for legacy or unissued picks and teasers. It remains historical after expiry."
+            "description": "Optional full-response entry authorization. Missing or expired authorization cannot authorize an automated entry."
           },
           "pick_id": {
             "type": "string",
@@ -36219,7 +35954,7 @@
           },
           "backing_score": {
             "type": "number",
-            "description": "Grade-weighted holders times the share of their money on the side: (5*s + 4*a + 3*b) * sharp_pct. Canonical spelling of conviction_score (#16310), same value."
+            "description": "Recorded side backing score; higher values indicate stronger backing."
           },
           "side_share": {
             "type": "number",
@@ -36310,7 +36045,7 @@
             "deprecated": true,
             "type": "number",
             "nullable": true,
-            "description": "Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative); a lower-order ranking tiebreak (after directional_rank_score and conviction_score). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire."
+            "description": "Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire."
           },
           "volume": {
             "type": "number",
@@ -36326,7 +36061,7 @@
           "conviction_score": {
             "deprecated": true,
             "type": "number",
-            "description": "Grade-weighted pile score (5*s + 4*a + 3*b) * sharp_pct; the raw conviction input to the ranking (see directional_rank_score). Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire."
+            "description": "Recorded conviction score; higher values indicate stronger conviction."
           },
           "one_way_holder_count": {
             "type": "integer",
@@ -36350,7 +36085,7 @@
           },
           "directional_rank_score": {
             "type": "number",
-            "description": "The ranking key, descending: conviction_score * (1 + 0.25 * directional_confidence). Equals conviction_score when the directional read is null/zero, so signals without the read rank exactly as before."
+            "description": "Recorded side ordering score; higher values sort first."
           },
           "category_skill": {
             "$ref": "#/components/schemas/PreGameSideCategorySkill"
@@ -36444,7 +36179,7 @@
           "backing_score": {
             "type": "number",
             "minimum": 0,
-            "description": "Grade-weighted holder-pile score before directional enrichment. Canonical spelling of conviction_score (#16310), same value."
+            "description": "Recorded side backing score; higher values indicate stronger backing."
           },
           "side_share": {
             "type": "number",
@@ -36588,7 +36323,7 @@
             "deprecated": true,
             "type": "number",
             "minimum": 0,
-            "description": "Grade-weighted holder-pile score before directional enrichment. Deprecated (#16310): `backing_score` is the canonical spelling and carries the same value; this key stays on the wire."
+            "description": "Recorded conviction score; higher values indicate stronger conviction."
           },
           "provider_read_source": {
             "type": "string",
@@ -36634,7 +36369,7 @@
           "directional_rank_score": {
             "type": "number",
             "minimum": 0,
-            "description": "Default cohort ordering key: conviction_score * (1 + 0.25 * directional_confidence), or conviction_score when confidence is null."
+            "description": "Recorded side ordering score; higher values sort first."
           },
           "rank": {
             "type": "integer",
@@ -39525,7 +39260,7 @@
           },
           "max_entry_price": {
             "type": "string",
-            "description": "Immutable decimal limit: first fresh selected-token ask plus 0.02, floored to the provider tick below 1. Fees excluded. Never a calibrated fair probability."
+            "description": "Returned maximum entry price as an exact decimal string. Honor this bound; fees are excluded. This is not a fair probability."
           },
           "reference_best_ask": {
             "type": "string"
@@ -39544,10 +39279,10 @@
           "expires_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Original provider kickoff ceiling. Never extended on retry."
+            "description": "Authorization expiry. An expired authorization cannot authorize a new automated entry."
           }
         },
-        "description": "Policy-7 issuance binds one condition, selected token, outcome, canonical event and sport. Reuse the same authorization across public/private discovery and retries. Require a new account-size executable book and current market eligibility; this frozen reference does not prove current liquidity or positive expected value. Absence or expiry cannot authorize a new automated entry."
+        "description": "Returned entry permission bound to the named market, token and outcome. Honor max_entry_price and expires_at, and check a current executable order book for the actual stake. This snapshot does not guarantee current liquidity, execution or positive expected value."
       },
       "AgentRegistration": {
         "type": "object",
