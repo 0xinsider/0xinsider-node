@@ -325,6 +325,17 @@ if (progress.stoppedBy === "max_pages") {
 
 `signal` cancels between pages.
 
+Progress counts each validated page before it is delivered, including a page
+after which you `break`. It counts pages delivered, not items processed or
+persisted. An early return retains `nextCursor` and leaves `stoppedBy` unset
+unless that delivered page already exhausted the list or reached `maxPages`.
+Reusing a progress object resets its owned fields when the new walk starts.
+During a request, `cursor` names that attempt and `nextCursor` is undefined.
+After a failure or between-page cancellation, `cursor` and `nextCursor` name
+the retry cursor, and `pagesFetched` matches `paginationResumePoint(error)`;
+the original error is rethrown.
+
+
 Pass `strictQuery: true` to `paginate()`, `paginatePages()`, or `collect()` to
 reject an unsupported query name before the first page request. With the
 default compatibility mode, successful responses expose `meta.queryIgnored`

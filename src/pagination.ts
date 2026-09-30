@@ -64,21 +64,23 @@ export type PaginationStop =
 /**
  * Live progress of a walk (#16246). Pass an object as `options.progress`
  * and read it after the loop; it is updated before each page is yielded and
- * when the walk ends. On a throw it holds the state at the failed page, the
- * same information `paginationResumePoint(error)` returns.
+ * when the walk ends. An early consumer return keeps the delivered-page
+ * count and continuation without inventing a terminal reason. On a throw,
+ * cursor and pagesFetched agree with `paginationResumePoint(error)`.
  */
 export interface PaginationProgress {
   /** Pages fetched and yielded so far. */
   pagesFetched?: number;
-  /** The cursor the most recent page was requested with; `undefined` for the first page. */
+  /** The current request cursor, including a failed attempt; undefined for the first page. */
   cursor?: string;
   /**
-   * The most recent page's `next_cursor`. After `stoppedBy: "max_pages"`
+   * The delivered page's `next_cursor`, or the retry cursor after a failure.
+   * While a request is pending this is undefined. After `stoppedBy: "max_pages"`
    * this is the continuation: pass it as `query.cursor` to carry on.
    * `null` or `undefined` once the collection is exhausted.
    */
   nextCursor?: string | null;
-  /** Set when the walk ends without throwing. */
+  /** Set before delivering a page known to exhaust the list or reach maxPages. */
   stoppedBy?: PaginationStop;
 }
 
@@ -251,7 +253,6 @@ export async function* paginatePages(
   options: PaginateOptions = {},
 ): AsyncGenerator<unknown, void, undefined> {
   const { path, query, strictQuery, signal, progress, timeoutMs, maxRetries, headers } = options;
-  const maxPages = assertMaxPages(options.maxPages);
   let cursor: string | undefined = query?.cursor;
   let pages = 0;
   // Every cursor requested so far, newest last, capped at CURSOR_HISTORY_LIMIT.
@@ -270,20 +271,27 @@ export async function* paginatePages(
     fields: Pick<PaginationProgress, "pagesFetched" | "cursor" | "nextCursor"> &
       Partial<Pick<PaginationProgress, "stoppedBy">>,
   ) => {
-    if (progress) Object.assign(progress, fields);
+    if (progress) {
+      Object.assign(progress, fields);
+      if (fields.stoppedBy === undefined) delete progress.stoppedBy;
+    }
   };
   const fail = (error: object) => {
-    if (!resumePoints.has(error)) {
-      resumePoints.set(error, { cursor, pagesFetched: pages });
-    }
+    record({ pagesFetched: pages, cursor, nextCursor: cursor });
+    resumePoints.set(error, { cursor, pagesFetched: pages });
     return error;
   };
+  record({ pagesFetched: pages, cursor, nextCursor: undefined });
+  const maxPages = assertMaxPages(options.maxPages);
 
   for (;;) {
+    record({ pagesFetched: pages, cursor, nextCursor: undefined });
     if (signal?.aborted) {
-      throw signal.reason instanceof Error
-        ? signal.reason
-        : new DOMException("The pagination was aborted", "AbortError");
+      throw fail(
+        signal.reason instanceof Error
+          ? signal.reason
+          : new DOMException("The pagination was aborted", "AbortError"),
+      );
     }
     if (cursor !== undefined) remember(cursor);
 
@@ -300,10 +308,10 @@ export async function* paginatePages(
       });
     } catch (error: unknown) {
       if (typeof error === "object" && error !== null) fail(error);
+      else record({ pagesFetched: pages, cursor, nextCursor: cursor });
       throw error;
     }
 
-    record({ pagesFetched: pages, cursor, nextCursor: page.next_cursor });
     const next = page.next_cursor;
     if (page.has_more) {
       if (!usableCursor(next)) {
@@ -314,18 +322,15 @@ export async function* paginatePages(
       }
     }
 
-    yield page;
     pages += 1;
-    record({ pagesFetched: pages, cursor, nextCursor: next });
-
-    if (!page.has_more) {
-      record({ pagesFetched: pages, cursor, nextCursor: next, stoppedBy: "exhausted" });
-      return;
-    }
-    if (pages >= maxPages) {
-      record({ pagesFetched: pages, cursor, nextCursor: next, stoppedBy: "max_pages" });
-      return;
-    }
+    const stoppedBy = !page.has_more
+      ? "exhausted"
+      : pages >= maxPages
+        ? "max_pages"
+        : undefined;
+    record({ pagesFetched: pages, cursor, nextCursor: next, stoppedBy });
+    yield page;
+    if (stoppedBy !== undefined) return;
     // `has_more` was true and `next` passed both checks above.
     cursor = next as string;
   }
