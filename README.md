@@ -264,6 +264,8 @@ The object fetch in `downloadTraderExport` has no deadline by default, the way t
 
 Signed download URLs last at most 1 hour and never past the export job's `expires_at`. Use the returned `expiresAt`, which comes from the URL's signing fields, rather than assuming every link lasts 1 hour. Request a fresh URL while the job is retained; after `410 export_expired`, submit a new export.
 
+Both `downloadTraderExport` and `downloadWhaleDataset` cancel an object response they cannot return, including a failed HTTP response or a failure while preparing the stream or metadata. They wait up to 2 seconds for that cleanup without buffering the error body. The original failure remains primary; a cleanup rejection or timeout is attached as its `cause`, retaining an existing cause in an `AggregateError`. If a thrown value cannot carry a cause, an `AggregateError` retains the original failure as its first entry and cause. A cleanup timeout means completion is unknown. Once the helper returns, consume or cancel `response.body` yourself.
+
 `REDIRECT_OPERATIONS` and `UNSUPPORTED_OPERATIONS` are exported so you can see what is not wrapped and why. Today that is the public `GET /api/v1/openapi.json` redirect (fetch it directly) and `GET /api/v1/mcp`, which answers `405` by design because the endpoint offers no server-to-client stream.
 
 ### Sandbox
