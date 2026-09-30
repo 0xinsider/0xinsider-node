@@ -1073,129 +1073,181 @@ function composeRequestSignal(
   return { signal: controller.signal, timeout, dispose };
 }
 
-/**
- * `response` with `dispose` deferred to the end of its body: the stream's
- * close, error or cancellation (#16686). Without a `dispose` (a runtime with
- * `AbortSignal.any`, or no composition) the response is returned as is.
- */
-function releaseWhenBodySettles(response: Response, dispose?: () => void): Response {
-  if (!dispose) return response;
+interface ExportVerification {
+  jobId: number;
+  expectedSha256: string;
+  expectedSizeBytes: number;
+}
+
+const EXPORT_BODY_CLEANUP_TIMEOUT_MS = 2_000;
+
+/** A failed transfer keeps its primary error and an observable cleanup cause. */
+function exportCleanupCause(primary: unknown, cleanup: Error): unknown {
+  if ((typeof primary === "object" && primary !== null) || typeof primary === "function") {
+    try {
+      const previousCause = (primary as { cause?: unknown }).cause;
+      Object.defineProperty(primary, "cause", {
+        configurable: true,
+        writable: true,
+        value: previousCause === undefined ? cleanup : new AggregateError(
+          [previousCause, cleanup], "The original cause and export body cleanup failure",
+        ),
+      });
+      return primary;
+    } catch (annotationError: unknown) {
+      return new AggregateError(
+        [primary, cleanup, annotationError],
+        "Export failed and its body cleanup diagnostic could not be attached",
+        { cause: primary },
+      );
+    }
+  }
+  return new AggregateError(
+    [primary, cleanup], "Export failed and its body cleanup also failed", { cause: primary },
+  );
+}
+
+/** Observe cancellation without buffering an unbounded object-store error body. */
+async function releaseExportBody(
+  cancel: ((reason: unknown) => Promise<void>) | undefined,
+  primary: unknown,
+): Promise<unknown> {
+  if (!cancel) return primary;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cancelled = Promise.resolve().then(() => cancel(primary)).then(
+    () => undefined,
+    (cause: unknown) => new Error("Export body cancellation failed", { cause }),
+  );
+  const deadline = new Promise<Error>((resolve) => {
+    timer = setTimeout(() => resolve(new Error(
+      `Export body cleanup did not settle within ${String(EXPORT_BODY_CLEANUP_TIMEOUT_MS)} ms; completion is unknown`,
+    )), EXPORT_BODY_CLEANUP_TIMEOUT_MS);
+  });
+  try {
+    const failure = await Promise.race([cancelled, deadline]);
+    return failure ? exportCleanupCause(primary, failure) : primary;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Own only the latest body/reader until the response is handed to the caller. */
+class ExportBodyOwner {
+  private cancel?: (reason: unknown) => Promise<void>;
+
+  response(response: Response): void {
+    this.cancel = (reason) => response.body?.cancel(reason) ?? Promise.resolve();
+  }
+
+  reader(reader: ReadableStreamDefaultReader<Uint8Array>, dispose: () => void) {
+    let finished = false;
+    let cancellation: Promise<void> | undefined;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      dispose();
+      reader.releaseLock();
+    };
+    const cancel = (reason: unknown): Promise<void> => {
+      if (cancellation) return cancellation;
+      if (finished) return Promise.resolve();
+      finished = true;
+      dispose();
+      cancellation = Promise.resolve().then(() => reader.cancel(reason)).finally(() => reader.releaseLock());
+      return cancellation;
+    };
+    // Record the reader before hash or Response construction can throw.
+    this.cancel = cancel;
+    return { reader, finish, cancel, active: () => !finished };
+  }
+
+  transfer(): void {
+    this.cancel = undefined;
+  }
+
+  release(primary: unknown): Promise<unknown> {
+    const cancel = this.cancel;
+    this.cancel = undefined;
+    return releaseExportBody(cancel, primary);
+  }
+}
+
+/** Hash decoded bytes with backpressure and finish the reader/listener owner. */
+function managedExportBody(
+  response: Response,
+  owner: ExportBodyOwner,
+  dispose: () => void,
+  needsDisposal: boolean,
+  verification?: ExportVerification,
+): Response {
+  if (!verification && !needsDisposal) return response;
   if (!response.body) {
+    if (verification) throw new ExportIntegrityError(
+      verification.jobId, verification.expectedSha256, null, verification.expectedSizeBytes, 0,
+    );
     dispose();
     return response;
   }
-  const reader = response.body.getReader();
-  const body = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read();
-        if (done) {
-          dispose();
-          controller.close();
-          return;
-        }
-        controller.enqueue(value);
-      } catch (error: unknown) {
-        dispose();
-        controller.error(error);
-      }
-    },
-    cancel(reason: unknown) {
-      dispose();
-      return reader.cancel(reason);
-    },
-  });
-  return new Response(body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers,
-  });
-}
-
-/**
- * Hash the bytes a caller actually receives while preserving streaming. The
- * object is gzip encoded at rest, but fetch exposes the decoded content stream
- * to Node callers, which is the byte domain covered by content_sha256.
- */
-function verifyExportBody(
-  response: Response,
-  jobId: number,
-  expectedSha256: string,
-  expectedSizeBytes: number,
-): Response {
-  if (!response.body) {
-    throw new ExportIntegrityError(
-      jobId,
-      expectedSha256,
-      null,
-      expectedSizeBytes,
-      0,
-    );
-  }
-  const reader = response.body.getReader();
-  const hasher = createHash("sha256");
+  const lease = owner.reader(response.body.getReader(), dispose);
+  const hasher = verification ? createHash("sha256") : undefined;
   let actualSizeBytes = 0;
+  let consumerCancelled = false;
+  const integrityFailure = (cause: unknown): unknown => verification
+    ? new ExportIntegrityError(
+      verification.jobId, verification.expectedSha256, null,
+      verification.expectedSizeBytes, actualSizeBytes, cause,
+    ) : cause;
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {
+      let chunk: ReadableStreamReadResult<Uint8Array>;
       try {
-        const { done, value } = await reader.read();
-        if (done) {
-          const actualSha256 = hasher.digest("hex");
-          if (
-            actualSizeBytes !== expectedSizeBytes ||
-            actualSha256 !== expectedSha256
-          ) {
-            controller.error(
-              new ExportIntegrityError(
-                jobId,
-                expectedSha256,
-                actualSha256,
-                expectedSizeBytes,
-                actualSizeBytes,
-              ),
-            );
-            return;
-          }
-          controller.close();
-          return;
-        }
-        if (value === undefined) {
-          controller.error(
-            new ExportIntegrityError(
-              jobId,
-              expectedSha256,
-              null,
-              expectedSizeBytes,
-              actualSizeBytes,
-            ),
-          );
-          return;
-        }
-        hasher.update(value);
-        actualSizeBytes += value.byteLength;
-        controller.enqueue(value);
+        chunk = await lease.reader.read();
       } catch (error: unknown) {
-        controller.error(
-          new ExportIntegrityError(
-            jobId,
-            expectedSha256,
-            null,
-            expectedSizeBytes,
-            actualSizeBytes,
-            error,
-          ),
-        );
+        if (consumerCancelled) return;
+        // A rejected read is terminal; release the lock rather than cancel
+        // an already errored stream and relabel its original failure.
+        lease.finish();
+        controller.error(integrityFailure(error));
+        return;
+      }
+      if (consumerCancelled || !lease.active()) return;
+      try {
+        if (chunk.done) {
+          lease.finish();
+          const actualSha256 = hasher?.digest("hex");
+          if (verification && (
+            actualSizeBytes !== verification.expectedSizeBytes ||
+            actualSha256 !== verification.expectedSha256
+          )) {
+            controller.error(new ExportIntegrityError(
+              verification.jobId, verification.expectedSha256, actualSha256 ?? null,
+              verification.expectedSizeBytes, actualSizeBytes,
+            ));
+          } else {
+            controller.close();
+          }
+          return;
+        }
+        hasher?.update(chunk.value);
+        actualSizeBytes += chunk.value.byteLength;
+        controller.enqueue(chunk.value);
+      } catch (error: unknown) {
+        const primary = await releaseExportBody(lease.cancel, error);
+        if (!consumerCancelled) controller.error(integrityFailure(primary));
       }
     },
     cancel(reason: unknown) {
-      return reader.cancel(reason);
+      consumerCancelled = true;
+      return lease.cancel(reason);
     },
   });
-  return new Response(body, {
+  const result = new Response(body, {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers,
   });
+  owner.response(result);
+  return result;
 }
 
 /** JSON-RPC methods `POST /api/v1/mcp` answers without a credential. */
@@ -2153,24 +2205,11 @@ export class OxinsiderApiClient {
     }
     const manifest = status.data.artifact.manifest;
     const target = await this.getWhaleDatasetDownloadUrl(jobId, requestOptions);
-    const signal = composeRequestSignal(downloadTimeoutMs ?? null, options.signal);
-    let response: Response;
-    try {
-      response = await this.fetchImpl(target.url, { method: "GET", signal: signal.signal });
-      if (!response.ok) throw new InvalidResponseError(response.status, "Dataset signed URL failed; request a fresh download URL.", null);
-      if (verifyChecksum) response = verifyExportBody(response, jobId, manifest.content_sha256, manifest.content_size_bytes);
-      response = releaseWhenBodySettles(response, signal.dispose);
-    } catch (error: unknown) {
-      signal.dispose?.();
-      throw error;
-    }
-    const length = response.headers.get("content-length");
-    return {
-      ...target, response, filename: filenameFromDisposition(response.headers.get("content-disposition")),
-      contentLength: length === null ? null : Number.parseInt(length, 10),
-      contentType: response.headers.get("content-type"),
-      integrity: verifyChecksum ? { algorithm: "sha256", expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes } : null,
-    };
+    return this.downloadExportObject(target, { downloadTimeoutMs, signal: options.signal }, verifyChecksum ? {
+      jobId, expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes,
+    } : undefined, (status) => new InvalidResponseError(
+      status, "Dataset signed URL failed; request a fresh download URL.", null,
+    ));
   }
 
   getTraderExportStatus(
@@ -2294,61 +2333,56 @@ export class OxinsiderApiClient {
       jobId,
       requestOptions,
     );
-    const downloadSignal = composeRequestSignal(
-      downloadTimeoutMs ?? null,
-      options.signal,
-    );
-    let response: Response;
-    try {
-      // No headers, and no credentials: the presigned URL authorizes itself,
-      // and forwarding the bearer would hand the live API key to the object
-      // store on every download.
-      response = await this.fetchImpl(target.url, {
-        method: "GET",
-        signal: downloadSignal.signal,
-      });
-    } catch (error: unknown) {
-      downloadSignal.dispose?.();
-      throw error;
-    }
-    if (!response.ok) {
-      downloadSignal.dispose?.();
-      throw new InvalidResponseError(
-        response.status,
-        `The presigned export URL answered ${response.status}. Links last at most one hour and cannot outlive artifact retention. Request a fresh link with getTraderExportDownloadUrl; if the job is expired, submit a new export.`,
-        null,
-      );
-    }
-    // The caller reads the body after this returns, so the composed signal
-    // (caller abort plus `downloadTimeoutMs`) stays wired until the body ends
-    // or is cancelled, not only until the headers arrive (#16686).
-    response = releaseWhenBodySettles(response, downloadSignal.dispose);
-    if (manifest) {
-      response = verifyExportBody(
-        response,
-        jobId,
-        manifest.content_sha256,
-        manifest.content_size_bytes,
-      );
-    }
-    const contentLength = response.headers.get("content-length");
-    return {
-      ...target,
-      response,
-      contentLength:
-        contentLength === null ? null : Number.parseInt(contentLength, 10),
-      contentType: response.headers.get("content-type"),
-      filename: filenameFromDisposition(
-        response.headers.get("content-disposition"),
-      ),
-      integrity: manifest
-        ? {
-            algorithm: "sha256",
-            expectedSha256: manifest.content_sha256,
-            expectedSizeBytes: manifest.content_size_bytes,
-          }
-        : null,
+    return this.downloadExportObject(target, { downloadTimeoutMs, signal: options.signal }, manifest ? {
+      jobId, expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes,
+    } : undefined, (status) => new InvalidResponseError(
+      status,
+      `The presigned export URL answered ${status}. Links last at most one hour and cannot outlive artifact retention. Request a fresh link with getTraderExportDownloadUrl; if the job is expired, submit a new export.`,
+      null,
+    ));
+  }
+
+  private async downloadExportObject(
+    target: TraderExportDownloadTarget,
+    options: TraderExportDownloadOptions,
+    verification: ExportVerification | undefined,
+    statusError: (status: number) => InvalidResponseError,
+  ): Promise<TraderExportDownload> {
+    const signal = composeRequestSignal(options.downloadTimeoutMs ?? null, options.signal);
+    let disposed = false;
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
+      signal.dispose?.();
     };
+    const owner = new ExportBodyOwner();
+    try {
+      // A signed object URL authorizes itself; never forward API headers.
+      let response = await this.fetchImpl(target.url, { method: "GET", signal: signal.signal });
+      owner.response(response);
+      if (!response.ok) throw statusError(response.status);
+      response = managedExportBody(response, owner, dispose, signal.dispose !== undefined, verification);
+      const contentLength = response.headers.get("content-length");
+      const result: TraderExportDownload = {
+        ...target,
+        response,
+        contentLength: contentLength === null ? null : Number.parseInt(contentLength, 10),
+        contentType: response.headers.get("content-type"),
+        filename: filenameFromDisposition(response.headers.get("content-disposition")),
+        integrity: verification ? {
+          algorithm: "sha256", expectedSha256: verification.expectedSha256,
+          expectedSizeBytes: verification.expectedSizeBytes,
+        } : null,
+      };
+      owner.transfer();
+      return result;
+    } catch (error: unknown) {
+      try {
+        throw await owner.release(error);
+      } finally {
+        dispose();
+      }
+    }
   }
 
   /**
