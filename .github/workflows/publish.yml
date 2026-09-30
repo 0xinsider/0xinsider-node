@@ -368,13 +368,17 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 12); do
+          # npm scans accepted uploads before they become installable, usually
+          # around five minutes and sometimes fifteen or more. A 202 upload
+          # response is not registry acceptance. Keep this wait bounded and
+          # retain the same tarball for a later exact-byte retry.
+          for attempt in $(seq 1 30); do
             if npm view --prefer-online "@0xinsider/sdk@${VERSION}" version >/dev/null 2>&1; then
               echo "published and visible: @0xinsider/sdk@${VERSION}"
               exit 0
             fi
-            echo "registry does not serve ${VERSION} yet (${attempt}/12)"
-            sleep 15
+            echo "registry does not serve ${VERSION} yet (${attempt}/30)"
+            sleep 30
           done
-          echo "::error::${VERSION} is not visible after 3 minutes. It may still have landed: check npm view, then use Re-run failed jobs on this run rather than a new dispatch." >&2
+          echo "::error::${VERSION} is not visible after 15 minutes. npm scanning may still be pending: check npm view, then use Re-run failed jobs on this run rather than a new dispatch." >&2
           exit 1

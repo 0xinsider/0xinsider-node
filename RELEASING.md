@@ -34,4 +34,6 @@ Needs owner rights on the `@0xinsider` scope on npmjs.com.
 
 ## If the publish job goes red
 
-A red run does not prove nothing was published: the registry can lag past the three-minute verification. Use "Re-run failed jobs" on that run, not a new release or dispatch. The re-run compares the registry's `dist.integrity` for the version with the tarball it holds: equal skips the publish and goes green, absent publishes, different stops. Never bump the version to work around a red run until `npm view @0xinsider/sdk version` says it is not there.
+A red run does not prove nothing was published. [npm scans uploads before they become installable](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/), typically around five minutes, sometimes fifteen minutes or longer. This workflow waits up to fifteen minutes, which is a bound rather than a registry guarantee. A successful upload, including HTTP 202, still needs registry and consumer verification.
+
+When the publish step succeeded but registry verification timed out, wait for that exact version to become visible before retrying. Use "Re-run failed jobs" on the same run, not a new release or dispatch. The re-run compares the registry's `dist.integrity` for the version with the tarball it holds: equal skips the publish and goes green, different stops. A genuinely absent upload can be retried from the same artifact; an accepted upload pending scanning must not be republished. Never bump the version to work around a red run.
