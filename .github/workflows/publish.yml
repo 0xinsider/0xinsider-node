@@ -13,7 +13,7 @@ name: Publish to npm
 # token exchange, and publishes nothing. A version already on npm is skipped,
 # not failed.
 #
-# TWO JOBS, and the split is the security boundary. `build` installs, tests and
+# TWO JOBS, and the split is the security boundary. `build` installs, checks and
 # packs WITHOUT `id-token`, then hands one tarball to `publish`, which holds
 # `id-token: write`, never checks out or runs repository code, and checks the
 # tarball's digest and manifest before it hands it a credential. Code that runs
@@ -58,9 +58,10 @@ jobs:
           package-manager-cache: false
       - run: npm ci --ignore-scripts
       - run: npm run check
-      # Builds dist/ from the checked-out sources, then runs the unit tests
-      # against it. The tarball below packs this same dist/.
-      - run: npm test
+      # Build and type-check the documented consumer example. The tarball
+      # below packs this same dist/; release verification does not run tests.
+      - run: npm run build
+      - run: npm run check:examples
 
       # `npm pack` copies the manifest version verbatim while `npm publish`
       # normalizes it, so a non-canonical string (`v0.3.0`, `0.3.0+build`) would
@@ -128,7 +129,14 @@ jobs:
           filename="$(npm pack --json | node -e '
             let s = "";
             process.stdin.on("data", (d) => (s += d)).on("end", () => {
-              const p = JSON.parse(s)[0];
+              const report = JSON.parse(s);
+              // npm 11 emits an array; npm 12 keys its report by package name.
+              const packages = Array.isArray(report) ? report : Object.values(report);
+              if (packages.length !== 1 || packages[0]?.name !== "@0xinsider/sdk") {
+                console.error("pack report must describe exactly @0xinsider/sdk");
+                process.exit(1);
+              }
+              const p = packages[0];
               const files = p.files.map((x) => x.path);
               const need = ["package.json", "README.md", "LICENSE", "dist/index.js", "dist/index.d.ts", "dist/schema.d.ts", "dist/provenance.js", "dist/provenance.d.ts"];
               const missing = need.filter((x) => !files.includes(x));
