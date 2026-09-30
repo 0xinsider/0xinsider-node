@@ -643,6 +643,12 @@ export const API_CLIENT_OPERATIONS = [
     auth: "none",
   },
   {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day/ledger/{pick_id}",
+    operationId: "getPickOfTheDayLedgerEntry",
+    auth: "none",
+  },
+  {
     method: "POST",
     path: "/api/v1/agents/register",
     operationId: "registerAgent",
@@ -3230,6 +3236,11 @@ export class OxinsiderApiClient {
    */
   getPickOfTheDayLedger(options: ConvenienceOptions = {}) {
     return this.call("getPickOfTheDayLedger", options);
+  }
+
+  /** Read a published pick's proof by stable decimal-string pick id. */
+  getPickOfTheDayLedgerEntry(pickId: string, options: ConvenienceOptions = {}) {
+    return this.call("getPickOfTheDayLedgerEntry", { ...options, path: { pick_id: pickId } });
   }
 
   // --- Internals ---

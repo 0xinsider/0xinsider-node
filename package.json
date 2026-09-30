@@ -1,6 +1,6 @@
 {
   "name": "@0xinsider/sdk",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Official TypeScript SDK for the 0xinsider API - analytics for Polymarket sports and esports markets (REST, cursor pagination, SSE stream, webhook verification)",
   "type": "module",
   "main": "dist/index.js",

@@ -88,6 +88,20 @@ for the caller that asserts the shape itself.
 push, so a contract change that nobody regenerated fails CI rather than
 shipping as a stale type.
 
+## Pick proof by stable identity
+
+`getPickOfTheDayLedgerEntry(pickId)` reads the public proof for one pick without an API key. Keep `pick_id` as its decimal string; converting it to `Number` can lose precision. `publication_order` is a scheduling slot, and `is_free_selection` names the free selection independently of the viewer. `supersedes_pick_id` links a replacement to its original row.
+
+```ts
+const publicClient = new OxinsiderApiClient();
+const proof = await publicClient.getPickOfTheDayLedgerEntry("731");
+if (proof.object === "pick_of_the_day_ledger_entry") {
+  console.log(proof.data.state, proof.data.pick_id);
+}
+```
+
+Committed entries carry `commitment_version`: legacy version 1 payload bytes remain unchanged; new version 2 payloads bind `pick_id` and `version: 2` instead of a rank. Only opened entries disclose the payload and nonce. Deprecated `pick_rank` fields and dated routes remain compatible.
+
 ## Quickstart
 
 ### REST
