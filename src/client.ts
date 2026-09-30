@@ -1414,76 +1414,22 @@ export type PreGameSideObservationsParams = OperationQuery["listPreGameSideObser
 /** @deprecated Use {@link PreGameSideObservationsParams} (#16310). */
 export type SportsEdgeObservationsParams = PreGameSideObservationsParams;
 
-/**
- * One qualifying category expert on a Pick of the Day's backed side.
- *
- * Every threshold below holds BY CONSTRUCTION -- the selector only ever freezes a wallet that
- * cleared all of them -- so a consumer can render the numbers without re-checking them.
- */
+/** Public wallet facts associated with a recorded pick. */
 export interface PickQualifyingExpert {
-  /** Policy 6 admission exception; absent on earlier frozen policies. */
-  lane?: "standard" | "longshot_specialist";
-  /** Answered, index-scoped provider probability, present only on specialist lanes. */
-  lane_probability?: number;
-  lane_probability_source?: "p";
   address: string;
   name?: string | null;
-  /** Public V1 exposes `S` or `A`; internal policy v2 also admits B. */
   grade?: string | null;
-  /**
-   * The canonical sport BUCKET the rate below was measured over (for example `Basketball`).
-   *
-   * Label `win_rate` with THIS field, never with the pick's `display_category`: that names an
-   * exact league (NBA/WNBA/NFL/NHL/MLB/UFC) which folds into a broader bucket, so rendering
-   * "68% of their NBA markets" for a Basketball-wide rate publishes a false quantified claim.
-   */
+  /** Category of the recorded wallet statistics. */
   canonical_category: string;
-  /**
-   * Share of this wallet's resolved markets in `canonical_category` whose realized P&L came out
-   * positive, as a 0..1 fraction. Above 0.60. Scale x100 at the display edge. `null` for an
-   * expert who qualified on the category-skill v2 definition only (`source` = `v2`).
-   */
+  /** Recorded profitability fraction, when available. */
   win_rate: number | null;
-  /** Resolved markets in `canonical_category` behind `win_rate`. At least 10. `null` with it. */
+  /** Recorded resolved-market count, when available. */
   n_resolved: number | null;
-  /**
-   * Which definition qualified the wallet: `v1` (the profitability rate above) or `v2` (the
-   * forward-only category-skill calibration edge below). Absent on picks frozen before the v2
-   * definition existed; read absence as `v1`. A Tennis pick frozen under gate policy v4 or later
-   * carries `v2` only: a v1 rate stopped qualifying a tennis expert at v4. A Tennis pick frozen
-   * under an earlier policy can still carry `v1` with a win rate.
-   */
-  source?: "v1" | "v2";
-  /**
-   * 95% lower bound of the wallet's mean calibration edge over the market price in
-   * `canonical_category`, in probability units (0.08 = 8 points). Positive by construction for
-   * a `v2` expert; present on a `v1` expert only when the wallet also has a live v2 row.
-   */
-  edge_lower_95?: number | null;
-  /** Point estimate behind `edge_lower_95`. */
-  edge_mean?: number | null;
-  /**
-   * Independent canonical events behind the edge. Clears the v2 sample floor for a `v2`
-   * expert; the floor is the selector's and is not published.
-   */
-  independent_event_count?: number | null;
-  /**
-   * Polymarket's own `currentValue` for this wallet on the backed outcome, in USD, as of
-   * selection. Clears the lane's net-position floor at selection; the floor is the selector's,
-   * has changed between gate policies, and is not published.
-   */
+  /** Recorded position value in USD. */
   position_usd: number;
-  /**
-   * The same wallet's `currentValue` on the OTHER outcome of this market, in USD, as of
-   * selection. From gate policy v5 the floor is read on the net: `position_usd` minus this
-   * value clears the lane's floor, so a wallet long both sides does not qualify. Absent on picks
-   * frozen before v5, which never read the leg; 0 is a measured one-way position.
-   */
+  /** Recorded opposite-outcome position value in USD, when available. */
   opposite_position_usd?: number | null;
-  /**
-   * When the skill read model behind the evidence was last rebuilt: `trader_category_stats`
-   * for a `source: v1` expert, `category_skill_v2_current.as_of` for a `source: v2` expert.
-   */
+  /** Recorded statistics timestamp. */
   stats_computed_at: string;
 }
 
@@ -1494,15 +1440,6 @@ export interface PickQualifyingExpert {
  */
 export type TennisTour = "atp" | "wta" | "itf";
 
-/**
- * The daily editorial Pick of the Day. Single-object envelope for
- * `getPickOfTheDay` (`GET /api/v1/pick-of-the-day`). Field names mirror the
- * JSON wire shape (snake_case); the backend omits null/absent optional fields.
- * The outer object retains the historical first-pick fields and `picks` carries
- * the ordered daily picks, normally three to ten items and never more than ten.
- * A published pick whose holder proof is not readable yet is listed in
- * `proof_pending_picks` instead of `picks` (#10698).
- */
 /** Typed 304 result returned for a matching `If-None-Match` conditional GET. */
 export interface ApiNotModifiedResponse {
   object: "not_modified";
@@ -2782,9 +2719,8 @@ export class OxinsiderApiClient {
   }
 
   /**
-   * List upcoming games ranked by the side profitable wallets hold, with
-   * additive, shadow-only category evidence. `category_skill` never changes
-   * membership, ordering, or sizing. Rows carry `side`, `ranked_at`,
+   * List upcoming games and their public market-side data.
+   * Rows carry `side`, `ranked_at`,
    * `backing_score` and `side_share`; the older `piled_side`,
    * `signal_created_at`, `conviction_score` and `smart_score` keys carry the
    * same values and stay on the wire.

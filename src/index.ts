@@ -349,7 +349,6 @@ export type {
   PickOfTheDayUncommittedPayload,
   PickSportsContext,
   PickSportsTeam,
-  PickTrust,
   PlatformCapabilities,
   PlatformCapabilityStatus,
   Platforms,
