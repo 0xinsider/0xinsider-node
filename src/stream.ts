@@ -743,8 +743,13 @@ export interface StreamHandlerFailure {
   stage: StreamHandlerStage;
   /** 1-based consecutive failures at this sequence. Resets on any success. */
   attempt: number;
-  /** Whether the consumer will reconnect and replay, or throw next. */
+  /** Whether replay is planned; false means exhaustion or clean cancellation. */
   willRetry: boolean;
+  /**
+   * Present and true when caller cancellation has stopped the consumer at
+   * this observation. It does not claim cancellation caused the rejection.
+   */
+  cancelled?: boolean;
   /**
    * The sequence the replay resumes AFTER, so the failed frame is delivered
    * again while the server retains it. `undefined` means the replay attaches
@@ -817,9 +822,10 @@ export interface CheckpointedStreamOptions extends ResilientStreamOptions {
    */
   maxHandlerRetries?: number;
   /**
-   * Called on every handler failure with the recovery state, before the
-   * backoff and before any throw. It is the visible signal that work is being
-   * replayed rather than lost; it is not awaited and must not throw.
+   * Called on every handler failure with the recovery state, before backoff,
+   * exhaustion, or a clean cancellation return. Cancellation retains the
+   * original error with `willRetry: false` and `cancelled: true`, without
+   * spending a retry. It is not awaited and must not throw.
    */
   onHandlerError?: (error: unknown, failure: StreamHandlerFailure) => void;
 }
@@ -911,7 +917,12 @@ function replayPointBefore(seq: number | undefined): number | undefined {
  * handlers. Aborting `signal` ends the consumer without throwing: a handler
  * already running is awaited (it is not cancelled for you -- pass the same
  * signal into your own work if you want that), and if it succeeds its
- * checkpoint is committed before the consumer returns.
+ * checkpoint is committed before the consumer returns. If an awaited event,
+ * resync, or checkpoint callback rejects during cancellation, the checkpoint
+ * stays unchanged and `onHandlerError` reports the original rejection with
+ * `willRetry: false` and `cancelled: true`; the consumer returns even when
+ * handler retries are disabled or exhausted. A coincident unrelated failure
+ * is still reported, without claiming cancellation caused it.
  *
  * @example
  * const checkpoint = { seq: await loadCheckpoint() };
@@ -925,7 +936,7 @@ function replayPointBefore(seq: number | undefined): number | undefined {
  *   checkpoint,
  *   signal: controller.signal,
  *   onHandlerError: (error, failure) =>
- *     console.warn("replaying", failure.seq, failure.attempt, failure.willRetry, error),
+ *     console.warn("handler failed", failure.seq, failure.attempt, failure.willRetry, error),
  * });
  */
 export async function consumeStreamCheckpointed(
@@ -1019,23 +1030,28 @@ export async function consumeStreamCheckpointed(
     if (!pending) return;
 
     const failedSeq = pending.seq;
-    if (failures > 0 && failedSeq === failingSeq) {
-      failures += 1;
-    } else {
-      failingSeq = failedSeq;
-      failures = 1;
-    }
+    const nextFailures =
+      failures > 0 && failedSeq === failingSeq ? failures + 1 : 1;
     resumeAfter =
       checkpoint.seq ?? initialLastEventId ?? replayPointBefore(failedSeq);
-    const willRetry = failures <= maxHandlerRetries;
+    // Iterator cleanup and the awaited callback have finished. Observe caller
+    // cancellation before committing retry accounting, but retain the failure
+    // diagnostic: an unrelated rejection can race with the same signal.
+    const cancelled = signal?.aborted === true;
+    const willRetry = !cancelled && nextFailures <= maxHandlerRetries;
     onHandlerError?.(pending.error, {
       seq: failedSeq,
       stage: pending.stage,
-      attempt: failures,
+      attempt: nextFailures,
       willRetry,
+      ...(cancelled ? { cancelled: true } : {}),
       replayFrom: resumeAfter,
       checkpoint: checkpoint.seq,
     });
+    // The observer can also stop the consumer synchronously.
+    if (cancelled || signal?.aborted) return;
+    failingSeq = failedSeq;
+    failures = nextFailures;
     if (!willRetry) {
       throw new StreamHandlerFailedError(
         {

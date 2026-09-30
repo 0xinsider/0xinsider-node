@@ -480,7 +480,7 @@ try {
     lastEventId: checkpoint.seq,
     checkpoint,
     signal: controller.signal,
-    onHandlerError: (err, f) => console.warn("replaying", f.seq, f.attempt, f.willRetry, err),
+    onHandlerError: (err, f) => console.warn("handler failed", f.seq, f.attempt, f.willRetry, f.cancelled, err),
   });
 } catch (err) {
   if (err instanceof StreamHandlerFailedError) parkForRepair(err.seq, err.replayFrom, err.cause);
@@ -493,7 +493,7 @@ try {
 - **Resync is a barrier:** `onResync` is awaited and the checkpoint moves to the marker only once it resolves, so an interrupted refresh is retried instead of being recorded as done. The fire-and-forget `StreamOptions.onResync` notification is not awaited and is not a barrier.
 - **Backpressure, not buffering:** nothing is read from the connection while your handler runs. At most one frame is in flight and no queue is kept on your behalf; a slow handler is backpressure on the socket, and falling far enough behind the retained window surfaces as a `resync` marker.
 - **At-least-once:** a replay re-delivers every unacknowledged frame, and a handler that succeeded but whose checkpoint write failed sees its event again. Deduplicate on `seq` or make the side effect idempotent; no client can promise exactly-once side effects.
-- **Abort:** aborting `signal` ends the consumer without throwing. A handler already running is awaited rather than cancelled (pass the same signal into your own work if you want that), and if it succeeds its checkpoint is committed first.
+- **Abort:** aborting `signal` ends the consumer without throwing. A handler already running is awaited rather than cancelled (pass the same signal into your own work if you want that), and if it and its durable checkpoint write succeed, the checkpoint is committed first. If an awaited event, resync, or checkpoint callback rejects while the signal is aborted, the acknowledgement stays unchanged and the consumer returns, including with zero or exhausted handler retries. `onHandlerError` still receives the original rejection, with `willRetry: false` and optional `cancelled: true`; cancellation spends no handler retry. The flag means cancellation stopped the consumer when the failure was observed, without claiming it caused the rejection, so unrelated failures racing shutdown remain visible. `attempt` remains the 1-based consecutive failure occurrence at that sequence. Without cancellation, bounded retries and `StreamHandlerFailedError` are unchanged. The diagnostic callback is synchronous and must not throw; it may abort the signal to stop the consumer.
 
 ### Webhook verification
 
