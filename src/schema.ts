@@ -1292,7 +1292,10 @@ export type PickOfTheDay = {
   state: "full";
   /** The pick's local publication date (YYYY-MM-DD). */
   pick_date?: string;
-  /** Stable 1-based slot within the product day's ranked picks. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank?: number;
   /** The complete ranked picks for this product day, ordered by pick_rank. Thin days contain fewer items; the selector never fabricates rows. */
   picks?: PickOfTheDay[];
@@ -1462,6 +1465,14 @@ export type PickOfTheDay = {
   selection_lane?: "standard" | "longshot_specialist";
   /** Optional full-only authorization for newly issued policy-7 picks; omitted for legacy or unissued picks and teasers. It remains historical after expiry. */
   entry_authorization?: PotdEntryAuthorization;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id?: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order?: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection?: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
 };
 
 export type PickOfTheDayArchive = {
@@ -1496,7 +1507,10 @@ export type PickOfTheDayArchiveDay = {
 export type PickOfTheDayArchiveEntry = {
   /** The pick's local publication date (YYYY-MM-DD). */
   pick_date: string;
-  /** Stable 1-based slot within the product day's ranked picks. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank?: number;
   /** When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (11:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility. */
   published_at?: string;
@@ -1548,10 +1562,21 @@ export type PickOfTheDayArchiveEntry = {
   unit_score?: number;
   /** Backend-formatted signed unit score, present exactly when unit_score is present. */
   unit_score_display?: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
 };
 
+/** Select using the entry commitment_version, never implicit payload shape. All historic v1 hashes remain unchanged. */
+export type PickOfTheDayCommitmentPayload = PickOfTheDayCommitmentPayloadV1 | PickOfTheDayCommitmentPayloadV2;
+
 /** The frozen identity of the pick, exactly as the hash was taken over it. Served byte for byte as it was hashed -- keys sorted by UTF-8 byte value, no insignificant whitespace -- so a verifier concatenates and hashes with nothing to reconstruct. Property order below is the wire order. The outcome is deliberately NOT part of it: surviving a corrected outcome unchanged is the case the commitment exists for. Worked example: {"backed_price":"0.545000","condition_id":"0xabc","kickoff":"2026-09-20T23:05:00Z","pick_date":"2026-09-20","pick_outcome_index":1,"pick_outcome_label":"Lakers","pick_rank":1,"platform":"polymarket"} with the nonce 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f hashes to 44d18fa5e2aa3a2bf3c971dcc9317c8ccbdfd5480a4773b6d8ffd5fbeeea84dc. */
-export type PickOfTheDayCommitmentPayload = {
+export type PickOfTheDayCommitmentPayloadV1 = {
   /** Frozen pre-game price of the backed side, 0..1, as the plain decimal text of the stored NUMERIC at full stored precision, trailing zeros included. A string, never a number: a float round-trip would change the bytes and break the hash. Deliberately not normalized -- 0.545000 stays "0.545000". */
   backed_price: string;
   /** Provider condition id of the backed market. */
@@ -1568,6 +1593,27 @@ export type PickOfTheDayCommitmentPayload = {
   pick_rank: number;
   /** Provider platform. Always polymarket. */
   platform: "polymarket";
+};
+
+/** Version 2 rank-free canonical payload: sorted nine keys, unchanged string escaping, exact decimal text and whole-second UTC kickoff. pick_id is decimal text; version is JSON integer 2. */
+export type PickOfTheDayCommitmentPayloadV2 = {
+  /** Frozen pre-game price of the backed side, 0..1, as the plain decimal text of the stored NUMERIC at full stored precision, trailing zeros included. A string, never a number: a float round-trip would change the bytes and break the hash. Deliberately not normalized -- 0.545000 stays "0.545000". */
+  backed_price: string;
+  /** Provider condition id of the backed market. */
+  condition_id: string;
+  /** Frozen provider kickoff, whole seconds, UTC, literal Z. Fixed precision, never a shortest-lossless rendering. */
+  kickoff: string;
+  /** ET product day (YYYY-MM-DD). */
+  pick_date: string;
+  /** Index of the backed outcome within the market. */
+  pick_outcome_index: 0 | 1;
+  /** Frozen display label of the backed outcome. */
+  pick_outcome_label: string;
+  /** Provider platform. Always polymarket. */
+  platform: "polymarket";
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  version: 2;
 };
 
 export type PickOfTheDayHitRate = {
@@ -1668,7 +1714,10 @@ export type PickOfTheDayLedgerOpenedEntry = {
   state: "opened";
   /** ET product day the pick belongs to (YYYY-MM-DD). */
   pick_date: string;
-  /** 1-based daily slot within the product day. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank: number;
   /** sha256(canonical_json(payload) || nonce), lowercase hex, no 0x prefix. Publishable the moment the pick releases: without the nonce it is not invertible. */
   commitment_hash: string;
@@ -1691,6 +1740,16 @@ export type PickOfTheDayLedgerOpenedEntry = {
   category: string;
   /** The pick's public page. */
   permalink: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
+  /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
+  commitment_version: 1 | 2;
 };
 
 /** A published pick that has not settled. Carries the commitment and nothing that states a side or a price: no nonce, no payload, no outcome. Publishable the instant the pick releases. */
@@ -1698,7 +1757,10 @@ export type PickOfTheDayLedgerSealedEntry = {
   state: "sealed";
   /** ET product day the pick belongs to (YYYY-MM-DD). */
   pick_date: string;
-  /** 1-based daily slot within the product day. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank: number;
   /** sha256(canonical_json(payload) || nonce), lowercase hex, no 0x prefix. Publishable the moment the pick releases: without the nonce it is not invertible. */
   commitment_hash: string;
@@ -1710,6 +1772,16 @@ export type PickOfTheDayLedgerSealedEntry = {
   kickoff: string;
   /** The pick's public page. */
   permalink: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
+  /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
+  commitment_version: 1 | 2;
 };
 
 /** A published pick with no commitment: it predates the scheme, or it reached kickoff unsealed. Nothing here is evidence of WHEN the pick was made. It is emitted rather than skipped, because a ledger with holes where the unprovable picks were would silently flatter the record. Once the pick settles, payload names its market, side and price, so the outcome can still be checked against the market's own resolution. */
@@ -1717,7 +1789,10 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   state: "uncommitted";
   /** ET product day the pick belongs to (YYYY-MM-DD). */
   pick_date: string;
-  /** 1-based daily slot within the product day. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank: number;
   /** Always true: this pick has no commitment and never will. */
   pre_commitment: true;
@@ -1733,6 +1808,14 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   payload: PickOfTheDayUncommittedPayload | null;
   /** The pick's public page. */
   permalink: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
@@ -2167,7 +2250,10 @@ export type PreGameSideSportFunnelReport = {
 
 /** One PUBLISHED same-day pick whose holder proof is not readable yet: its stable slot rank, the release and kickoff instants, and the instant before which a retry cannot succeed. Every item in `picks` carries its full required shape, so a pick that cannot meet it is listed here instead of being served with missing fields or a synthetic zero. */
 export type ProofPendingPickSlot = {
-  /** Stable 1-based slot within the product day's ranked picks. The pick keeps this rank once its proof is readable and it moves into `picks`. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank: number;
   /** The pick's stored release instant. */
   release_at: string;
@@ -2175,6 +2261,14 @@ export type ProofPendingPickSlot = {
   kickoff?: string;
   /** Recommended next read: 30 seconds ahead while pre-game proof is warming, one hour ahead for a post-kickoff pending legacy row that only settlement can make readable. Schedule against it instead of polling. */
   retry_at: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
 };
 
 export type ReportPayload = {
@@ -2312,12 +2406,23 @@ export type ResponseMeta = {
 
 /** One same-day pick that is selected but not yet released: its stable slot rank plus the backend-owned release and kickoff instants. Deliberately minimal -- no matchup, category, platform, side, price, or holder fields exist on this shape before release. */
 export type ScheduledPickSlot = {
-  /** Stable 1-based slot within the product day's ranked picks. The slot keeps this rank when it releases. */
+  /**
+   * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
+   * @deprecated
+   */
   pick_rank: number;
   /** The slot's scheduled release instant, normally the current provider kickoff minus one hour. The actual publish can trail it by bounded worker delay. */
   release_at: string;
   /** The backed game's current kickoff instant. */
   kickoff: string;
+  /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
+  pick_id: string;
+  /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
+  publication_order: number;
+  /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
+  is_free_selection: boolean;
+  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  supersedes_pick_id: string | null;
 };
 
 /** One side's score in a single set. The verbatim provider text stays on the team's `score` string; this is the parsed form. */
@@ -3417,6 +3522,7 @@ export interface OperationData {
   getPickOfTheDay: PickOfTheDay;
   getPickOfTheDayArchive: PickOfTheDayArchive;
   getPickOfTheDayLedger: PickOfTheDayLedger;
+  getPickOfTheDayLedgerEntry: PickOfTheDayLedgerEntry;
   getPlatforms: Platforms;
   getPositionTimeline: PositionTimelineEvent[];
   getPositionTimelineById: PositionTimelineEvent[];
@@ -3800,6 +3906,7 @@ export interface OperationQuery {
   getPickOfTheDay: Record<string, never>;
   getPickOfTheDayArchive: Record<string, never>;
   getPickOfTheDayLedger: Record<string, never>;
+  getPickOfTheDayLedgerEntry: Record<string, never>;
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
     /** Market condition_id. One timeline per (trader, market). */
@@ -4295,6 +4402,10 @@ export interface OperationPath {
   getPickOfTheDay: Record<string, never>;
   getPickOfTheDayArchive: Record<string, never>;
   getPickOfTheDayLedger: Record<string, never>;
+  getPickOfTheDayLedgerEntry: {
+    /** Stable positive pick row id as canonical decimal text. */
+    pick_id: string;
+  };
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
     /** Trader identity: 0x... wallet address, username, trd_-prefixed trader id, bare integer traders.id, or @username. Resolved with precedence @username -> wallet -> trd_ -> integer -> username (a leading @ forces a username lookup, for all-digit usernames); wallet matching is case-insensitive. */
@@ -4490,6 +4601,7 @@ export interface OperationBody {
   getPickOfTheDay: never;
   getPickOfTheDayArchive: never;
   getPickOfTheDayLedger: never;
+  getPickOfTheDayLedgerEntry: never;
   getPlatforms: never;
   getPositionTimeline: never;
   getPositionTimelineById: never;
@@ -4711,6 +4823,11 @@ export interface OperationResponse {
   getPickOfTheDayLedger: {
     object: "pick_of_the_day_ledger";
     data: OperationData["getPickOfTheDayLedger"];
+    meta: ResponseMeta;
+  };
+  getPickOfTheDayLedgerEntry: {
+    object: "pick_of_the_day_ledger_entry";
+    data: OperationData["getPickOfTheDayLedgerEntry"];
     meta: ResponseMeta;
   };
   getPlatforms: {
