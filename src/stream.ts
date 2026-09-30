@@ -407,7 +407,7 @@ export interface ResilientStreamOptions extends StreamOptions {
     cause: unknown,
   ) => void;
   /**
-   * The longest server-requested wait (`Retry-After`) the loop holds
+   * The longest server-requested wait (`Retry-After` or `retry_at`) the loop holds
    * in-process, in ms. Default `DEFAULT_MAX_STREAM_RETRY_AFTER_MS` (60 000,
    * the REST client's ceiling). A refusal asking for longer ends the loop
    * with `StreamRetryDeferredError`, which carries the not-before instant
@@ -451,10 +451,11 @@ export class StreamReconnectsExhaustedError extends Error {
 }
 
 /**
- * `streamFeedResilient` was refused with a `Retry-After` longer than
+ * `streamFeedResilient` received a server-requested wait longer than
  * `maxRetryAfterMs`, so the wait is yours to schedule (#16249). `retryAt` is
  * the server's not-before instant as this client read it (the header's
- * seconds added to the local clock, or the header's HTTP-date); `cause` is
+ * seconds added to the local clock, the header's HTTP-date, or terminal
+ * `retry_at` when no usable header exists); `cause` is
  * the refusal, whose `retryAt` (from the body's `retry_at`) is the server's
  * own clock reading of the same instant. `lastSeq` is the seq to resume after:
  * pass it as `lastEventId` when you reconnect at `retryAt`. `attempts` is how
@@ -478,7 +479,7 @@ export class StreamRetryDeferredError extends Error {
   ) {
     const retryAt = new Date(Date.now() + retryAfterMs);
     super(
-      `0xinsider stream refused with Retry-After ${String(Math.round(retryAfterMs / 1000))} s, past the in-process ceiling; reconnect after ${retryAt.toISOString()}${lastSeq === undefined ? "" : ` with lastEventId ${String(lastSeq)}`}`,
+      `0xinsider stream requested a retry after ${String(Math.round(retryAfterMs / 1000))} s, past the in-process ceiling; reconnect after ${retryAt.toISOString()}${lastSeq === undefined ? "" : ` with lastEventId ${String(lastSeq)}`}`,
       { cause },
     );
     this.name = "StreamRetryDeferredError";
@@ -514,16 +515,23 @@ function isPermanentStreamError(error: unknown): boolean {
 
 /**
  * The wait the server asked for, in ms, or `null` when the refusal carried
- * no usable `Retry-After` (a network error, a clean close, a 5xx without the
- * header). The header is parsed once, by `retry.ts`, when the error is built.
+ * no usable `Retry-After` or `retry_at`. Prefer the already parsed HTTP
+ * duration; terminal frames have no new headers, so their absolute instant
+ * is measured once against the local clock. Clock alignment is the caller's
+ * responsibility. A past instant means zero wait; invalid guidance is absent.
  */
-function serverRequestedWaitMs(cause: unknown): number | null {
-  return cause instanceof OxinsiderApiError &&
-    "retryAfterSeconds" in cause &&
-    typeof cause.retryAfterSeconds === "number" &&
-    Number.isFinite(cause.retryAfterSeconds) &&
-    cause.retryAfterSeconds >= 0
-    ? cause.retryAfterSeconds * 1000
+function serverRequestedWaitMs(
+  cause: unknown,
+  nowMs: number = Date.now(),
+): number | null {
+  if (!(cause instanceof OxinsiderApiError)) return null;
+  const seconds = cause.retryAfterSeconds;
+  if (typeof seconds === "number" && Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+  const retryAtMs = cause.retryAt?.getTime();
+  return retryAtMs !== undefined && Number.isFinite(retryAtMs)
+    ? Math.max(0, retryAtMs - nowMs)
     : null;
 }
 
