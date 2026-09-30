@@ -2457,7 +2457,9 @@ export class OxinsiderApiClient {
           ? retryDelayWithinBudget(attempt, retryAfter)
           : null;
         if (delay === null) {
-          throw errorFromResponse(response.status, errorBody, retryAfter);
+          throw errorFromResponse(response.status, errorBody, retryAfter, {
+            requestId: response.headers.get("x-request-id"),
+          });
         }
         await sleepUnlessAborted(delay, requestSignal.signal);
       }

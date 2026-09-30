@@ -164,6 +164,7 @@ export {
 export type {
   ApiErrorCode,
   ApiErrorMeta,
+  ApiErrorTransportMetadata,
   ApiErrorReason,
   FreshnessFailure,
 } from "./errors.js";

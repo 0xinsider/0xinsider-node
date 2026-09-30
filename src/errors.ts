@@ -225,6 +225,12 @@ function extractFreshnessFailure(error: ApiErrorBody | null): FreshnessFailure |
   return value && typeof value === "object" ? value : null;
 }
 
+/** Received HTTP metadata; it never changes the response body or retry eligibility. */
+export interface ApiErrorTransportMetadata {
+  readonly requestId?: string | null;
+  readonly retryAfterSeconds?: number | null;
+}
+
 /**
  * Base class for every error thrown by the SDK on a non-2xx API response.
  * Subclasses below specialize by documented `code`.
@@ -282,12 +288,18 @@ export class OxinsiderApiError extends Error {
   readonly error: ApiErrorBody | null;
   /** Response `meta` (`request_id`, `cost`, ...), or null. */
   readonly meta: ApiErrorMeta | null;
-  /** The `request_id` from `meta`, surfaced for support correlation. */
+  /** Body `meta.request_id`, or the received `X-Request-ID` when absent. */
   readonly requestId: string | undefined;
+  /** Parsed `Retry-After` guidance, independent of whether this request can be retried. */
+  readonly retryAfterSeconds: number | null;
   /** Raw, unparsed body for debugging. */
   readonly body: unknown;
 
-  constructor(status: number, body: unknown) {
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
     const error = extractApiErrorBody(body);
     const meta = extractApiErrorMeta(body);
     const message =
@@ -300,7 +312,10 @@ export class OxinsiderApiError extends Error {
     this.reason = knownApiErrorReason(error?.reason);
     this.error = error;
     this.meta = meta;
-    this.requestId = meta?.request_id;
+    const headerRequestId = transport.requestId;
+    this.requestId = meta?.request_id ??
+      (headerRequestId?.trim() ? headerRequestId : undefined);
+    this.retryAfterSeconds = transport.retryAfterSeconds ?? null;
     this.body = body;
     // Parsed once, here, for EVERY error. The retryable subclasses no longer parse it
     // themselves -- two parsers for one wire field is how they drift.
@@ -311,8 +326,12 @@ export class OxinsiderApiError extends Error {
 /** 400 - the request was malformed; see `param` for the offending field. */
 export class BadRequestError extends OxinsiderApiError {
   override readonly code = "bad_request" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "BadRequestError";
   }
 }
@@ -327,8 +346,12 @@ export class FreshnessCeilingUnsatisfiedError extends BadRequestError {
   override readonly reason = "freshness_ceiling_unsatisfied" as const;
   readonly freshness: FreshnessFailure | null;
 
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "FreshnessCeilingUnsatisfiedError";
     this.freshness = extractFreshnessFailure(this.error);
   }
@@ -341,8 +364,12 @@ export class FreshnessCeilingUnsatisfiedError extends BadRequestError {
  */
 export class UnknownQueryParameterError extends BadRequestError {
   override readonly reason = "unknown_query_parameter" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "UnknownQueryParameterError";
   }
 }
@@ -350,8 +377,12 @@ export class UnknownQueryParameterError extends BadRequestError {
 /** 401 - the `oxi_sk_*` API key is missing, malformed, or revoked. */
 export class InvalidApiKeyError extends OxinsiderApiError {
   override readonly code = "invalid_api_key" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "InvalidApiKeyError";
   }
 }
@@ -364,8 +395,12 @@ export class InvalidApiKeyError extends OxinsiderApiError {
  */
 export class SandboxApiKeyError extends InvalidApiKeyError {
   override readonly reason = "sandbox_api_key" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "SandboxApiKeyError";
   }
 }
@@ -378,8 +413,12 @@ export class SandboxApiKeyError extends InvalidApiKeyError {
  */
 export class ApiKeyInQueryError extends InvalidApiKeyError {
   override readonly reason = "api_key_in_query" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "ApiKeyInQueryError";
   }
 }
@@ -397,8 +436,12 @@ export class SubscriptionRequiredError extends OxinsiderApiError {
   override readonly code = "subscription_required" as const;
   /** Where the account reactivates Pro. */
   readonly reactivationUrl = "https://0xinsider.com/billing";
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "SubscriptionRequiredError";
   }
 }
@@ -406,8 +449,12 @@ export class SubscriptionRequiredError extends OxinsiderApiError {
 /** 403 - the key is authenticated but not allowed to access this resource. */
 export class ForbiddenError extends OxinsiderApiError {
   override readonly code = "forbidden" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "ForbiddenError";
   }
 }
@@ -415,8 +462,12 @@ export class ForbiddenError extends OxinsiderApiError {
 /** 404 - the requested resource does not exist. */
 export class NotFoundError extends OxinsiderApiError {
   override readonly code = "not_found" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "NotFoundError";
   }
 }
@@ -424,8 +475,12 @@ export class NotFoundError extends OxinsiderApiError {
 /** 403 - the account is locked; contact support. */
 export class AccountLockedError extends OxinsiderApiError {
   override readonly code = "account_locked" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "AccountLockedError";
   }
 }
@@ -436,12 +491,14 @@ export class AccountLockedError extends OxinsiderApiError {
  */
 export class RateLimitedError extends OxinsiderApiError {
   override readonly code = "rate_limited" as const;
-  /** Seconds to wait before retrying, from the `Retry-After` header. */
-  readonly retryAfterSeconds: number | null;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, { ...transport, retryAfterSeconds });
     this.name = "RateLimitedError";
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -456,24 +513,28 @@ export class RateLimitedError extends OxinsiderApiError {
  */
 export class ServerTimeoutError extends OxinsiderApiError {
   override readonly code = "request_timeout" as const;
-  /** Seconds to wait before retrying a safe read, from `Retry-After`; null on a mutation. */
-  readonly retryAfterSeconds: number | null;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, { ...transport, retryAfterSeconds });
     this.name = "ServerTimeoutError";
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
 /** 503 - the rate-limit/admission backend was briefly unavailable; retry. */
 export class RateLimitUnavailableError extends OxinsiderApiError {
   override readonly code = "rate_limit_unavailable" as const;
-  /** Seconds to wait before retrying, from the `Retry-After` header. */
-  readonly retryAfterSeconds: number | null;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, { ...transport, retryAfterSeconds });
     this.name = "RateLimitUnavailableError";
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -493,12 +554,14 @@ export class RateLimitUnavailableError extends OxinsiderApiError {
  */
 export class PickNotReleasedError extends NotFoundError {
   override readonly reason = "pick_not_released" as const;
-  /** Seconds to wait, from `Retry-After`. Prefer this: it is clock-skew immune. */
-  readonly retryAfterSeconds: number | null;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, { ...transport, retryAfterSeconds });
     this.name = "PickNotReleasedError";
-    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -511,8 +574,13 @@ export class PickNotReleasedError extends NotFoundError {
  */
 export class ReadModelWarmingError extends RateLimitUnavailableError {
   override readonly reason = "read_model_warming" as const;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body, retryAfterSeconds);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, retryAfterSeconds, transport);
     this.name = "ReadModelWarmingError";
   }
 }
@@ -525,8 +593,13 @@ export class ReadModelWarmingError extends RateLimitUnavailableError {
  */
 export class DatabaseUnavailableError extends RateLimitUnavailableError {
   override readonly reason = "database_unavailable" as const;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body, retryAfterSeconds);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, retryAfterSeconds, transport);
     this.name = "DatabaseUnavailableError";
   }
 }
@@ -534,8 +607,13 @@ export class DatabaseUnavailableError extends RateLimitUnavailableError {
 /** 503 - accounting capacity was unavailable before the handler ran. */
 export class RequestAccountingUnavailableError extends RateLimitUnavailableError {
   override readonly reason = "request_accounting_unavailable" as const;
-  constructor(status: number, body: unknown, retryAfterSeconds: number | null) {
-    super(status, body, retryAfterSeconds);
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, retryAfterSeconds, transport);
     this.name = "RequestAccountingUnavailableError";
   }
 }
@@ -547,8 +625,12 @@ export class RequestAccountingUnavailableError extends RateLimitUnavailableError
  */
 export class CursorExpiredError extends BadRequestError {
   override readonly reason = "cursor_expired" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "CursorExpiredError";
   }
 }
@@ -561,8 +643,12 @@ export class CursorExpiredError extends BadRequestError {
  */
 export class IdempotencyInProgressError extends BadRequestError {
   override readonly reason = "idempotency_in_progress" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "IdempotencyInProgressError";
   }
 }
@@ -575,8 +661,12 @@ export class IdempotencyInProgressError extends BadRequestError {
  */
 export class WebhookDeliveryInProgressError extends BadRequestError {
   override readonly reason = "webhook_delivery_in_progress" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "WebhookDeliveryInProgressError";
   }
 }
@@ -587,8 +677,12 @@ export class WebhookDeliveryInProgressError extends BadRequestError {
  */
 export class UnknownEndpointError extends NotFoundError {
   override readonly reason = "unknown_endpoint" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "UnknownEndpointError";
   }
 }
@@ -600,8 +694,12 @@ export class UnknownEndpointError extends NotFoundError {
  */
 export class TraderNotTrackedError extends NotFoundError {
   override readonly reason = "trader_not_tracked" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "TraderNotTrackedError";
   }
 }
@@ -641,11 +739,15 @@ export class InvalidResponseError extends OxinsiderApiError {
   }
 }
 
-/** 5xx - an unexpected server-side error; safe to retry with backoff. */
+/** 5xx - an unexpected server-side error; retry only when the request is safe to replay. */
 export class InternalServerError extends OxinsiderApiError {
   override readonly code = "internal_error" as const;
-  constructor(status: number, body: unknown) {
-    super(status, body);
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
     this.name = "InternalServerError";
   }
 }
@@ -661,7 +763,9 @@ export function errorFromResponse(
   status: number,
   body: unknown,
   retryAfterSeconds: number | null = null,
+  transport: Pick<ApiErrorTransportMetadata, "requestId"> = {},
 ): OxinsiderApiError {
+  const metadata: ApiErrorTransportMetadata = { ...transport, retryAfterSeconds };
   const parsed = extractApiErrorBody(body);
   const code = parsed?.code;
 
@@ -671,56 +775,56 @@ export function errorFromResponse(
   // the SDK re-assert the very lie the backend removed.
   switch (parsed?.reason) {
     case "freshness_ceiling_unsatisfied":
-      return new FreshnessCeilingUnsatisfiedError(status, body);
+      return new FreshnessCeilingUnsatisfiedError(status, body, metadata);
     case "pick_not_released":
-      return new PickNotReleasedError(status, body, retryAfterSeconds);
+      return new PickNotReleasedError(status, body, retryAfterSeconds, metadata);
     case "read_model_warming":
-      return new ReadModelWarmingError(status, body, retryAfterSeconds);
+      return new ReadModelWarmingError(status, body, retryAfterSeconds, metadata);
     case "request_accounting_unavailable":
-      return new RequestAccountingUnavailableError(status, body, retryAfterSeconds);
+      return new RequestAccountingUnavailableError(status, body, retryAfterSeconds, metadata);
     case "database_unavailable":
-      return new DatabaseUnavailableError(status, body, retryAfterSeconds);
+      return new DatabaseUnavailableError(status, body, retryAfterSeconds, metadata);
     case "cursor_expired":
-      return new CursorExpiredError(status, body);
+      return new CursorExpiredError(status, body, metadata);
     case "unknown_endpoint":
-      return new UnknownEndpointError(status, body);
+      return new UnknownEndpointError(status, body, metadata);
     case "trader_not_tracked":
-      return new TraderNotTrackedError(status, body);
+      return new TraderNotTrackedError(status, body, metadata);
     case "idempotency_in_progress":
-      return new IdempotencyInProgressError(status, body);
+      return new IdempotencyInProgressError(status, body, metadata);
     case "webhook_delivery_in_progress":
-      return new WebhookDeliveryInProgressError(status, body);
+      return new WebhookDeliveryInProgressError(status, body, metadata);
     case "sandbox_api_key":
-      return new SandboxApiKeyError(status, body);
+      return new SandboxApiKeyError(status, body, metadata);
     case "api_key_in_query":
-      return new ApiKeyInQueryError(status, body);
+      return new ApiKeyInQueryError(status, body, metadata);
     case "unknown_query_parameter":
-      return new UnknownQueryParameterError(status, body);
+      return new UnknownQueryParameterError(status, body, metadata);
     default:
       break;
   }
 
   switch (code) {
     case "bad_request":
-      return new BadRequestError(status, body);
+      return new BadRequestError(status, body, metadata);
     case "invalid_api_key":
-      return new InvalidApiKeyError(status, body);
+      return new InvalidApiKeyError(status, body, metadata);
     case "subscription_required":
-      return new SubscriptionRequiredError(status, body);
+      return new SubscriptionRequiredError(status, body, metadata);
     case "forbidden":
-      return new ForbiddenError(status, body);
+      return new ForbiddenError(status, body, metadata);
     case "not_found":
-      return new NotFoundError(status, body);
+      return new NotFoundError(status, body, metadata);
     case "account_locked":
-      return new AccountLockedError(status, body);
+      return new AccountLockedError(status, body, metadata);
     case "rate_limited":
-      return new RateLimitedError(status, body, retryAfterSeconds);
+      return new RateLimitedError(status, body, retryAfterSeconds, metadata);
     case "rate_limit_unavailable":
-      return new RateLimitUnavailableError(status, body, retryAfterSeconds);
+      return new RateLimitUnavailableError(status, body, retryAfterSeconds, metadata);
     case "request_timeout":
-      return new ServerTimeoutError(status, body, retryAfterSeconds);
+      return new ServerTimeoutError(status, body, retryAfterSeconds, metadata);
     case "internal_error":
-      return new InternalServerError(status, body);
+      return new InternalServerError(status, body, metadata);
     default:
       break;
   }
@@ -729,24 +833,24 @@ export function errorFromResponse(
   // failures still arrive as the expected subclass.
   switch (status) {
     case 400:
-      return new BadRequestError(status, body);
+      return new BadRequestError(status, body, metadata);
     case 401:
-      return new InvalidApiKeyError(status, body);
+      return new InvalidApiKeyError(status, body, metadata);
     case 402:
-      return new SubscriptionRequiredError(status, body);
+      return new SubscriptionRequiredError(status, body, metadata);
     case 404:
-      return new NotFoundError(status, body);
+      return new NotFoundError(status, body, metadata);
     case 408:
-      return new ServerTimeoutError(status, body, retryAfterSeconds);
+      return new ServerTimeoutError(status, body, retryAfterSeconds, metadata);
     case 429:
-      return new RateLimitedError(status, body, retryAfterSeconds);
+      return new RateLimitedError(status, body, retryAfterSeconds, metadata);
     case 503:
-      return new RateLimitUnavailableError(status, body, retryAfterSeconds);
+      return new RateLimitUnavailableError(status, body, retryAfterSeconds, metadata);
     default:
       if (status >= 500) {
-        return new InternalServerError(status, body);
+        return new InternalServerError(status, body, metadata);
       }
-      return new OxinsiderApiError(status, body);
+      return new OxinsiderApiError(status, body, metadata);
   }
 }
 
