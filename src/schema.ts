@@ -1421,8 +1421,8 @@ export type PickOfTheDay = {
   polymarket_url?: string;
   /** The canonical /event game-page slug (one neutral page per game); omitted when the game has no neutral event page. */
   event_slug?: string;
-  /** Backend-resolved /event destination slug for this pick's source market; its absence is an authoritative no-link decision. */
-  event_link_slug?: string;
+  /** Backend-resolved /event destination slug for the source market. Omitted outside full responses; null is an authoritative no-link decision. */
+  event_link_slug?: string | null;
   /** Provider-first sports context for the pick's market (team logos, league branding, live score). Full-state only; omitted when the pick is not a team-sports market. */
   sports_context?: PickSportsContext;
   /** Risk disclaimer shown with every pick. */
