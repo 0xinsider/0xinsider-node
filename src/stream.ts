@@ -46,8 +46,17 @@
  *   and unknown-but-valid envelope `type`s are compatible as before.
  */
 
-import { resolveApiUrl, type Grade, type OxinsiderApiClient } from "./client.js";
-import { errorFromResponse, OxinsiderApiError } from "./errors.js";
+import {
+  DEFAULT_TIMEOUT_MS,
+  resolveApiUrl,
+  type Grade,
+  type OxinsiderApiClient,
+} from "./client.js";
+import {
+  errorFromResponse,
+  OxinsiderApiError,
+  RequestTimeoutError,
+} from "./errors.js";
 import {
   RETRY_AFTER_CEILING_MS,
   retryAfterSeconds,
@@ -124,10 +133,46 @@ export interface StreamOptions extends StreamFilters {
    * A positive finite integer; the largest real frame is a few KB.
    */
   maxFrameBytes?: number;
+  /**
+   * Deadline for response headers and a finite refusal body, per connection.
+   * Default `DEFAULT_TIMEOUT_MS` (15 seconds); `null` explicitly disables it.
+   * Cleared once a readable `text/event-stream` response is established.
+   * Independent of the client's REST `timeoutMs` and the stream's lifetime.
+   */
+  openTimeoutMs?: number | null;
+  /** Maximum refusal body bytes retained before cancellation. Default 64 KiB. */
+  maxErrorBodyBytes?: number;
 }
 
 /** Default for `StreamOptions.maxFrameBytes`: 1 MiB. */
 export const DEFAULT_MAX_STREAM_FRAME_BYTES = 1_048_576;
+
+/** Default for `StreamOptions.maxErrorBodyBytes`: 64 KiB. */
+export const DEFAULT_MAX_STREAM_ERROR_BODY_BYTES = 65_536;
+
+/** A refusal's HTTP error retains this diagnostic as `cause`, without raw text. */
+export type StreamRefusalBodyErrorReason =
+  | "absent"
+  | "empty"
+  | "invalid_json"
+  | "too_large"
+  | "deadline_exceeded"
+  | "read_failed";
+
+export class StreamRefusalBodyError extends Error {
+  constructor(
+    readonly reason: StreamRefusalBodyErrorReason,
+    readonly bytes: number,
+    readonly maxBytes: number,
+    cause?: unknown,
+  ) {
+    super(
+      `0xinsider stream refusal body ${reason} (${String(bytes)} bytes read; limit ${String(maxBytes)})`,
+      { cause },
+    );
+    this.name = "StreamRefusalBodyError";
+  }
+}
 
 /** What the stream did that the SSE contract does not allow. */
 export type StreamProtocolErrorReason =
@@ -233,6 +278,212 @@ function assertMaxFrameBytes(value: number): number {
   return value;
 }
 
+/** Validate transport options before a reconnect can spend an attempt. */
+function streamConnectionOptions(options: StreamOptions) {
+  const maxFrameBytes = assertMaxFrameBytes(
+    options.maxFrameBytes ?? DEFAULT_MAX_STREAM_FRAME_BYTES,
+  );
+  const maxErrorBodyBytes =
+    options.maxErrorBodyBytes ?? DEFAULT_MAX_STREAM_ERROR_BODY_BYTES;
+  if (!Number.isSafeInteger(maxErrorBodyBytes) || maxErrorBodyBytes < 1) {
+    throw new Error(
+      `maxErrorBodyBytes must be a positive safe integer, got ${String(maxErrorBodyBytes)}`,
+    );
+  }
+  const openTimeoutMs =
+    options.openTimeoutMs === undefined
+      ? DEFAULT_TIMEOUT_MS
+      : options.openTimeoutMs;
+  // Node's timer contract clamps larger values to 1 ms. Reject rather than
+  // making a requested long opening window expire immediately.
+  if (
+    openTimeoutMs !== null &&
+    (!Number.isInteger(openTimeoutMs) ||
+      openTimeoutMs < 1 ||
+      openTimeoutMs > 2_147_483_647)
+  ) {
+    throw new Error(
+      `openTimeoutMs must be an integer from 1 to 2147483647 ms or null, got ${String(openTimeoutMs)}`,
+    );
+  }
+  return { maxFrameBytes, maxErrorBodyBytes, openTimeoutMs };
+}
+
+/** Clear only the owned opening timer; caller cancellation lives until disposal. */
+function streamConnectionSignal(
+  timeoutMs: number | null,
+  caller?: AbortSignal,
+) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const established = () => {
+    clearTimeout(timer);
+    timer = undefined;
+  };
+  const onCallerAbort = () => {
+    established();
+    controller.abort(caller?.reason);
+  };
+  // Manual forwarding supports every Node >=18, including versions without
+  // AbortSignal.any, and allows both sources to be disposed explicitly.
+  if (caller?.aborted) onCallerAbort();
+  else caller?.addEventListener("abort", onCallerAbort, { once: true });
+  if (!controller.signal.aborted && timeoutMs !== null) {
+    timer = setTimeout(
+      () => controller.abort(new RequestTimeoutError("getStream", timeoutMs)),
+      timeoutMs,
+    );
+  }
+  return {
+    signal: controller.signal,
+    established,
+    dispose: () => {
+      established();
+      caller?.removeEventListener("abort", onCallerAbort);
+    },
+  };
+}
+
+/** Bound injected readers too: their stream may not observe fetch's signal. */
+async function streamWork<T>(
+  work: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([aborted, work]);
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
+}
+
+const STREAM_CLEANUP_TIMEOUT_MS = 2_000;
+
+/** A non-cooperative injected cancel cannot hold a reconnect indefinitely. */
+async function cancelStreamBody(
+  cancel: (() => Promise<void>) | undefined,
+): Promise<Error | undefined> {
+  if (!cancel) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cancelled = Promise.resolve()
+    .then(cancel)
+    .then(
+      () => undefined,
+      (cause: unknown) =>
+        new Error("0xinsider stream body cancellation failed", { cause }),
+    );
+  const deadline = new Promise<Error>((resolve) => {
+    timer = setTimeout(
+      () =>
+        resolve(
+          new Error(
+            `0xinsider stream body cancellation did not settle within ${String(STREAM_CLEANUP_TIMEOUT_MS)} ms; completion is unknown`,
+          ),
+        ),
+      STREAM_CLEANUP_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([cancelled, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Preserve HTTP classification when cleanup also fails. */
+function withStreamCleanupCause(primary: unknown, cleanup: Error): unknown {
+  if (primary instanceof Error) {
+    const cause = primary.cause;
+    try {
+      primary.cause =
+        cause === undefined
+          ? cleanup
+          : new AggregateError(
+              [cause, cleanup],
+              "Stream failure and body cleanup failure",
+            );
+      return primary;
+    } catch (annotationFailure: unknown) {
+      return new AggregateError(
+        [primary, cleanup, annotationFailure],
+        "Stream failure could not retain its cleanup diagnostic",
+        { cause: primary },
+      );
+    }
+  }
+  return new AggregateError(
+    [primary, cleanup],
+    "Stream failure and body cleanup failure",
+    { cause: primary },
+  );
+}
+
+async function streamRefusal(
+  response: Response,
+  reader: ReadableStreamDefaultReader<Uint8Array> | undefined,
+  signal: AbortSignal,
+  maxBytes: number,
+  caller?: AbortSignal,
+): Promise<OxinsiderApiError> {
+  const retryAfter = retryAfterSeconds(response);
+  const requestId = response.headers.get("x-request-id");
+  let bytes = 0;
+  let body: unknown = null;
+  let diagnostic: StreamRefusalBodyError | undefined;
+  if (!reader)
+    diagnostic = new StreamRefusalBodyError("absent", bytes, maxBytes);
+  else {
+    const decoder = new TextDecoder();
+    let text = "";
+    try {
+      for (;;) {
+        const { value, done } = await streamWork(reader.read(), signal);
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > maxBytes) {
+          diagnostic = new StreamRefusalBodyError("too_large", bytes, maxBytes);
+          break;
+        }
+        text += decoder.decode(value, { stream: true });
+      }
+      if (!diagnostic) {
+        text += decoder.decode();
+        if (text === "")
+          diagnostic = new StreamRefusalBodyError("empty", bytes, maxBytes);
+        else {
+          try {
+            body = JSON.parse(text);
+          } catch {
+            diagnostic = new StreamRefusalBodyError(
+              "invalid_json",
+              bytes,
+              maxBytes,
+            );
+          }
+        }
+      }
+    } catch (cause: unknown) {
+      if (caller?.aborted) throw caller.reason;
+      diagnostic = new StreamRefusalBodyError(
+        signal.aborted ? "deadline_exceeded" : "read_failed",
+        bytes,
+        maxBytes,
+        cause,
+      );
+    }
+  }
+  const error = errorFromResponse(response.status, body, retryAfter, {
+    requestId,
+  });
+  if (diagnostic) error.cause = diagnostic;
+  return error;
+}
+
 /** `Content-Type` names an event stream: `text/event-stream`, with or without parameters. */
 export function isEventStreamMediaType(contentType: string | null): boolean {
   if (contentType === null) return false;
@@ -263,9 +514,8 @@ export async function* streamFeed(
   client: OxinsiderApiClient,
   options: StreamOptions = {},
 ): AsyncGenerator<StreamEvent, void, undefined> {
-  const maxFrameBytes = assertMaxFrameBytes(
-    options.maxFrameBytes ?? DEFAULT_MAX_STREAM_FRAME_BYTES,
-  );
+  const { maxFrameBytes, maxErrorBodyBytes, openTimeoutMs } =
+    streamConnectionOptions(options);
   const apiKey = client.getApiKey();
   // The sandbox takes no credential; it answers the stream route with a 400
   // saying streams are not simulated, and that answer is the server's to
@@ -281,49 +531,97 @@ export async function* streamFeed(
     headers.set("last-event-id", String(options.lastEventId));
   }
 
-  const fetchImpl = client.getFetch();
-  const response = await fetchImpl(url, {
-    method: "GET",
-    headers,
-    signal: options.signal,
-  });
-
-  if (!response.ok) {
-    const body = await safeText(response);
-    throw errorFromResponse(
-      response.status,
-      tryParse(body),
-      retryAfterSeconds(response),
-      { requestId: response.headers.get("x-request-id") },
-    );
-  }
-  // A 2xx that is not an event stream (an HTML page from a proxy, a JSON body
-  // from a route that moved) used to read as an empty stream that closed
-  // cleanly, which the reconnect loop then retried as an outage (#16248).
-  const mediaType = response.headers.get("content-type");
-  if (!isEventStreamMediaType(mediaType)) {
-    await response.body?.cancel().catch(() => undefined);
-    throw new StreamProtocolError("unexpected_media_type", {
-      lastSeq: undefined,
-      mediaType,
-    });
-  }
-  if (!response.body) {
-    throw new Error("Stream response has no readable body");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let buffer = "";
-  // Bytes of `buffer`: exact, since every chunk adds its own byte length and
-  // a cut re-measures the remainder. Bounded by `maxFrameBytes`.
-  let bufferedBytes = 0;
-  let lastSeq: number | undefined;
-
+  const connection = streamConnectionSignal(openTimeoutMs, options.signal);
+  let response: Response | undefined;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let failure: unknown;
+  let failed = false;
   try {
+    connection.signal.throwIfAborted();
+    const pendingResponse = client.getFetch()(url, {
+      method: "GET",
+      headers,
+      signal: connection.signal,
+    });
+    try {
+      response = await streamWork(pendingResponse, connection.signal);
+    } catch (error: unknown) {
+      // An injected fetch may ignore abort. Observe its eventual response and
+      // cancel it instead of abandoning a late connection. The timeout error
+      // keeps any cleanup diagnostic; an uncooperative fetch itself is outside
+      // the SDK's control.
+      pendingResponse.then(
+        async (lateResponse) => {
+          const body = lateResponse.body;
+          const cleanup = await cancelStreamBody(
+            body ? () => body.cancel(error) : undefined,
+          );
+          if (cleanup) withStreamCleanupCause(error, cleanup);
+        },
+        (lateFailure: unknown) => {
+          if (lateFailure !== error && error instanceof Error) {
+            withStreamCleanupCause(
+              error,
+              new Error("Opening fetch failed after cancellation", {
+                cause: lateFailure,
+              }),
+            );
+          }
+        },
+      );
+      throw error;
+    }
+    if (!response.ok) {
+      try {
+        reader = response.body?.getReader();
+      } catch (cause: unknown) {
+        const error = errorFromResponse(
+          response.status,
+          null,
+          retryAfterSeconds(response),
+          {
+            requestId: response.headers.get("x-request-id"),
+          },
+        );
+        error.cause = new StreamRefusalBodyError(
+          "read_failed",
+          0,
+          maxErrorBodyBytes,
+          cause,
+        );
+        throw error;
+      }
+      throw await streamRefusal(
+        response,
+        reader,
+        connection.signal,
+        maxErrorBodyBytes,
+        options.signal,
+      );
+    }
+    const mediaType = response.headers.get("content-type");
+    if (!isEventStreamMediaType(mediaType)) {
+      throw new StreamProtocolError("unexpected_media_type", {
+        lastSeq: undefined,
+        mediaType,
+      });
+    }
+    if (!response.body) throw new Error("Stream response has no readable body");
+    reader = response.body.getReader();
+    connection.established();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    let buffer = "";
+    // Bytes of `buffer`: exact, since every chunk adds its own byte length and
+    // a cut re-measures the remainder. Bounded by `maxFrameBytes`.
+    let bufferedBytes = 0;
+    let lastSeq: number | undefined;
+
     for (;;) {
-      const { value, done } = await reader.read();
+      const { value, done } = await streamWork(
+        reader.read(),
+        connection.signal,
+      );
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       bufferedBytes += value.byteLength;
@@ -374,18 +672,26 @@ export async function* streamFeed(
         });
       }
     }
+  } catch (error: unknown) {
+    failed = true;
+    failure = error;
+    throw error;
   } finally {
-    // `releaseLock()` detaches the reader but leaves the body -- and the
-    // underlying HTTP connection -- open. Any early exit from the consumer
-    // loop (`break`, `return`, or a throw from a handler) runs this block via
-    // the generator's `return()`, so without `cancel()` every early exit leaks
-    // one open connection to the SSE endpoint. The documented reconnect loop
-    // makes that one leak per reconnect, until the process runs out of sockets
-    // or the server's per-user SSE lease cap rejects the user's own
-    // reconnects. `cancel()` releases the lock as part of cancelling, and can
-    // reject on an already-errored stream, so the rejection is swallowed to
-    // keep the `finally` non-throwing (#9682).
-    await reader.cancel().catch(() => undefined);
+    // Cancel even when the consumer breaks, and always release the lock.
+    // Cancellation failures remain visible without replacing an HTTP status.
+    connection.dispose();
+    const ownedReader = reader;
+    const ownedBody = response?.body;
+    const cleanup = await cancelStreamBody(
+      ownedReader
+        ? () => ownedReader.cancel(failure)
+        : ownedBody
+          ? () => ownedBody.cancel(failure)
+          : undefined,
+    );
+    ownedReader?.releaseLock();
+    if (cleanup)
+      throw failed ? withStreamCleanupCause(failure, cleanup) : cleanup;
   }
 }
 
@@ -550,7 +856,7 @@ function streamBackoffMs(attempt: number): number {
 }
 
 function assertMaxRetryAfterMs(value: number): number {
-  if (Number.isNaN(value) || value < 0) {
+  if (typeof value !== "number" || Number.isNaN(value) || value < 0) {
     throw new Error(
       `maxRetryAfterMs must be a non-negative number of milliseconds or Infinity, got ${String(value)}`,
     );
@@ -581,7 +887,8 @@ function assertMaxRetryAfterMs(value: number): number {
  * - Aborting `signal` ends the iterator without throwing, during a connection
  *   or a backoff. Each connection's body reader is cancelled when it ends, so
  *   reconnects do not accumulate sockets.
- * - No request deadline applies, as with `streamFeed`.
+ * - `openTimeoutMs` bounds only opening and refusal reads; healthy streams
+ *   have no lifetime deadline, as with `streamFeed`.
  *
  * `options.cursor`, when passed, tracks the last delivered seq across every
  * connection -- delivered, not processed (#16247). This loop resumes from it,
@@ -616,6 +923,7 @@ export async function* streamFeedResilient(
     );
   }
   const retryAfterCeilingMs = assertMaxRetryAfterMs(maxRetryAfterMs);
+  const connectionOptions = streamConnectionOptions(streamOptions);
   // The one configuration error `streamFeed` throws before any request; it
   // would otherwise count as a transport failure and burn every reconnect.
   if (!client.getApiKey() && !client.isSandbox()) {
@@ -632,6 +940,7 @@ export async function* streamFeedResilient(
     try {
       for await (const frame of streamFeed(client, {
         ...streamOptions,
+        ...connectionOptions,
         cursor,
         lastEventId: cursor.seq ?? initialLastEventId,
       })) {
@@ -955,6 +1264,17 @@ export async function consumeStreamCheckpointed(
       `maxHandlerRetries must be a non-negative integer, got ${String(maxHandlerRetries)}`,
     );
   }
+  streamConnectionOptions(streamOptions);
+  const maxReconnects =
+    streamOptions.maxReconnects ?? DEFAULT_MAX_STREAM_RECONNECTS;
+  if (!Number.isInteger(maxReconnects) || maxReconnects < 0) {
+    throw new Error(
+      `maxReconnects must be a non-negative integer, got ${String(maxReconnects)}`,
+    );
+  }
+  assertMaxRetryAfterMs(
+    streamOptions.maxRetryAfterMs ?? DEFAULT_MAX_STREAM_RETRY_AFTER_MS,
+  );
   const signal = streamOptions.signal;
   // The caller's received cursor, if they passed one. It keeps its delivery
   // meaning: this consumer mirrors every frame into it and never reads it
@@ -1284,21 +1604,4 @@ function terminalStreamError(
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function tryParse(text: string | null): unknown {
-  if (text === null || text === "") return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-async function safeText(response: Response): Promise<string> {
-  try {
-    return await response.text();
-  } catch {
-    return "";
-  }
 }

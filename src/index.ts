@@ -199,10 +199,12 @@ export {
 export {
   DEFAULT_MAX_HANDLER_RETRIES,
   DEFAULT_MAX_STREAM_FRAME_BYTES,
+  DEFAULT_MAX_STREAM_ERROR_BODY_BYTES,
   DEFAULT_MAX_STREAM_RECONNECTS,
   DEFAULT_MAX_STREAM_RETRY_AFTER_MS,
   StreamHandlerFailedError,
   StreamProtocolError,
+  StreamRefusalBodyError,
   StreamReconnectsExhaustedError,
   StreamRetryDeferredError,
   consumeStream,
@@ -228,6 +230,7 @@ export type {
   StreamHandlerStage,
   StreamOptions,
   StreamProtocolErrorReason,
+  StreamRefusalBodyErrorReason,
 } from "./stream.js";
 
 // Webhooks
