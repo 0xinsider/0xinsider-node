@@ -991,8 +991,8 @@
                           }
                         },
                         "strategy": {
-                          "strategy_type": "directional",
-                          "description": "Trader with no earlier matched classification pattern with high_frequency, consistent, multi_category, high_conviction. Active across 1802 markets. Categories: Soccer 41.0%, Weather 21.6%, Esports 18.4%."
+                          "strategy_type": "mixed",
+                          "description": "Mixed activity across 1,802 stored markets. No single observed behavior has a clear lead. Category shares describe recorded USD cost basis; style is separate from performance."
                         },
                         "last_active": "2026-09-10T02:04:30.398422Z",
                         "synced_at": "2026-09-10T02:04:30.398422Z",
@@ -1977,8 +1977,8 @@
                           "score": 40.17,
                           "stats": { "daily_win_rate": 0.5299, "markets_traded": 1889, "win_rate": 0.6199 },
                           "strategy": {
-                            "description": "Trader with no earlier matched classification pattern with high_frequency, consistent, multi_category, high_conviction. Active across 1802 markets. Categories: Soccer 41.0%, Weather 21.6%, Esports 18.4%.",
-                            "strategy_type": "directional"
+                            "description": "Mixed activity across 1,802 stored markets. No single observed behavior has a clear lead. Category shares describe recorded USD cost basis; style is separate from performance.",
+                            "strategy_type": "mixed"
                           },
                           "sync_status": "synced",
                           "synced_at": "2026-09-10T02:04:30.398422Z",
@@ -8995,20 +8995,26 @@
           {
             "name": "strategy",
             "in": "query",
-            "description": "Filter by ML-detected strategy type. Values come from backend/crates/analytics/src/trader_analysis/classification/decision_tree.rs and are matched exactly against ml_trader_category.primary_type. Values outside the declared enum return HTTP 400.",
+            "description": "Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. The original ten archetype identifiers remain accepted for historical rows until normal reclassification. Style describes recorded behavior; grade measures performance.",
             "schema": {
               "type": "string",
               "enum": [
                 "accumulator",
                 "algo_trader",
                 "arbitrageur",
+                "category_focused",
                 "directional",
+                "diversified",
                 "event_driven",
+                "high_activity",
                 "market_maker",
+                "mixed",
                 "momentum",
                 "scalper",
                 "speculator",
-                "swing_trader"
+                "swing_trader",
+                "two_sided",
+                "unclassified"
               ]
             }
           },
@@ -9621,7 +9627,7 @@
             }
           },
           "404": {
-            "description": "No Pick of the Day is published for the current product day. This is expected before the selected pick's kickoff-relative release; each selected pick normally releases one hour before kickoff within the operating window (11:00 UTC to 23:00 America/New_York), and on a skipped day no pick is published at all. The body carries error.code=\"not_found\" with error.reason=\"pick_not_released\" (branch on the reason -- the code stays \"not_found\" because error.code is a frozen contract) plus error.retry_at (RFC3339, always in the future), and the response sets Retry-After. Schedule against those instead of polling -- polling this window is what makes a schedule look like an outage.",
+            "description": "No Pick of the Day is published for the current product day. This is expected before the selected pick's kickoff-relative release; each selected pick normally releases one hour before kickoff within the operating window (07:00 UTC to 23:00 America/New_York), and on a skipped day no pick is published at all. The body carries error.code=\"not_found\" with error.reason=\"pick_not_released\" (branch on the reason -- the code stays \"not_found\" because error.code is a frozen contract) plus error.retry_at (RFC3339, always in the future), and the response sets Retry-After. Schedule against those instead of polling -- polling this window is what makes a schedule look like an outage.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until the recommended next retry. Before the operating-window start, before a selected pick's stored release, or after a skipped day it names the automatic system's next boundary. While no candidate exists it normally names the persisted next automatic selector attempt. Supported operator actions can make a pick available before any recommendation. An absent/due schedule or overdue pick degrades to ~60s. Always >= 1. Schedule one request (error.retry_at is its absolute RFC3339 twin); do not poll or block a worker thread.",
@@ -27659,7 +27665,7 @@
       "get": {
         "operationId": "getTraderExportStatus",
         "summary": "Poll a trader export job",
-        "description": "Returns the job resource for a submitted export: status (queued | running | cancel_requested | reconcile_required | ready | failed | expired | cancelled), terminal, next_action and poll_after_s, the lifecycle timestamps, the retention window (expires_at) and, once the file is written, data_as_of and the artifact identity. A ready job past expires_at reads expired; a queued or reconciling job past expires_at reads failed. A running job its owner cancelled reads cancel_requested until the worker stops, then cancelled. failed, cancelled and expired jobs stay readable for 48 hours, then 404.",
+        "description": "Returns the job resource for a submitted export: status (queued | running | cancel_requested | reconcile_required | ready | failed | expired | cancelled), terminal, next_action and poll_after_s, the lifecycle timestamps, the retention window (expires_at) and, once the file is written, data_as_of and the artifact identity. A ready job past expires_at reads expired; a queued, running or reconciling job past expires_at reads failed. Work stops at retention safe points; completion and reconciliation cannot publish ready after expiry. The failure event carries failure_reason expired_before_completion and next_action resubmit; delivery never extends retention. A running job its owner cancelled reads cancel_requested until the worker stops, then cancelled. failed, cancelled and expired jobs stay readable for 48 hours, then 404.",
         "tags": ["Traders"],
         "parameters": [
           {"name": "X-Query-Validation", "in": "header", "required": false, "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.", "schema": {"type": "string", "enum": ["strict"]}},
@@ -28684,7 +28690,7 @@
         "tags": ["Usage"],
         "operationId": "getUsage",
         "summary": "Inspect current API usage without spending primary request quota",
-        "description": "Returns the authenticated caller sliding-window request budget, UTC-day usage and monthly quota. This control-plane endpoint remains available for a valid credential after paid data access lapses and does not increment the primary Redis rate-limit counter, monthly quota or API usage table; it shares a separate 100 reads/minute per-user inspection bucket with GET /api/v1/me. UTC-day totals use finalized quarter-hour rollups plus the disjoint raw interval through request time; unavailable rollup progress returns an error.",
+        "description": "Returns the authenticated caller sliding-window request budget, UTC-day usage and monthly quota. This control-plane endpoint remains available for a valid credential after paid data access lapses and does not increment the primary Redis rate-limit counter, monthly quota or API usage table; it shares a separate 100 reads/minute per-user inspection bucket with GET /api/v1/me. UTC-day totals use finalized quarter-hour rollups plus the disjoint raw interval through request time; unavailable rollup progress returns an error. Late accounting records retain their original UTC day when closed-period usage is read or the monthly budget is rebuilt. Current periods reflect persisted records and remain provisional; quota limits, prices and response fields are unchanged.",
         "security": [
           {
             "bearerAuth": []
@@ -30251,6 +30257,724 @@
             }
           }
         },
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/verification-attempts": {
+      "post": {
+        "operationId": "createWebhookVerificationAttempt",
+        "summary": "Admit asynchronous webhook verification",
+        "description": "Additive asynchronous consent flow; the legacy POST /verify keeps its synchronous 200/422 behavior and retry policy. Commits one durable attempt and returns 202 without awaiting DNS or the receiver. Send the original verification_token. Optional Idempotency-Key replays the original admission response for the same endpoint/token identity; a changed request returns 422 and an in-flight matching key returns 409. Different keys for the same token revision recover the same attempt, including terminal attempts, without new receiver work. Poll status_url for current state; 202 is admission, not activation. A supervised worker sends the existing signed webhook.verification body with an additional verification_attempt_id and x-0xinsider-verification-attempt header, stable across at-least-once retries. Verify the timestamp/raw-body HMAC and answer 2xx. DNS is public-address-pinned; redirects and proxies are refused and response bodies are not read. Timeout/transport/429/5xx failures retry at most 4 attempts, with 5/15/45-second waits, until the earlier token deadline or 15-minute horizon. Other receiver statuses and URL/security refusals are terminal. Activation requires current owner eligibility, endpoint/token/URL/signing identity, unexpired attempt/token and valid lease. Configuration changes or disable/delete cancel obsolete work. Terminal ciphertext is erased; status exposes no token, signing secret, address or receiver body. History is available for 7 days.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook endpoint id owned by the authenticated API key user.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Optional safe-retry key. Reuse the same value only when retrying the exact same mutation request body; a different body returns 422 and an in-flight matching request returns 409.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "example": "wh_idem_01HX7Y9ZQ4K7Z0Q2E4N6A8C1BF"
+          }
+        ],
+        "requestBody": {
+          "description": "Original verification token; never use the signing secret here.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebhookVerificationAttemptRequest"
+              },
+              "example": {
+                "verification_token": "whv_example"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is over 1048576 bytes. error.code is bad_request, error.reason is payload_too_large and error.param is body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The body was not sent as Content-Type: application/json. error.code is bad_request, error.reason is unsupported_media_type and error.param is content-type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key already used with a different endpoint/token request identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Durable admission; poll status_url for activation or terminal outcome.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "webhook_verification_attempt"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WebhookVerificationAttempt"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "queued": {
+                    "summary": "Committed pending consent",
+                    "value": {
+                      "object": "webhook_verification_attempt",
+                      "data": {
+                        "id": "7534f3db-65d3-4fe8-9c1a-afd8328302e7",
+                        "object": "webhook_verification_attempt",
+                        "webhook_id": 1,
+                        "state": "queued",
+                        "outcome": null,
+                        "attempt_count": 0,
+                        "max_attempts": 4,
+                        "expires_at": "2026-10-01T12:15:00Z",
+                        "next_attempt_at": "2026-10-01T12:00:00Z",
+                        "last_response_status": null,
+                        "started_at": null,
+                        "completed_at": null,
+                        "created_at": "2026-10-01T12:00:00Z",
+                        "updated_at": "2026-10-01T12:00:00Z",
+                        "status_url": "/api/v1/webhooks/1/verification-attempts/7534f3db-65d3-4fe8-9c1a-afd8328302e7"
+                      },
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "cost": 1
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            }
+          },
+          "409": {
+            "description": "Matching idempotency operation is in progress or the endpoint is not pending verification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS -X POST -H \"Authorization: Bearer $OXINSIDER_API_KEY\" -H \"Content-Type: application/json\" -H \"Idempotency-Key: verification-1\" -d '{\"verification_token\":\"whv_example\"}' \"https://api.0xinsider.com/api/v1/webhooks/1/verification-attempts\""
+          }
+        ],
+        "x-examples": {
+          "success": {
+            "object": "webhooks",
+            "data": {},
+            "meta": {
+              "request_id": "req_example",
+              "cached": false,
+              "cost": 1
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "webhooks"
+            ]
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}/verification-attempts/{attempt_id}": {
+      "get": {
+        "operationId": "getWebhookVerificationAttempt",
+        "summary": "Read webhook verification attempt status",
+        "description": "Fresh primary-database status for one attempt owned by the authenticated account and webhook. queued/running means consent is pending; only verified activates the unchanged endpoint after receiver 2xx. failed/cancelled/expired are terminal. Polling never issues a challenge or restarts work. At expiry the read reports expired immediately, even before the worker persists expiry. A missing, deleted or cross-owner endpoint/attempt returns 404. Outcomes and actual HTTP status are sanitized; no token, ciphertext, signing secret, destination address or receiver response body is returned. Terminal history is retained for 7 days.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook endpoint id owned by the authenticated API key user.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "description": "Verification attempt UUID returned by admission. Must belong to this webhook and account.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is over 1048576 bytes. error.code is bad_request, error.reason is payload_too_large and error.param is body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The body was not sent as Content-Type: application/json. error.code is bad_request, error.reason is unsupported_media_type and error.param is content-type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Current sanitized attempt state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "webhook_verification_attempt"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WebhookVerificationAttempt"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "queued": {
+                    "summary": "Committed pending consent",
+                    "value": {
+                      "object": "webhook_verification_attempt",
+                      "data": {
+                        "id": "7534f3db-65d3-4fe8-9c1a-afd8328302e7",
+                        "object": "webhook_verification_attempt",
+                        "webhook_id": 1,
+                        "state": "queued",
+                        "outcome": null,
+                        "attempt_count": 0,
+                        "max_attempts": 4,
+                        "expires_at": "2026-10-01T12:15:00Z",
+                        "next_attempt_at": "2026-10-01T12:00:00Z",
+                        "last_response_status": null,
+                        "started_at": null,
+                        "completed_at": null,
+                        "created_at": "2026-10-01T12:00:00Z",
+                        "updated_at": "2026-10-01T12:00:00Z",
+                        "status_url": "/api/v1/webhooks/1/verification-attempts/7534f3db-65d3-4fe8-9c1a-afd8328302e7"
+                      },
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "cost": 1
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \"https://api.0xinsider.com/api/v1/webhooks/1/verification-attempts/7534f3db-65d3-4fe8-9c1a-afd8328302e7\""
+          }
+        ],
+        "x-examples": {
+          "success": {
+            "object": "webhooks",
+            "data": {},
+            "meta": {
+              "request_id": "req_example",
+              "cached": false,
+              "cost": 1
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "webhooks"
+            ]
+          }
+        ],
         "x-latency-budget": {
           "milliseconds": 250,
           "measurement": "response-ready",
@@ -32396,7 +33120,8 @@
             "type": "object",
             "properties": {
               "strategy_type": {
-                "type": "string"
+                "type": "string",
+                "description": "Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent."
               },
               "description": {
                 "type": "string"
@@ -33671,7 +34396,7 @@
       },
       "PickSportsTeam": {
         "type": "object",
-        "description": "A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way.",
+        "description": "A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `headshot_revision`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way.",
         "required": [
   "label",
   "short_label",
@@ -33731,6 +34456,12 @@
           "headshot": {
             "type": "string",
             "description": "Tennis player headshot URL, served same-origin. Present only for a tennis competitor the headshot resolver matched; absent for team sports and for unmatched players, where `logo` stays the fallback."
+          },
+          "headshot_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Optional monotonic photo revision for this tennis player, independent of the sports score revision. Legacy stored photos start at zero. Successful new or changed image bytes advance it; source checks and attribution changes do not. Compare only for the same tour and provider_id: a higher revision replaces the portrait, an equal revision may fill a missing portrait, and a lower revision must not replace a newer one. Absent when no photo resolved."
           },
           "tour": {
             "type": "string",
@@ -33874,7 +34605,7 @@
           "published_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (11:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility."
+            "description": "When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (07:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility."
           },
           "matchup": {
             "type": "string",
@@ -34657,7 +35388,8 @@
             "description": "The wallet's win rate across ALL categories, not the filtered one. ?category= decides WHICH wallets are listed (the wallet must be ranked in that category); it does not rescope this field, so a soccer-filtered list still reports each wallet's overall rate. For a per-category record use GET /api/v1/trader/{address}/categories."
           },
           "strategy_type": {
-            "type": "string"
+            "type": "string",
+            "description": "Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent."
           },
           "platform": {
             "type": "string",
@@ -36909,7 +37641,7 @@
           "retry_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 11:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew."
+            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 07:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew."
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessFailure"
@@ -40079,6 +40811,134 @@
             "nullable": true
           }
         }
+      },
+      "WebhookVerificationAttempt": {
+        "type": "object",
+        "required": [
+          "id",
+          "object",
+          "webhook_id",
+          "state",
+          "outcome",
+          "attempt_count",
+          "max_attempts",
+          "expires_at",
+          "next_attempt_at",
+          "last_response_status",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "updated_at",
+          "status_url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "object": {
+            "type": "string",
+            "const": "webhook_verification_attempt"
+          },
+          "webhook_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "verified",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "description": "queued/running are pending consent. verified means the same endpoint revision answered 2xx and activated atomically. failed/cancelled/expired are terminal and do not restart on polling or replay."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "target_rejected",
+              "challenge_timeout",
+              "transport_failed",
+              "receiver_rejected",
+              "token_expired",
+              "endpoint_changed",
+              "owner_revoked",
+              "attempts_exhausted",
+              "internal_error"
+            ],
+            "nullable": true,
+            "description": "Sanitized last observation. Null before an observation; queued retries may retain their previous failure outcome."
+          },
+          "attempt_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "max_attempts": {
+            "type": "integer",
+            "const": 4
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Earlier of the verification-token deadline and 15 minutes after admission. Activation is forbidden at or after this instant."
+          },
+          "next_attempt_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Scheduled retry/admission time while queued; null while running or terminal."
+          },
+          "last_response_status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599,
+            "nullable": true,
+            "description": "Actual receiver HTTP status, when one arrived. No receiver response body or resolved address is returned."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status_url": {
+            "type": "string",
+            "description": "Relative authorized API path for this attempt. Uses the same bearer credential as admission."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateWebhookVerificationAttemptRequest": {
+        "type": "object",
+        "required": [
+          "verification_token"
+        ],
+        "properties": {
+          "verification_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "The original one-time token returned by webhook creation or a URL change. Sent only in the request body and signed receiver challenge."
+          }
+        },
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -40344,7 +41204,7 @@
         }
       },
       "PickNotReleased": {
-        "description": "No pick is published for the current product day. Each pick releases one hour before its kickoff, inside the operating window, 11:00 UTC to 23:00 America/New_York. A skipped day publishes nothing.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both name the same instant, always in the future.\n\nThe instant is the earliest of:\n\n- the next scheduled release, when a slot is selected;\n- the next automatic selector attempt, about every 15 minutes, while the selector still scans the day and can add an earlier slot;\n- the operating-window start, before 11:00 UTC or after a skipped day;\n- about 60 seconds, when the schedule is absent, due, or a pick is overdue.\n\nThe value is advisory. An operator can publish a pick earlier. Schedule one request for the instant; do not poll.",
+        "description": "No pick is published for the current product day. Each pick releases one hour before its kickoff, inside the operating window, 07:00 UTC to 23:00 America/New_York. A skipped day publishes nothing.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both name the same instant, always in the future.\n\nThe instant is the earliest of:\n\n- the next scheduled release, when a slot is selected;\n- the next automatic selector attempt, about every 15 minutes, while the selector still scans the day and can add an earlier slot;\n- the operating-window start, before 07:00 UTC or after a skipped day;\n- about 60 seconds, when the schedule is absent, due, or a pick is overdue.\n\nThe value is advisory. An operator can publish a pick earlier. Schedule one request for the instant; do not poll.",
         "headers": {
           "Retry-After": {
             "description": "Seconds until the recommended next request. Always at least 1. Names the same instant as `error.retry_at`. Prefer this header for the sleep duration; it is immune to clock skew.",

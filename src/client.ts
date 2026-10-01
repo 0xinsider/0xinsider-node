@@ -66,7 +66,7 @@ export type ClientResponseMeta = ResponseMeta & {
   /**
    * HTTP status of the success response, set by this client (#16137).
    * `201` on `registerAgent`, `202` on a `submitTraderExport` that queued a
-   * new job, `200` everywhere else.
+   * new job or `createWebhookVerificationAttempt` admission, `200` on reads.
    */
   status?: number;
   /** Unknown query names reported by the server in compatibility mode. */
@@ -533,6 +533,18 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "POST",
+    path: "/api/v1/webhooks/{id}/verification-attempts",
+    operationId: "createWebhookVerificationAttempt",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/webhooks/{id}/verification-attempts/{attempt_id}",
+    operationId: "getWebhookVerificationAttempt",
+    auth: "bearer",
+  },
+  {
+    method: "POST",
     path: "/api/v1/webhooks/{id}/rotate-secret",
     operationId: "rotateWebhookSecret",
     auth: "bearer",
@@ -736,6 +748,7 @@ export const UNSUPPORTED_OPERATIONS = [
  * a challenge to your URL each time; `submitTraderExport` starts a job).
  */
 export const IDEMPOTENT_WRITE_OPERATIONS = [
+  "createWebhookVerificationAttempt",
   "createWebhook",
   "updateWebhook",
   "deleteWebhook",
@@ -847,7 +860,8 @@ export interface ApiRequestOptions {
    * Sent as the `Idempotency-Key` header. Accepted only on the
    * `IDEMPOTENT_WRITE_OPERATIONS` (`createWebhook`, `updateWebhook`,
    * `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`,
-   * `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`),
+   * `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`,
+   * `createWebhookVerificationAttempt`),
    * where a replay with the same key and body returns the first result
    * instead of repeating the write; on any other operation `call()` throws
    * before sending, since the server would ignore the key (#16182). A keyed
@@ -1803,13 +1817,19 @@ export const LEADERBOARD_STRATEGIES = [
   "accumulator",
   "algo_trader",
   "arbitrageur",
+  "category_focused",
   "directional",
+  "diversified",
   "event_driven",
+  "high_activity",
   "market_maker",
+  "mixed",
   "momentum",
   "scalper",
   "speculator",
   "swing_trader",
+  "two_sided",
+  "unclassified",
 ] as const;
 export type LeaderboardStrategy = (typeof LEADERBOARD_STRATEGIES)[number];
 
@@ -3011,6 +3031,24 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("createWebhook", { ...options, body });
+  }
+
+  /** Admit durable consent; 202 acknowledges admission, not activation. */
+  createWebhookVerificationAttempt(
+    id: OperationPath["createWebhookVerificationAttempt"]["id"],
+    body: OperationBody["createWebhookVerificationAttempt"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("createWebhookVerificationAttempt", { ...options, path: { id }, body });
+  }
+
+  /** Poll current consent state without issuing or restarting a challenge. */
+  getWebhookVerificationAttempt(
+    id: OperationPath["getWebhookVerificationAttempt"]["id"],
+    attemptId: OperationPath["getWebhookVerificationAttempt"]["attempt_id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getWebhookVerificationAttempt", { ...options, path: { id, attempt_id: attemptId } });
   }
 
   updateWebhook(

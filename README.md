@@ -135,6 +135,38 @@ for (const item of batch.data) {
 const board = await client.listLeaderboard({ strategy: "swing_trader", limit: 100 });
 console.log(board.data, board.has_more, board.next_cursor);
 
+`listPositions()`, `listLargeTrades()` and `listLargeTradeHistory()` add
+`data_quality` beside `data`. Read its `status`, `as_of` and `field_groups`
+before treating a page as current. Positions report positions, trader and
+market writer clocks; large-trade pages report alert, trade, trader, ranking,
+market and volume clocks. `whale_alerts.inserted_xid` is a transaction
+identifier, so the alert group is explicitly `unknown`. The stored clocks are
+part of the ETag; `meta.cached` and `meta.cache_age_s` describe transport only.
+
+`assessDataQuality()` turns that block into one decision against your own
+tolerance. It is a pure function over the response and makes no request:
+
+```ts
+import { assessDataQuality } from "@0xinsider/sdk";
+
+const trader = await client.getTrader(address);
+// A trader carries data_quality inside data; a list page carries it beside data.
+const verdict = assessDataQuality(trader.data, { maxAgeMs: 15 * 60_000 });
+if (!verdict.ok) {
+  // Each entry names the group, its status, its age and why it failed.
+  console.warn(verdict.failing);
+}
+```
+
+A group passes only when its `status` is `fresh`, it carries `as_of`, and
+that clock is within `maxAgeMs`. `fresh` means tracked and clocked, not
+current enough for you. `unknown` fails: the read cannot date that group, and
+missing is never recent. `untracked` groups are listed in `verdict.untracked`
+and left out of the verdict. Pass `groups: ["ranking", "volume"]` to judge only the
+groups you read; a named group the body does not carry fails as `missing`.
+The Python (`assess_data_quality`) and Go (`AssessDataQuality`) SDKs apply the
+same rule.
+
 // Keep compatibility by default, or opt into rejection of unsupported query
 // names. The SDK exposes the server's diagnostics on response metadata.
 const checked = await client.listLeaderboard(
@@ -160,6 +192,8 @@ const holders = await client.call("getMarketHolders", {
 });
 ```
 
+An operation with path parameters or a request body needs its options argument: `client.call("createWebhook")` and `paginate(client, "listWebhookDeliveries")` do not compile. The same holds for `list()`, `text()`, `paginatePages()` and `collect()`. The untyped form takes an operation id chosen at runtime (a value typed `ApiOperationId`), and a missing path parameter there throws before any request.
+
 `getAccountIdentity()` remains available to a valid credential after paid data
 access lapses and returns `credential_status` plus
 `entitlement.paid_data_access` and `entitlement.recovery_action`. Call
@@ -167,24 +201,31 @@ access lapses and returns `credential_status` plus
 paid data routes still return `402 subscription_required` until access is
 renewed.
 
-For `listSportsEdgeSignals`, require every row's `category_skill` object and
+For `listPreGameSides`, require every row's `category_skill` object and
 compare `meta.category_skill_base_payload_hash` with
 `meta.category_skill_enriched_base_payload_hash` before consuming category
 evidence. The evidence is Polymarket-only, forward-observed, and explicitly
 partial; `degraded` or mismatched hashes must not be treated as a measured edge.
 
-### Observation-only sports cohorts
+Rows carry `side`, `ranked_at`, `backing_score` and `side_share`. The older
+`piled_side`, `signal_created_at`, `conviction_score` and `smart_score` keys
+carry the same values and stay on the wire. `listSportsEdgeSignals` and
+`listSportsEdgeObservations` remain as deprecated aliases on the deprecated
+`/api/v1/sports-edge-*` paths, which answer with `Deprecation` and successor
+`Link` headers.
 
-`listSportsEdgeObservations` exposes the measured `wider_holder`, the
+### Observation-only pre-game side cohorts
+
+`listPreGameSideObservations` exposes the measured `wider_holder`, the
 overlapping `emerging_pile` projection, and provider-confirmed `in_play`
-cohorts without changing the funded `sports-edge-signals` route. The response
+cohorts without changing the funded pre-game sides route. The response
 includes `snapshot_as_of` and a
 required snapshot-wide operational/unknown-completeness `degraded` verdict plus
 a per-sport terminal-reason `funnel`; every row is tagged
 `observation_only: true`. Do not route these rows to an order executor.
 
 ```ts
-const tennis = await client.listSportsEdgeObservations({
+const tennis = await client.listPreGameSideObservations({
   cohort: "wider_holder",
   category: "Tennis",
   limit: 20,
@@ -215,7 +256,7 @@ JSON body. The validator covers the stable page payload, including the stable
 page position in `next_cursor`, but excludes request-specific `meta` and, for
 `emerging_pile`, the opaque projection cutoff inside that cursor.
 
-For a conditional request, use `listSportsEdgeObservationsConditional()` so a
+For a conditional request, use `listPreGameSideObservationsConditional()` so a
 `304` returns the typed `{ object: "not_modified", data: null, meta }` result
 while a `200` retains the full observation response type:
 
@@ -223,7 +264,7 @@ while a `200` retains the full observation response type:
 import { isApiNotModifiedResponse } from "@0xinsider/sdk";
 
 if (previousEtag) {
-  const conditional = await client.listSportsEdgeObservationsConditional(
+  const conditional = await client.listPreGameSideObservationsConditional(
     { cohort: "wider_holder", category: "Tennis", limit: 20 },
     {
       headers: { "If-None-Match": previousEtag },
@@ -270,13 +311,25 @@ const sandbox = OxinsiderApiClient.sandbox({ apiKey: registered.data.api_key });
 // after the job expires.
 const { response, filename, expiresAt } = await client.downloadTraderExport(address, jobId);
 await pipeline(Readable.fromWeb(response.body), createWriteStream(filename ?? "export.json"));
+
+// Verify the immutable manifest while the decoded content streams through.
+// The SDK throws ExportIntegrityError before a consumer can treat a partial
+// or changed file as complete; discard any partial output and retry fresh.
+const verified = await client.downloadTraderExport(address, jobId, {
+  verifyChecksum: true,
+});
+await pipeline(Readable.fromWeb(verified.response.body), createWriteStream("export.csv"));
+
+// Stop an export you no longer need. The answer is the job after the cancel.
+const cancelled = await client.cancelTraderExport(address, jobId);
+cancelled.data.status;             // "cancelled", "cancel_requested", or unchanged
 ```
+
+`cancelTraderExport` answers the job resource every time. A queued job reads `cancelled` at once; a running job reads `cancel_requested` until the worker reaches its next safe point (it checks every 5 seconds and before the file is published), so poll `getTraderExportStatus` at `poll_after_s` until `terminal`. A job whose file is already being published, or that is already terminal, comes back unchanged: a cancel never deletes a ready file. Cancelling does not return quota; the submit's reservation keeps counting toward the daily and per-trader hourly caps, and a later submit reserves a new job.
 
 `meta.status` is on every envelope: `201` on `registerAgent`, `202` on a `submitTraderExport` that queued a new job and `200` on one that returned a job already running, `200` everywhere else. The body is identical either way, so this is the only way to tell them apart.
 
-The object fetch in `downloadTraderExport` has no deadline by default, the way the SSE stream has none: pass `signal` to cancel it or `downloadTimeoutMs` for one of your own, and read `response.body` as a stream rather than buffering a multi-gigabyte file. `getTraderExportDownloadUrl` reads the redirect with `redirect: "manual"`, which browsers answer with an opaque redirect no script can read; it says so rather than guessing, so run downloads from a server runtime.
-
-Signed download URLs last at most 1 hour and never past the export job's `expires_at`. Use the returned `expiresAt`, which comes from the URL's signing fields, rather than assuming every link lasts 1 hour. Request a fresh URL while the job is retained; after `410 export_expired`, submit a new export.
+`getTraderExportStatus` returns the owner-authorized lifecycle and ready artifact manifest. `downloadTraderExport` leaves verification off by default for compatibility; pass `verifyChecksum: true` to fetch the status first and verify the decompressed stream against `manifest.content_sha256` and `manifest.content_size_bytes`. A mismatch or truncated body throws `ExportIntegrityError`, and its message tells the caller to discard the partial file and request a fresh download. The object fetch has no deadline by default, the way the SSE stream has none: pass `signal` to cancel it or `downloadTimeoutMs` for one of your own, and read `response.body` as a stream rather than buffering a multi-gigabyte file. `getTraderExportDownloadUrl` reads the redirect with `redirect: "manual"`, which browsers answer with an opaque redirect no script can read; it says so rather than guessing, so run downloads from a server runtime.
 
 Both `downloadTraderExport` and `downloadWhaleDataset` cancel an object response they cannot return, including a failed HTTP response or a failure while preparing the stream or metadata. They wait up to 2 seconds for that cleanup without buffering the error body. The original failure remains primary; a cleanup rejection or timeout is attached as its `cause`, retaining an existing cause in an `AggregateError`. If a thrown value cannot carry a cause, an `AggregateError` retains the original failure as its first entry and cause. A cleanup timeout means completion is unknown. Once the helper returns, consume or cancel `response.body` yourself.
 
@@ -284,7 +337,7 @@ Both `downloadTraderExport` and `downloadWhaleDataset` cancel an object response
 
 ### Sandbox
 
-`OxinsiderApiClient.sandbox()` talks to `https://0xinsider.com/sandbox`, the second server in the OpenAPI document: no credential, no production data, every documented operation answered with its example or a deterministic sample, and `X-Oxi-Sandbox: true` on every response, which the client lifts to `meta.sandbox`. Every method works without a key, so you can write the integration before you have one. Add `sandbox_status` to a query to get one of the errors the operation documents, as the typed class it would be in production.
+`OxinsiderApiClient.sandbox()` talks to `https://0xinsider.com/sandbox`, the second server in the OpenAPI document: no credential, no production data, every documented operation except `GET /api/v1/stream` answered with its example or a deterministic sample, and `X-Oxi-Sandbox: true` on every response, which the client lifts to `meta.sandbox`. Every method works without a key, so you can write the integration before you have one. Add `sandbox_status` to a query to get one of the errors the operation documents, as the typed class it would be in production.
 
 ```ts
 import { OxinsiderApiClient, RateLimitedError, type Trader } from "@0xinsider/sdk";
@@ -306,7 +359,7 @@ try {
 }
 ```
 
-A sandbox key from `POST https://api.0xinsider.com/api/v1/agents/register` (`oxi_sk_test_...`, no account needed) is optional: pass it as `apiKey` and the sandbox checks it. A live key (`oxi_sk_live_...`) is refused by the constructor in sandbox mode, so it is never sent there. Streams and file downloads are not simulated; `streamFeed` on a sandbox client throws the sandbox's own `BadRequestError` saying so. The same client with `sandbox: true` and an explicit `baseUrl` keeps that base's path, so a proxy under a path works the same way.
+A sandbox key from `POST https://api.0xinsider.com/api/v1/agents/register` (`oxi_sk_test_...`, no account needed) is optional: pass it as `apiKey` and the sandbox checks it. A live key (`oxi_sk_live_...`) is refused by the constructor in sandbox mode, so it is never sent there. Streams are not simulated; `streamFeed` on a sandbox client throws the sandbox's own `BadRequestError` saying so. The Markdown routes and the export download do work there: each Markdown document is built from the same sandbox trader and market the JSON routes serve, and the download's `302` points at a sample CSV the sandbox serves itself. The same client with `sandbox: true` and an explicit `baseUrl` keeps that base's path, so a proxy under a path works the same way.
 
 ### Pagination
 
@@ -354,7 +407,6 @@ During a request, `cursor` names that attempt and `nextCursor` is undefined.
 After a failure or between-page cancellation, `cursor` and `nextCursor` name
 the retry cursor, and `pagesFetched` matches `paginationResumePoint(error)`;
 the original error is rethrown.
-
 
 Pass `strictQuery: true` to `paginate()`, `paginatePages()`, or `collect()` to
 reject an unsupported query name before the first page request. With the
@@ -522,6 +574,19 @@ try {
 
 ### Webhook verification
 
+For durable asynchronous consent, admit an attempt and read its status:
+
+```ts
+const admitted = await client.createWebhookVerificationAttempt(webhook.id, {
+  verification_token: webhook.verification.token,
+}, { idempotencyKey: "webhook-consent-1" });
+const current = await client.getWebhookVerificationAttempt(webhook.id, admitted.data.id);
+```
+
+The `202` response acknowledges admission. Only `state: "verified"` activates the endpoint; `queued` and `running` await consent, while `failed`, `cancelled`, and `expired` are terminal. Read `status_url` or use the status method for current state, because a keyed replay returns the original admission response.
+
+The receiver's signed `webhook.verification` challenge adds `verification_attempt_id` and `x-0xinsider-verification-attempt`, stable across at-least-once retries. Answer 2xx after verifying the HMAC. Transport/timeout/429/5xx failures make at most 4 claimed challenges, ending at the earlier token deadline or 15-minute horizon; configuration changes and account revocation prevent activation. The legacy synchronous `verifyWebhook` keeps its 200/422 behavior and cannot use automatic keyed retries.
+
 The backend signs every delivery as `v1=hex(HMAC_SHA256(signing_secret, "<timestamp>.<raw_body>"))`, sent on `x-0xinsider-signature` (the timestamp is on `x-0xinsider-timestamp`). Verify the raw body BEFORE parsing it; re-serializing changes bytes and breaks the HMAC.
 
 ```ts
@@ -541,7 +606,8 @@ switch (event.type) {
   case "wallet_grade_changed": // Pro-only
     console.log(event.data.new_grade);
     break;
-  case "insider_radar_flag_raised": // Pro-only
+  case "suspicious_trade_flagged": // Pro-only; `insider_radar_flag_raised` is
+                                  // the same event under its old spelling
     console.log(event.data.suspicion_score);
     break;
   case "whale_trades_inserted": // Pro-only
@@ -550,7 +616,7 @@ switch (event.type) {
 }
 ```
 
-`verifySignature` enforces a 300-second replay tolerance (`toleranceSeconds` overrides it: a payload exactly that many seconds from `nowSeconds` still passes, one second further fails, and `0` accepts only the current second) and uses a constant-time compare, mirroring the backend exactly. It returns `false` on a bad signature or a malformed timestamp (never throws for those); it throws only on receiver misconfiguration: an empty secret, or a `toleranceSeconds` that is `NaN`, infinite or negative, each of which would otherwise silently turn the replay window off. Treat a `false` as the sender's problem (answer 4xx) and a throw as your own bug (log it). Typed payloads are exported for every event type, including the four Pro-only events (`whale_trades_inserted`, `wallet_grade_changed`, `insider_radar_flag_raised`, `smart_money_flow_detected`), which deliver only to API keys on an active Pro subscription.
+`verifySignature` enforces a 300-second replay tolerance (`toleranceSeconds` overrides it: a payload exactly that many seconds from `nowSeconds` still passes, one second further fails, and `0` accepts only the current second) and uses a constant-time compare, mirroring the backend exactly. It returns `false` on a bad signature or a malformed timestamp (never throws for those); it throws only on receiver misconfiguration: an empty secret, or a `toleranceSeconds` that is `NaN`, infinite or negative, each of which would otherwise silently turn the replay window off. Treat a `false` as the sender's problem (answer 4xx) and a throw as your own bug (log it). Typed payloads are exported for every event type, including the four Pro-only events (`whale_trades_inserted`, `wallet_grade_changed`, `suspicious_trade_flagged`, `smart_money_flow_detected`), which deliver only to API keys on an active Pro subscription. `suspicious_trade_flagged` and the deprecated `insider_radar_flag_raised` are two spellings of one event: either one subscribes, and an endpoint receives its deliveries under the spelling it registered, so switch on the spelling you used.
 
 ### Staged webhook secret rotation
 
@@ -567,9 +633,9 @@ The endpoint's `secret_rotation.status` is `idle`, `pending`, or `overlap`. `rot
 
 The client retries a failed request when retrying is safe and can help. `maxRetries` defaults to 2 and can be set on the client or on one call; `0` sends exactly one request.
 
-- **What is retried:** a GET, a read-only POST (`batchGetTraders`, `batchGetMarketIntel`, which resolve their inputs and store nothing), or one of the eight writes the API replays under `Idempotency-Key` (`createWebhook`, `updateWebhook`, `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`, `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`, exported as `IDEMPOTENT_WRITE_OPERATIONS` and pinned to the OpenAPI contract by the drift check) when it carries a key; each when it fails with 408, 429, 502, 503, or 504, or with a network error before any response. A 408 is the server's own 30-second timeout (`error.code` `request_timeout`, thrown as `ServerTimeoutError` when retries run out); it carries `Retry-After` on a GET, and a keyed write replays safely. `retryEligibility(operation)` returns `"read"`, `"keyed"` or `"never"`.
+- **What is retried:** a GET, a read-only POST (`batchGetTraders`, `batchGetMarketFlow` and its deprecated `batchGetMarketIntel`, which resolve their inputs and store nothing), a convergent write (`cancelTraderExport`, exported as `CONVERGENT_WRITE_OPERATIONS`: a repeat answers the state the first one reached and never repeats a transition), or one of the nine writes the API replays under `Idempotency-Key` (`createWebhook`, `updateWebhook`, `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`, `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`, `createWebhookVerificationAttempt`, exported as `IDEMPOTENT_WRITE_OPERATIONS` and pinned to the OpenAPI contract by the drift check) when it carries a key; each when it fails with 408, 429, 502, 503, or 504, or with a network error before any response. A 408 is the server's own 30-second timeout (`error.code` `request_timeout`, thrown as `ServerTimeoutError` when retries run out); it carries `Retry-After` on a GET, and a keyed write replays safely. `retryEligibility(operation)` returns `"read"`, `"keyed"` or `"never"`.
 - **How long it waits:** the response's `Retry-After` plus up to 250 ms of jitter; delta-seconds and HTTP-date forms both parse (`parseRetryAfter` is exported), and a negative, non-finite or malformed value is treated as absent. Without the header, a jittered exponential backoff from 500 ms, capped at 8 s. A `Retry-After` longer than 60 s (`RETRY_AFTER_CEILING_MS`) is not waited out; the error is thrown for you to schedule from `retryAfterSeconds` or `retryAt`. No wait is ever handed to a timer past Node's 2147483647 ms range, which would fire at once.
-- **What is never retried:** 400, 401, 402, 403, 404, 409, 500, a write without an idempotency key, any write outside the eight above (`verifyWebhook` sends a challenge to your URL each time; `submitTraderExport` starts a job; an MCP call runs a tool), the client's own timeout (`RequestTimeoutError`), or your own abort. A key on one of those writes is refused before the request is sent, because the server would ignore it and the retry it seemed to license could repeat the effect.
+- **What is never retried:** 400, 401, 402, 403, 404, 409, 500, a write without an idempotency key, any other write outside the nine above (`verifyWebhook` sends a challenge to your URL each time; `submitTraderExport` starts a job; an MCP call runs a tool), the client's own timeout (`RequestTimeoutError`), or your own abort. A key on one of those writes is refused before the request is sent, because the server would ignore it and the retry it seemed to license could repeat the effect.
 - **Deadline:** all attempts share one `timeoutMs` deadline (15 s by default). A retry that cannot finish before it is not started, so you get the real error, not a timeout. An `AbortSignal` ends a backoff immediately.
 
 Webhook writes accept `idempotencyKey`. It makes the write safe to replay and eligible for retry:
