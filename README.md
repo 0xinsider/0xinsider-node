@@ -585,7 +585,7 @@ const current = await client.getWebhookVerificationAttempt(webhook.id, admitted.
 
 The `202` response acknowledges admission. Only `state: "verified"` activates the endpoint; `queued` and `running` await consent, while `failed`, `cancelled`, and `expired` are terminal. Read `status_url` or use the status method for current state, because a keyed replay returns the original admission response.
 
-The receiver's signed `webhook.verification` challenge adds `verification_attempt_id` and `x-0xinsider-verification-attempt`, stable across at-least-once retries. Answer 2xx after verifying the HMAC. Transport/timeout/429/5xx failures retry at most 4 times, ending at the earlier token deadline or 15-minute horizon; configuration changes and account revocation prevent activation. The legacy synchronous `verifyWebhook` keeps its 200/422 behavior and cannot use automatic keyed retries.
+The receiver's signed `webhook.verification` challenge adds `verification_attempt_id` and `x-0xinsider-verification-attempt`, stable across at-least-once retries. Answer 2xx after verifying the HMAC. Transport/timeout/429/5xx failures make at most 4 claimed challenges, ending at the earlier token deadline or 15-minute horizon; configuration changes and account revocation prevent activation. The legacy synchronous `verifyWebhook` keeps its 200/422 behavior and cannot use automatic keyed retries.
 
 The backend signs every delivery as `v1=hex(HMAC_SHA256(signing_secret, "<timestamp>.<raw_body>"))`, sent on `x-0xinsider-signature` (the timestamp is on `x-0xinsider-timestamp`). Verify the raw body BEFORE parsing it; re-serializing changes bytes and breaks the HMAC.
 

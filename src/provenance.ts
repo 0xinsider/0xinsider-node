@@ -6,10 +6,10 @@
 // when it could be resolved, else null. Compare OPENAPI_SHA256 with the live
 // document to see whether a release is behind the API.
 
-export const OPENAPI_SOURCE = "0xinsider/0xinsider:web/public/api/v1/openapi.json";
-export const OPENAPI_SHA256 = "eaa17719a64fde23230a2cbd25009abc9cbf410c59ef81dc4cc382a075ee5d0d";
+export const OPENAPI_SOURCE = "https://0xinsider.com/api/v1/openapi.json";
+export const OPENAPI_SHA256 = "b60c0d48d2421457cfe792f9f9c087e044e7967249377cb9897923e9cec67fa0";
 export const OPENAPI_VERSION = "1.0.0";
 export const OPERATION_COUNT = 90;
 export const APP_REPOSITORY = "0xinsider/0xinsider";
 export const APP_SPEC_PATH = "web/public/api/v1/openapi.json";
-export const APP_COMMIT: string | null = "23f8d3049a5b5901c9012094db438fb9b7e10508";
+export const APP_COMMIT: string | null = "03e56314b80aac3be091a92b08839016b8213a9f";

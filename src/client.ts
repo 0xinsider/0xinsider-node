@@ -1817,13 +1817,19 @@ export const LEADERBOARD_STRATEGIES = [
   "accumulator",
   "algo_trader",
   "arbitrageur",
+  "category_focused",
   "directional",
+  "diversified",
   "event_driven",
+  "high_activity",
   "market_maker",
+  "mixed",
   "momentum",
   "scalper",
   "speculator",
   "swing_trader",
+  "two_sided",
+  "unclassified",
 ] as const;
 export type LeaderboardStrategy = (typeof LEADERBOARD_STRATEGIES)[number];
 

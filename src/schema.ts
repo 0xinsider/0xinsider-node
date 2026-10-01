@@ -959,6 +959,7 @@ export type LeaderboardEntry = {
   markets_traded?: number;
   /** The wallet's win rate across ALL categories, not the filtered one. ?category= decides WHICH wallets are listed (the wallet must be ranked in that category); it does not rescope this field, so a soccer-filtered list still reports each wallet's overall rate. For a per-category record use GET /api/v1/trader/{address}/categories. */
   win_rate?: number;
+  /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
   strategy_type?: string;
   /** Provider platform. Always polymarket. */
   platform: "polymarket";
@@ -1831,7 +1832,7 @@ export type PickSportsContext = {
   matchup_title?: string;
 };
 
-/** A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way. */
+/** A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `headshot_revision`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way. */
 export type PickSportsTeam = {
   /** Team display label as it appears on the market outcome (e.g. "Portugal"). */
   label: string | null;
@@ -1853,6 +1854,8 @@ export type PickSportsTeam = {
   score: string | null;
   /** Tennis player headshot URL, served same-origin. Present only for a tennis competitor the headshot resolver matched; absent for team sports and for unmatched players, where `logo` stays the fallback. */
   headshot?: string;
+  /** Optional monotonic photo revision for this tennis player, independent of the sports score revision. Legacy stored photos start at zero. Successful new or changed image bytes advance it; source checks and attribution changes do not. Compare only for the same tour and provider_id: a higher revision replaces the portrait, an equal revision may fill a missing portrait, and a lower revision must not replace a newer one. Absent when no photo resolved. */
+  headshot_revision?: number;
   /** Tennis tour this competitor belongs to. Present for every tennis entry whether or not `headshot` resolved, so a consumer can tell a tennis player with no photo from a non-tennis team. Absent for every other sport. Only `atp` and `wta` name a gender; the ITF World Tennis Tour runs men's and women's events and the provider does not say which, so `itf` means tennis with gender unknown. */
   tour?: "atp" | "wta" | "itf";
   /** Per-set score cells for this side, in set order. Backend-owned: render these rather than parsing `score`. Omitted entirely when the provider score is not a structured multi-set match or could not be parsed, so an absent array and an empty one carry the same meaning. */
@@ -2539,6 +2542,7 @@ export type Trader = {
     exact?: TraderStatsExact;
   };
   strategy?: {
+    /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
     strategy_type?: string;
     description?: string;
     confidence?: number;
@@ -4098,8 +4102,8 @@ export interface OperationQuery {
     cursor?: string;
     /** Filter by category. Values are matched to canonical category buckets: political variants (Elections, Global Politics, U.S. Politics, ...) fold into Politics, Geopolitics stays distinct, Culture/Entertainment map to Pop Culture, Science maps to Science & Tech, and Finance/Business map to Stocks. Mapped buckets are case-insensitive; passthrough categories (Crypto, NBA, and the sports leagues) match case-sensitively against the provider-native bucket key, so use exact casing (e.g. Crypto, NBA). */
     category?: string;
-    /** Filter by ML-detected strategy type. Values come from backend/crates/analytics/src/trader_analysis/classification/decision_tree.rs and are matched exactly against ml_trader_category.primary_type. Values outside the declared enum return HTTP 400. */
-    strategy?: "accumulator" | "algo_trader" | "arbitrageur" | "directional" | "event_driven" | "market_maker" | "momentum" | "scalper" | "speculator" | "swing_trader";
+    /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. The original ten archetype identifiers remain accepted for historical rows until normal reclassification. Style describes recorded behavior; grade measures performance. */
+    strategy?: "accumulator" | "algo_trader" | "arbitrageur" | "category_focused" | "directional" | "diversified" | "event_driven" | "high_activity" | "market_maker" | "mixed" | "momentum" | "scalper" | "speculator" | "swing_trader" | "two_sided" | "unclassified";
   };
   listPositions: {
     /** Maximum number of current positions to return. Out-of-range values are clamped to 1..100. */

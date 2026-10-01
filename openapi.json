@@ -991,8 +991,8 @@
                           }
                         },
                         "strategy": {
-                          "strategy_type": "directional",
-                          "description": "Trader with no earlier matched classification pattern with high_frequency, consistent, multi_category, high_conviction. Active across 1802 markets. Categories: Soccer 41.0%, Weather 21.6%, Esports 18.4%."
+                          "strategy_type": "mixed",
+                          "description": "Mixed activity across 1,802 stored markets. No single observed behavior has a clear lead. Category shares describe recorded USD cost basis; style is separate from performance."
                         },
                         "last_active": "2026-09-10T02:04:30.398422Z",
                         "synced_at": "2026-09-10T02:04:30.398422Z",
@@ -1977,8 +1977,8 @@
                           "score": 40.17,
                           "stats": { "daily_win_rate": 0.5299, "markets_traded": 1889, "win_rate": 0.6199 },
                           "strategy": {
-                            "description": "Trader with no earlier matched classification pattern with high_frequency, consistent, multi_category, high_conviction. Active across 1802 markets. Categories: Soccer 41.0%, Weather 21.6%, Esports 18.4%.",
-                            "strategy_type": "directional"
+                            "description": "Mixed activity across 1,802 stored markets. No single observed behavior has a clear lead. Category shares describe recorded USD cost basis; style is separate from performance.",
+                            "strategy_type": "mixed"
                           },
                           "sync_status": "synced",
                           "synced_at": "2026-09-10T02:04:30.398422Z",
@@ -8995,20 +8995,26 @@
           {
             "name": "strategy",
             "in": "query",
-            "description": "Filter by ML-detected strategy type. Values come from backend/crates/analytics/src/trader_analysis/classification/decision_tree.rs and are matched exactly against ml_trader_category.primary_type. Values outside the declared enum return HTTP 400.",
+            "description": "Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. The original ten archetype identifiers remain accepted for historical rows until normal reclassification. Style describes recorded behavior; grade measures performance.",
             "schema": {
               "type": "string",
               "enum": [
                 "accumulator",
                 "algo_trader",
                 "arbitrageur",
+                "category_focused",
                 "directional",
+                "diversified",
                 "event_driven",
+                "high_activity",
                 "market_maker",
+                "mixed",
                 "momentum",
                 "scalper",
                 "speculator",
-                "swing_trader"
+                "swing_trader",
+                "two_sided",
+                "unclassified"
               ]
             }
           },
@@ -33114,7 +33120,8 @@
             "type": "object",
             "properties": {
               "strategy_type": {
-                "type": "string"
+                "type": "string",
+                "description": "Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent."
               },
               "description": {
                 "type": "string"
@@ -34389,7 +34396,7 @@
       },
       "PickSportsTeam": {
         "type": "object",
-        "description": "A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way.",
+        "description": "A single sports team or competitor in a Pick of the Day market's sports context. Identity and score fields are provider-owned and nullable. The structured score fields (`sets`, `format`, `sets_won`) and the tennis fields (`headshot`, `headshot_revision`, `tour`) are backend-owned and are OMITTED rather than null when they do not apply, so a consumer must treat an absent key and a null the same way.",
         "required": [
   "label",
   "short_label",
@@ -34449,6 +34456,12 @@
           "headshot": {
             "type": "string",
             "description": "Tennis player headshot URL, served same-origin. Present only for a tennis competitor the headshot resolver matched; absent for team sports and for unmatched players, where `logo` stays the fallback."
+          },
+          "headshot_revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Optional monotonic photo revision for this tennis player, independent of the sports score revision. Legacy stored photos start at zero. Successful new or changed image bytes advance it; source checks and attribution changes do not. Compare only for the same tour and provider_id: a higher revision replaces the portrait, an equal revision may fill a missing portrait, and a lower revision must not replace a newer one. Absent when no photo resolved."
           },
           "tour": {
             "type": "string",
@@ -35375,7 +35388,8 @@
             "description": "The wallet's win rate across ALL categories, not the filtered one. ?category= decides WHICH wallets are listed (the wallet must be ranked in that category); it does not rescope this field, so a soccer-filtered list still reports each wallet's overall rate. For a per-category record use GET /api/v1/trader/{address}/categories."
           },
           "strategy_type": {
-            "type": "string"
+            "type": "string",
+            "description": "Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent."
           },
           "platform": {
             "type": "string",
