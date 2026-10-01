@@ -558,7 +558,7 @@ export class RateLimitUnavailableError extends OxinsiderApiError {
  *
  * This is NOT "the endpoint is broken" and NOT "the resource does not exist".
  * Each selected pick releases about an hour before its own provider kickoff, inside
- * the daily operating window, 11:00 UTC to 23:00 America/New_York (#7226, #7709,
+ * the daily operating window, 07:00 UTC to 23:00 America/New_York (#7226, #7709,
  * #16207) -- there is no fixed publish clock time. The product day rolls at midnight America/New_York, so the
  * endpoint legitimately 404s from that roll until the day's release (a span that
  * varies with the pick's kickoff), and for the full product day on a skipped day.

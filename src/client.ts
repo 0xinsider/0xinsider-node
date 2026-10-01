@@ -2230,9 +2230,9 @@ export class OxinsiderApiClient {
    * body is not buffered -- read `response.body` as a stream and write it
    * where it belongs.
    *
-   * There is no default deadline on the object fetch, the way `streamFeed`
-   * has none: a multi-gigabyte export would fail the 15-second REST default
-   * halfway through. Pass `signal` to cancel it, or `downloadTimeoutMs` for
+   * There is no default deadline on the object fetch, like the lifetime of
+   * an established `streamFeed`: a multi-gigabyte export would fail the
+   * 15-second REST default halfway through. Pass `signal` to cancel it, or `downloadTimeoutMs` for
    * a deadline of your own. `timeoutMs` still bounds the redirect request.
    *
    * @example
