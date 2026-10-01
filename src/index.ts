@@ -403,6 +403,8 @@ export type {
   UpdateWebhookRequest,
   Usage,
   VerifyWebhookRequest,
+  CreateWebhookVerificationAttemptRequest,
+  WebhookVerificationAttempt,
   WebhookDelivery,
   WebhookEndpoint,
   WebhookEventDescriptor,

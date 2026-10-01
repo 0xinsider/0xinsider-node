@@ -97,7 +97,7 @@ export type ApiErrorBody = {
   message: string;
   doc_url?: string;
   param?: string;
-  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 11:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
+  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 07:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
   retry_at?: string;
   freshness?: FreshnessFailure;
   /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
@@ -277,6 +277,11 @@ export type CreateWebhookRequest = {
   url: string;
   event_types: WebhookEventType[];
   trade_filters?: LargeTradeSubscriptionFilters;
+};
+
+export type CreateWebhookVerificationAttemptRequest = {
+  /** The original one-time token returned by webhook creation or a URL change. Sent only in the request body and signed receiver challenge. */
+  verification_token: string;
 };
 
 /** Compact data age and coverage for a response body, always present on the operations that publish it. Read status and as_of to decide whether to use the body at all, and field_groups to see which part is weak. Everything here comes from stored observation clocks, so a cached body reports the same ages a freshly computed one does: meta.cached and meta.cache_age_s stay the only transport-time facts and neither makes this block newer. The per-field audit object is still available through expand=trust; this is the default summary of the same question. */
@@ -1478,7 +1483,7 @@ export type PickOfTheDayArchiveEntry = {
    * @deprecated
    */
   pick_rank?: number;
-  /** When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (11:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility. */
+  /** When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (07:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility. */
   published_at?: string;
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
   matchup: string;
@@ -3172,6 +3177,30 @@ export type WebhookVerification = {
   expires_at: string;
 };
 
+export type WebhookVerificationAttempt = {
+  id: string;
+  object: "webhook_verification_attempt";
+  webhook_id: number;
+  /** queued/running are pending consent. verified means the same endpoint revision answered 2xx and activated atomically. failed/cancelled/expired are terminal and do not restart on polling or replay. */
+  state: "queued" | "running" | "verified" | "failed" | "cancelled" | "expired";
+  /** Sanitized last observation. Null before an observation; queued retries may retain their previous failure outcome. */
+  outcome: "verified" | "target_rejected" | "challenge_timeout" | "transport_failed" | "receiver_rejected" | "token_expired" | "endpoint_changed" | "owner_revoked" | "attempts_exhausted" | "internal_error" | null;
+  attempt_count: number;
+  max_attempts: 4;
+  /** Earlier of the verification-token deadline and 15 minutes after admission. Activation is forbidden at or after this instant. */
+  expires_at: string;
+  /** Scheduled retry/admission time while queued; null while running or terminal. */
+  next_attempt_at: string | null;
+  /** Actual receiver HTTP status, when one arrived. No receiver response body or resolved address is returned. */
+  last_response_status: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Relative authorized API path for this attempt. Uses the same bearer credential as admission. */
+  status_url: string;
+};
+
 export type WhaleDatasetArtifactManifest = {
   /** Version of the artifact manifest contract. */
   manifest_version: string;
@@ -3427,6 +3456,7 @@ export interface OperationData {
     };
   };
   createWebhook: WebhookEndpoint;
+  createWebhookVerificationAttempt: WebhookVerificationAttempt;
   deleteWebhook: WebhookEndpoint;
   exploreMarkets: ExploreEntry[];
   getAccountIdentity: {
@@ -3581,6 +3611,7 @@ export interface OperationData {
     } | null;
   };
   getWebhook: WebhookEndpoint;
+  getWebhookVerificationAttempt: WebhookVerificationAttempt;
   getWeeklyReportSnapshot: ReportSnapshot;
   getWhaleDatasetStatus: {
     job_id: number;
@@ -3780,6 +3811,7 @@ export interface OperationQuery {
   cancelWhaleDataset: Record<string, never>;
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
+  createWebhookVerificationAttempt: Record<string, never>;
   deleteWebhook: Record<string, never>;
   exploreMarkets: {
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. */
@@ -3942,6 +3974,7 @@ export interface OperationQuery {
   };
   getUsage: Record<string, never>;
   getWebhook: Record<string, never>;
+  getWebhookVerificationAttempt: Record<string, never>;
   getWeeklyReportSnapshot: {
     /** UTC source-range start in YYYY-MM-DD format; required with to. Together with to, selects an exact ephemeral range of at most 31 inclusive UTC days. A start after tomorrow UTC returns 400 bad_request with error.param=from. */
     from?: string;
@@ -4311,6 +4344,10 @@ export interface OperationPath {
   };
   createMcpJsonRpcResponse: Record<string, never>;
   createWebhook: Record<string, never>;
+  createWebhookVerificationAttempt: {
+    /** Webhook endpoint id owned by the authenticated API key user. */
+    id: number;
+  };
   deleteWebhook: {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
@@ -4417,6 +4454,12 @@ export interface OperationPath {
   getWebhook: {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
+  };
+  getWebhookVerificationAttempt: {
+    /** Webhook endpoint id owned by the authenticated API key user. */
+    id: number;
+    /** Verification attempt UUID returned by admission. Must belong to this webhook and account. */
+    attempt_id: string;
   };
   getWeeklyReportSnapshot: Record<string, never>;
   getWhaleDatasetStatus: {
@@ -4540,6 +4583,7 @@ export interface OperationBody {
     params?: Record<string, unknown>;
   };
   createWebhook: CreateWebhookRequest;
+  createWebhookVerificationAttempt: CreateWebhookVerificationAttemptRequest;
   deleteWebhook: never;
   exploreMarkets: never;
   getAccountIdentity: never;
@@ -4578,6 +4622,7 @@ export interface OperationBody {
   getTraderPnl: never;
   getUsage: never;
   getWebhook: never;
+  getWebhookVerificationAttempt: never;
   getWeeklyReportSnapshot: never;
   getWhaleDatasetStatus: never;
   getWhaleTrade: never;
@@ -4665,6 +4710,11 @@ export interface OperationResponse {
   createWebhook: {
     object: "webhook";
     data: OperationData["createWebhook"];
+    meta: ResponseMeta;
+  };
+  createWebhookVerificationAttempt: {
+    object: "webhook_verification_attempt";
+    data: OperationData["createWebhookVerificationAttempt"];
     meta: ResponseMeta;
   };
   deleteWebhook: {
@@ -4860,6 +4910,11 @@ export interface OperationResponse {
   getWebhook: {
     object: "webhook";
     data: OperationData["getWebhook"];
+    meta: ResponseMeta;
+  };
+  getWebhookVerificationAttempt: {
+    object: "webhook_verification_attempt";
+    data: OperationData["getWebhookVerificationAttempt"];
     meta: ResponseMeta;
   };
   getWeeklyReportSnapshot: {

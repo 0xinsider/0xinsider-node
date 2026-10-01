@@ -32,6 +32,14 @@
  * non-2xx answer, no answer inside 10 seconds, or a url that does not resolve to
  * a publicly routable address returns 422 and leaves the endpoint
  * `pending_verification`.
+ *
+ * For durable asynchronous consent, call `createWebhookVerificationAttempt`
+ * with the token and an `Idempotency-Key`, then poll
+ * `getWebhookVerificationAttempt`. The 202 response acknowledges admission;
+ * only state `verified` activates the destination. Its signed challenge adds
+ * `verification_attempt_id` and `x-0xinsider-verification-attempt`, stable
+ * across at-least-once retries. Terminal states never restart on polling or
+ * replay. The legacy synchronous method and its retry restriction remain.
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
