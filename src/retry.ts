@@ -123,12 +123,14 @@ function timerUnlessAborted(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(signal.reason);
+      const reason: unknown = signal.reason;
+      reject(reason);
       return;
     }
     const onAbort = () => {
       clearTimeout(timer);
-      reject(signal?.reason);
+      const reason: unknown = signal?.reason;
+      reject(reason);
     };
     const timer = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);

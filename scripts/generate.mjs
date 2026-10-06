@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Generate the SDK's contract types (src/schema.ts) and release provenance
+// Generate the SDK's contract types (src/schema.ts and its src/index.ts export
+// block) and release provenance
 // (src/provenance.ts) from the published 0xinsider OpenAPI document, and keep
 // the exact document bytes they came from in openapi.json.
 //
@@ -27,8 +28,9 @@
 // already recorded keeps the recorded source and app commit, so a rebuild from
 // the snapshot is byte-identical and needs no network.
 //
-// --check regenerates in memory and compares: src/schema.ts must equal the
-// rendering, and src/provenance.ts must name the same document (SHA-256,
+// --check regenerates in memory and compares: src/schema.ts and the generated
+// src/index.ts export block must equal the rendering, and src/provenance.ts
+// must name the same document (SHA-256,
 // version, operation count). Against the live document (the default source)
 // that answers "is this release behind the API"; against --spec openapi.json it
 // answers "are the committed files generated from the committed snapshot".
@@ -178,7 +180,7 @@ async function main() {
   if (check) {
     const problems = [];
     if (runAppScript("generate-sdk-types.mjs", raw, ["--check"]) !== 0) {
-      problems.push("src/schema.ts is stale");
+      problems.push("src/schema.ts or its src/index.ts export block is stale");
     }
     const committed = readProvenance(readIfExists(provenancePath) ?? "");
     if (
@@ -221,13 +223,13 @@ async function main() {
       ? previous.appCommit
       : await resolveAppCommit();
 
-  const written = ["src/schema.ts", "src/provenance.ts"];
+  const written = ["src/schema.ts", "src/index.ts schema exports", "src/provenance.ts"];
   if (path !== snapshotPath) {
     writeFileSync(snapshotPath, raw);
     written.unshift("openapi.json");
   }
   if (runAppScript("generate-sdk-types.mjs", raw) !== 0) {
-    throw new Error("scripts/app/generate-sdk-types.mjs failed; src/schema.ts was not written");
+    throw new Error("scripts/app/generate-sdk-types.mjs failed; contract types and exports were not written");
   }
   writeFileSync(
     provenancePath,

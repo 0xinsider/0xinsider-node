@@ -11,7 +11,7 @@
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "skipLibCheck": false,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
@@ -19,7 +19,20 @@
     "allowSyntheticDefaultImports": true,
     "types": [
       "node"
-    ]
+    ],
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedSideEffectImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "checkJs": true,
+    "noEmitOnError": true
   },
   "include": [
     "src/**/*"

@@ -39,7 +39,6 @@ import type {
   OperationQuery,
   OperationResponse,
   ResponseMeta,
-  PreGameSideObservation,
   TraderExportArtifactManifest,
 } from "./schema.js";
 
@@ -1154,7 +1153,7 @@ async function releaseExportBody(
 
 /** Own only the latest body/reader until the response is handed to the caller. */
 class ExportBodyOwner {
-  private cancel?: (reason: unknown) => Promise<void>;
+  private cancel: ((reason: unknown) => Promise<void>) | undefined;
 
   response(response: Response): void {
     this.cancel = (reason) => response.body?.cancel(reason) ?? Promise.resolve();
@@ -1286,7 +1285,7 @@ function isTimeoutAbort(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     "name" in error &&
-    (error as { name: unknown }).name === "TimeoutError"
+    error.name === "TimeoutError"
   );
 }
 
@@ -1800,9 +1799,11 @@ function presignExpiry(
 function filenameFromDisposition(disposition: string | null): string | null {
   if (!disposition) return null;
   const quoted = /filename\*?=(?:UTF-8'')?"([^"]+)"/i.exec(disposition);
-  if (quoted) return decodeURIComponent(quoted[1]);
+  const quotedFilename = quoted?.[1];
+  if (quotedFilename !== undefined) return decodeURIComponent(quotedFilename);
   const bare = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition);
-  return bare ? decodeURIComponent(bare[1].trim()) : null;
+  const bareFilename = bare?.[1];
+  return bareFilename === undefined ? null : decodeURIComponent(bareFilename.trim());
 }
 
 /** Shared paging params accepted by Stripe-style list endpoints. */
@@ -1907,7 +1908,7 @@ const operationsById = new Map<ApiOperationId, ApiClientOperation>(
 
 export class OxinsiderApiClient {
   private readonly baseUrl: string;
-  private readonly apiKey?: string;
+  private readonly apiKey: string | undefined;
   private readonly sandbox: boolean;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number | null;
@@ -2169,7 +2170,10 @@ export class OxinsiderApiClient {
     }
     const manifest = status.data.artifact.manifest;
     const target = await this.getWhaleDatasetDownloadUrl(jobId, requestOptions);
-    return this.downloadExportObject(target, { downloadTimeoutMs, signal: options.signal }, verifyChecksum ? {
+    return this.downloadExportObject(target, {
+      ...(downloadTimeoutMs === undefined ? {} : { downloadTimeoutMs }),
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+    }, verifyChecksum ? {
       jobId, expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes,
     } : undefined, (status) => new InvalidResponseError(
       status, "Dataset signed URL failed; request a fresh download URL.", null,
@@ -2297,7 +2301,10 @@ export class OxinsiderApiClient {
       jobId,
       requestOptions,
     );
-    return this.downloadExportObject(target, { downloadTimeoutMs, signal: options.signal }, manifest ? {
+    return this.downloadExportObject(target, {
+      ...(downloadTimeoutMs === undefined ? {} : { downloadTimeoutMs }),
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+    }, manifest ? {
       jobId, expectedSha256: manifest.content_sha256, expectedSizeBytes: manifest.content_size_bytes,
     } : undefined, (status) => new InvalidResponseError(
       status,
@@ -2322,7 +2329,10 @@ export class OxinsiderApiClient {
     const owner = new ExportBodyOwner();
     try {
       // A signed object URL authorizes itself; never forward API headers.
-      let response = await this.fetchImpl(target.url, { method: "GET", signal: signal.signal });
+      let response = await this.fetchImpl(target.url, {
+        method: "GET",
+        ...(signal.signal === undefined ? {} : { signal: signal.signal }),
+      });
       owner.response(response);
       if (!response.ok) throw statusError(response.status);
       response = managedExportBody(response, owner, dispose, signal.dispose !== undefined, verification);
@@ -2438,8 +2448,8 @@ export class OxinsiderApiClient {
           response = await this.fetchImpl(url, {
             method: operation.method,
             headers,
-            body,
-            signal: requestSignal.signal,
+            ...(body === undefined ? {} : { body }),
+            ...(requestSignal.signal === undefined ? {} : { signal: requestSignal.signal }),
             ...(transport.redirect ? { redirect: transport.redirect } : {}),
           });
         } catch (error: unknown) {
@@ -3408,29 +3418,29 @@ function sportsEdgeObservationsResponse(
   response: OperationEnvelope<"listSportsEdgeObservations">,
 ): SportsEdgeObservationsResponse {
   const candidate = response as unknown as Record<string, unknown>;
-  const funnel = candidate.funnel as Record<string, unknown> | null | undefined;
-  const meta = candidate.meta as Record<string, unknown> | null | undefined;
+  const funnel = candidate["funnel"] as Record<string, unknown> | null | undefined;
+  const meta = candidate["meta"] as Record<string, unknown> | null | undefined;
   if (
-    candidate.object !== "list" ||
-    !Array.isArray(candidate.data) ||
-    typeof candidate.has_more !== "boolean" ||
+    candidate["object"] !== "list" ||
+    !Array.isArray(candidate["data"]) ||
+    typeof candidate["has_more"] !== "boolean" ||
     !(
-      candidate.next_cursor === null ||
-      typeof candidate.next_cursor === "string"
+      candidate["next_cursor"] === null ||
+      typeof candidate["next_cursor"] === "string"
     ) ||
-    typeof candidate.snapshot_as_of !== "string" ||
-    typeof candidate.degraded !== "boolean" ||
+    typeof candidate["snapshot_as_of"] !== "string" ||
+    typeof candidate["degraded"] !== "boolean" ||
     typeof funnel !== "object" ||
     funnel === null ||
     Array.isArray(funnel) ||
-    !Array.isArray(funnel.sports) ||
+    !Array.isArray(funnel["sports"]) ||
     typeof meta !== "object" ||
     meta === null ||
     Array.isArray(meta) ||
-    typeof meta.request_id !== "string" ||
-    typeof meta.cached !== "boolean" ||
-    typeof meta.cost !== "number" ||
-    !Number.isInteger(meta.cost)
+    typeof meta["request_id"] !== "string" ||
+    typeof meta["cached"] !== "boolean" ||
+    typeof meta["cost"] !== "number" ||
+    !Number.isInteger(meta["cost"])
   ) {
     throw new OxinsiderApiError(200, {
       object: "error",
@@ -3441,5 +3451,5 @@ function sportsEdgeObservationsResponse(
       },
     });
   }
-  return response as SportsEdgeObservationsResponse;
+  return response;
 }

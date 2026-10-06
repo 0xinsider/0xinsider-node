@@ -20,8 +20,8 @@
 // way the hand-written types did.
 //
 // Usage:
-//   node scripts/generate-sdk-types.mjs           # write sdk/src/schema.ts
-//   node scripts/generate-sdk-types.mjs --check   # exit 1 if the file is stale
+//   node scripts/generate-sdk-types.mjs           # write schema.ts + index.ts schema exports
+//   node scripts/generate-sdk-types.mjs --check   # exit 1 if either artifact is stale
 //
 // `check-sdk-openapi-drift.mjs` runs the --check form, so a spec change that
 // is not regenerated fails the gate.
@@ -33,6 +33,9 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const specPath = resolve(repoRoot, "web/public/api/v1/openapi.json");
 const outPath = resolve(repoRoot, "sdk/src/schema.ts");
+const indexPath = resolve(repoRoot, "sdk/src/index.ts");
+const EXPORTS_START = "// BEGIN GENERATED SCHEMA EXPORTS";
+const EXPORTS_END = "// END GENERATED SCHEMA EXPORTS";
 
 const HTTP_METHODS = new Set(["get", "post", "patch", "delete", "put"]);
 
@@ -82,9 +85,10 @@ function typeOf(schema, depth, path) {
     if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
       throw new Error(`${path}: empty enum`);
     }
-    const type = schema.enum.map(quote).join(" | ");
-    // Enum schemas take this branch before scalar nullability is handled.
-    return schema.nullable === true ? `${type} | null` : type;
+    const members = [...new Set(schema.enum.map(quote))];
+    // Null can already be an enum member; preserve one spelling per union member.
+    if (schema.nullable === true && !members.includes("null")) members.push("null");
+    return members.join(" | ");
   }
 
   if (schema.oneOf || schema.anyOf) {
@@ -407,6 +411,56 @@ function render() {
 }
 
 const rendered = render();
+const currentIndex = readFileSync(indexPath, "utf-8");
+const exportsStart = currentIndex.indexOf(EXPORTS_START);
+const exportsEnd = currentIndex.indexOf(EXPORTS_END);
+if (
+  exportsStart === -1 ||
+  exportsEnd < exportsStart ||
+  currentIndex.indexOf(EXPORTS_START, exportsStart + EXPORTS_START.length) !== -1 ||
+  currentIndex.indexOf(EXPORTS_END, exportsEnd + EXPORTS_END.length) !== -1
+) {
+  throw new Error("sdk/src/index.ts must contain exactly one marked generated schema-export block");
+}
+const beforeExports = currentIndex.slice(0, exportsStart);
+const afterExports = currentIndex.slice(exportsEnd + EXPORTS_END.length);
+
+/** Preserve the barrel's explicit named exports and compatibility aliases. */
+function exportedNames(source) {
+  const names = new Set();
+  for (const match of source.matchAll(/^export (?:type )?\{([\s\S]*?)\} from ["'][^"']+["'];/gm)) {
+    for (const specifier of match[1].split(",")) {
+      const entry = specifier.trim();
+      if (entry === "") continue;
+      const name = /^(?:type\s+)?([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/.exec(entry);
+      if (name === null) throw new Error(`unsupported named SDK export: ${entry}`);
+      names.add(name[2] ?? name[1]);
+    }
+  }
+  const declarations = /^export (?:type|interface|class|function|const|let|var|enum|namespace) ([A-Za-z_$][\w$]*)/gm;
+  for (const match of source.matchAll(declarations)) {
+    names.add(match[1]);
+  }
+  return names;
+}
+
+const otherExports = exportedNames(`${beforeExports}${afterExports}`);
+const schemaExports = [
+  ...Object.keys(schemas),
+  "OperationBody",
+  "OperationData",
+  "OperationPath",
+  "OperationQuery",
+  "OperationResponse",
+].filter((name) => !otherExports.has(name)).sort();
+const renderedExports = [
+  EXPORTS_START,
+  "export type {",
+  ...schemaExports.map((name) => `  ${name},`),
+  '} from "./schema.js";',
+  EXPORTS_END,
+].join("\n");
+const renderedIndex = `${beforeExports}${renderedExports}${afterExports}`;
 
 if (process.argv.includes("--check")) {
   let current = "";
@@ -416,20 +470,24 @@ if (process.argv.includes("--check")) {
     console.error("generate-sdk-types: sdk/src/schema.ts is missing; run node scripts/generate-sdk-types.mjs");
     process.exit(1);
   }
-  if (current !== rendered) {
+  const stale = [];
+  if (current !== rendered) stale.push("sdk/src/schema.ts");
+  if (currentIndex !== renderedIndex) stale.push("sdk/src/index.ts schema exports");
+  if (stale.length > 0) {
     console.error(
-      "generate-sdk-types: sdk/src/schema.ts is stale against web/public/api/v1/openapi.json.",
+      `generate-sdk-types: ${stale.join(" and ")} is stale against web/public/api/v1/openapi.json.`,
     );
     console.error("  Run: node scripts/generate-sdk-types.mjs");
     process.exit(1);
   }
   console.log(
-    `generate-sdk-types: OK (${Object.keys(schemas).length} schemas, ${operations().length} operations)`,
+    `generate-sdk-types: OK (schema.ts + index.ts exports; ${Object.keys(schemas).length} schemas, ${operations().length} operations)`,
   );
   process.exit(0);
 }
 
 writeFileSync(outPath, rendered, "utf-8");
+writeFileSync(indexPath, renderedIndex, "utf-8");
 console.log(
-  `generate-sdk-types: wrote sdk/src/schema.ts (${Object.keys(schemas).length} schemas, ${operations().length} operations)`,
+  `generate-sdk-types: wrote sdk/src/schema.ts + sdk/src/index.ts schema exports (${Object.keys(schemas).length} schemas, ${operations().length} operations)`,
 );

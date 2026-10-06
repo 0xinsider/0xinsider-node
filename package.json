@@ -1,6 +1,6 @@
 {
   "name": "@0xinsider/sdk",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Official TypeScript SDK for the 0xinsider API - analytics for Polymarket sports and esports markets (REST, cursor pagination, SSE stream, webhook verification)",
   "type": "module",
   "main": "dist/index.js",
@@ -22,7 +22,9 @@
     "pretest": "npm run build",
     "test": "node --test test/*.test.mjs",
     "test:sandbox": "OXINSIDER_SANDBOX_TESTS=1 node --test test/sandbox.test.mjs",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "check-types": "node node_modules/typescript/bin/tsc --noEmit",
+    "lint": "oxlint --report-unused-disable-directives-severity error src"
   },
   "keywords": [
     "0xinsider",
@@ -59,6 +61,8 @@
   ],
   "devDependencies": {
     "@types/node": "^26.6.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "oxlint": "1.85.0",
+    "oxlint-tsgolint": "7.0.2002"
   }
 }

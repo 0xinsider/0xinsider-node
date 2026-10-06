@@ -37,9 +37,9 @@ export interface DataQualityFailure {
   group: string;
   /** The group's status, or `missing` when a requested group is absent. */
   status: DataQualityGroup["status"] | "missing" | (string & {});
-  as_of?: string;
+  as_of?: string | undefined;
   /** How far `as_of` sits before `now`, when the group carries a clock. */
-  ageMs?: number;
+  ageMs?: number | undefined;
   /** The server's reason when it gave one, otherwise why this helper failed it. */
   reason: string;
 }
@@ -52,9 +52,9 @@ export interface DataQualityAssessment {
    */
   ok: boolean;
   /** The oldest `as_of` among the judged groups that carry one. */
-  oldestAsOf?: string;
+  oldestAsOf?: string | undefined;
   /** Age of `oldestAsOf` at `now`. */
-  oldestAgeMs?: number;
+  oldestAgeMs?: number | undefined;
   /** Every judged group that did not pass, in response order. */
   failing: DataQualityFailure[];
   /** Groups left out of the verdict because they are `untracked`. */
@@ -121,7 +121,7 @@ export function assessDataQuality(
       failing.push({ ...base, reason: entry.reason ?? `status is ${entry.status}` });
     } else if (!hasClock) {
       failing.push({ ...base, reason: "fresh but carries no as_of, so no age can be measured" });
-    } else if ((ageMs as number) > options.maxAgeMs) {
+    } else if (ageMs !== undefined && ageMs > options.maxAgeMs) {
       failing.push({ ...base, reason: `older than maxAgeMs (${options.maxAgeMs})` });
     }
   }
