@@ -8,7 +8,8 @@
 // copied verbatim by scripts/sync-from-app.mjs: every published operation is in
 // the client's matching table with the right response kind, every documented
 // query parameter has a typed spelling, the Idempotency-Key operations agree,
-// and src/schema.ts is what the app's generator renders for this document.
+// and src/schema.ts plus its src/index.ts export block are what the app's
+// generator renders for this document.
 // Against the committed snapshot it is deterministic and needs no network;
 // against the live document it answers "is this release behind the API".
 

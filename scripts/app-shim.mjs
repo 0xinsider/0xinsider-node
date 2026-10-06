@@ -1,6 +1,7 @@
 // Run the app repository's SDK scripts against this repository.
 //
-// `scripts/app/generate-sdk-types.mjs` (writes src/schema.ts) and
+// `scripts/app/generate-sdk-types.mjs` (writes src/schema.ts and its marked
+// src/index.ts export block) and
 // `scripts/app/check-sdk-openapi-drift.mjs` (the operation table, query
 // parameters and Idempotency-Key set agree with the document) are copied
 // verbatim from 0xinsider/0xinsider by `scripts/sync-from-app.mjs`, so this
