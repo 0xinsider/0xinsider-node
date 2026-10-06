@@ -58,6 +58,7 @@ jobs:
           package-manager-cache: false
       - run: npm ci --ignore-scripts
       - run: npm run check
+      - run: npm run lint
       # Build and type-check the documented consumer example. The tarball
       # below packs this same dist/; release verification does not run tests.
       - run: npm run build

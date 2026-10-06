@@ -105,7 +105,7 @@ export interface StreamOptions extends StreamFilters {
    * remains valid across replicas and process restarts while retained. When
    * omitted the stream starts from the live head.
    */
-  lastEventId?: number | string;
+  lastEventId?: number | string | undefined;
   /** Cooperative cancellation; abort to close the stream. */
   signal?: AbortSignal;
   /** Invoked once for the resync marker frame, if one is emitted. */
@@ -123,7 +123,7 @@ export interface StreamOptions extends StreamFilters {
    * the handler and your durable write resolve, and keep this cursor for
    * transport progress.
    */
-  cursor?: { seq?: number };
+  cursor?: { seq?: number | undefined };
   /**
    * Byte ceiling for one undelivered frame (#16248). Default
    * `DEFAULT_MAX_STREAM_FRAME_BYTES` (1 MiB). A frame larger than this,
@@ -216,8 +216,8 @@ export class StreamProtocolError extends Error {
     reason: StreamProtocolErrorReason,
     detail: {
       lastSeq: number | undefined;
-      frameId?: number;
-      event?: string;
+      frameId?: number | undefined;
+      event?: string | undefined;
       bytes?: number;
       mediaType?: string | null;
     },
@@ -237,8 +237,8 @@ function streamProtocolMessage(
   reason: StreamProtocolErrorReason,
   detail: {
     lastSeq: number | undefined;
-    frameId?: number;
-    event?: string;
+    frameId?: number | undefined;
+    event?: string | undefined;
     bytes?: number;
     mediaType?: string | null;
   },
@@ -351,7 +351,10 @@ async function streamWork<T>(
 ): Promise<T> {
   let onAbort: (() => void) | undefined;
   const aborted = new Promise<never>((_, reject) => {
-    onAbort = () => reject(signal.reason);
+    onAbort = () => {
+      const reason: unknown = signal.reason;
+      reject(reason);
+    };
     if (signal.aborted) onAbort();
     else signal.addEventListener("abort", onAbort, { once: true });
   });
@@ -501,7 +504,7 @@ export type StreamEvent =
  * `StreamEvent`: `kind: "event"` carries the `FeedEnvelope`, `kind: "resync"`
  * carries the `ResyncMarker`.
  *
- * Pass `options.cursor` (a `{ seq?: number }` object) to have the last
+ * Pass `options.cursor` (a `{ seq?: number | undefined }` object) to have the last
  * delivered `seq` written back as frames arrive; reconnect with
  * `lastEventId: cursor.seq` to resume after a transport drop.
  *
@@ -930,7 +933,7 @@ export async function* streamFeedResilient(
     throw new Error("streamFeedResilient requires an API key (oxi_sk_*)");
   }
   const signal = streamOptions.signal;
-  const cursor: { seq?: number } = streamOptions.cursor ?? {};
+  const cursor: { seq?: number | undefined } = streamOptions.cursor ?? {};
   const initialLastEventId = streamOptions.lastEventId;
   let attempt = 0;
 
@@ -1298,7 +1301,7 @@ export async function consumeStreamCheckpointed(
     // caller's received cursor must never be handed to it -- that cursor has
     // already moved past an unacknowledged event, and lending it would make
     // the replay resume after the frame it exists to redeliver.
-    const delivered: { seq?: number } = { seq: resumeAfter };
+    const delivered: { seq?: number | undefined } = { seq: resumeAfter };
 
     for await (const frame of streamFeedResilient(client, {
       ...streamOptions,
@@ -1410,8 +1413,8 @@ function buildStreamUrl(
 }
 
 export interface ParsedSseFrame {
-  event?: string;
-  id?: number;
+  event?: string | undefined;
+  id?: number | undefined;
   data: string;
 }
 
@@ -1515,7 +1518,7 @@ export function decodeStreamFrame(
     if (!isPlainObject(payload)) {
       throw new StreamProtocolError("invalid_resync", detail);
     }
-    if ("type" in payload && payload.type !== "resync") {
+    if ("type" in payload && payload["type"] !== "resync") {
       throw new StreamProtocolError("invalid_resync", detail);
     }
     return {
@@ -1531,8 +1534,8 @@ export function decodeStreamFrame(
     throw new StreamProtocolError("invalid_envelope", detail);
   }
   const seq =
-    typeof payload.seq === "number" && Number.isFinite(payload.seq)
-      ? payload.seq
+    typeof payload["seq"] === "number" && Number.isFinite(payload["seq"])
+      ? payload["seq"]
       : parsed.id;
   if (seq === undefined || !Number.isFinite(seq)) {
     throw new StreamProtocolError("unusable_sequence", detail);
@@ -1585,13 +1588,13 @@ function terminalStreamError(
   payload: unknown,
   detail: ConstructorParameters<typeof StreamProtocolError>[1],
 ): Error {
-  if (!isPlainObject(payload) || !isPlainObject(payload.error)) {
+  if (!isPlainObject(payload) || !isPlainObject(payload["error"])) {
     return new StreamProtocolError("invalid_envelope", detail);
   }
-  const body = payload.error;
-  const retry = payload.retry === true;
-  const code = typeof body.code === "string" ? body.code : undefined;
-  const reason = typeof body.reason === "string" ? body.reason : undefined;
+  const body = payload["error"];
+  const retry = payload["retry"] === true;
+  const code = typeof body["code"] === "string" ? body["code"] : undefined;
+  const reason = typeof body["reason"] === "string" ? body["reason"] : undefined;
   const status =
     reason !== undefined && STREAM_ERROR_UNAVAILABLE_REASONS.has(reason)
       ? 503

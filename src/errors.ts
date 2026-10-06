@@ -201,7 +201,7 @@ export class ExportIntegrityError extends Error {
   readonly actualSha256: string | null;
   readonly expectedSizeBytes: number;
   readonly actualSizeBytes: number;
-  readonly cause: unknown;
+  override readonly cause: unknown;
 
   constructor(
     jobId: number,
@@ -253,7 +253,7 @@ export class OxinsiderApiError extends Error {
   /** HTTP status code of the failing response. */
   readonly status: number;
   /** Documented error code, when the body carried one. */
-  readonly code: ApiErrorCode | string | undefined;
+  readonly code: string | undefined;
   /**
    * The specific, actionable cause behind `code`, or `null` when the response carried
    * no reason the SDK recognizes (#7209).
@@ -557,11 +557,10 @@ export class RateLimitUnavailableError extends OxinsiderApiError {
  * current product day (#7209).
  *
  * This is NOT "the endpoint is broken" and NOT "the resource does not exist".
- * Each selected pick releases about an hour before its own provider kickoff, inside
- * the daily operating window, 07:00 UTC to 23:00 America/New_York (#7226, #7709,
- * #16207) -- there is no fixed publish clock time. The product day rolls at midnight America/New_York, so the
- * endpoint legitimately 404s from that roll until the day's release (a span that
- * varies with the pick's kickoff), and for the full product day on a skipped day.
+ * Qualified automatic picks publish as soon as final checks pass. Explicit
+ * schedules retain their stored time. The product day rolls at midnight
+ * America/New_York. Until a pick publishes, and on skipped days, this response
+ * is expected. Returned retry timing is advisory; new signals can arrive earlier.
  *
  * DO NOT POLL. Sleep for `retryAfterSeconds` (or until `retryAt`) and request
  * once. Blind polling through this window was 91.8% of all logged v1 API errors.
@@ -745,7 +744,7 @@ export class InvalidResponseError extends OxinsiderApiError {
       ...(typeof received === "object" &&
       received !== null &&
       "meta" in received
-        ? { meta: (received as { meta: unknown }).meta }
+        ? { meta: received.meta }
         : {}),
     });
     this.name = "InvalidResponseError";
@@ -879,8 +878,8 @@ export function extractApiErrorBody(body: unknown): ApiErrorBody | null {
   ) {
     return (body as { error: ApiErrorBody }).error;
   }
-  if (isApiErrorBody(body) && typeof (body as ApiErrorBody).code === "string") {
-    return body as ApiErrorBody;
+  if (isApiErrorBody(body) && typeof body.code === "string") {
+    return body;
   }
   return null;
 }

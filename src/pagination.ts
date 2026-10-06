@@ -72,16 +72,16 @@ export interface PaginationProgress {
   /** Pages fetched and yielded so far. */
   pagesFetched?: number;
   /** The current request cursor, including a failed attempt; undefined for the first page. */
-  cursor?: string;
+  cursor?: string | undefined;
   /**
    * The delivered page's `next_cursor`, or the retry cursor after a failure.
    * While a request is pending this is undefined. After `stoppedBy: "max_pages"`
    * this is the continuation: pass it as `query.cursor` to carry on.
    * `null` or `undefined` once the collection is exhausted.
    */
-  nextCursor?: string | null;
+  nextCursor?: string | null | undefined;
   /** Set before delivering a page known to exhaust the list or reach maxPages. */
-  stoppedBy?: PaginationStop;
+  stoppedBy?: PaginationStop | undefined;
 }
 
 export interface PaginateOptions {
@@ -276,7 +276,7 @@ export async function* paginatePages(
       if (fields.stoppedBy === undefined) delete progress.stoppedBy;
     }
   };
-  const fail = (error: object) => {
+  const fail = <T extends object>(error: T): T => {
     record({ pagesFetched: pages, cursor, nextCursor: cursor });
     resumePoints.set(error, { cursor, pagesFetched: pages });
     return error;
@@ -298,10 +298,10 @@ export async function* paginatePages(
     let page: ApiListEnvelope<unknown>;
     try {
       page = await client.list<unknown>(operationId, {
-        path,
+        ...(path === undefined ? {} : { path }),
         query: { ...query, ...(cursor === undefined ? {} : { cursor }) },
-        strictQuery,
-        signal,
+        ...(strictQuery === undefined ? {} : { strictQuery }),
+        ...(signal === undefined ? {} : { signal }),
         ...(timeoutMs === undefined ? {} : { timeoutMs }),
         ...(maxRetries === undefined ? {} : { maxRetries }),
         ...(headers === undefined ? {} : { headers }),

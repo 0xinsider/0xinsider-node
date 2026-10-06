@@ -82,9 +82,10 @@ function typeOf(schema, depth, path) {
     if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
       throw new Error(`${path}: empty enum`);
     }
-    const type = schema.enum.map(quote).join(" | ");
-    // Enum schemas take this branch before scalar nullability is handled.
-    return schema.nullable === true ? `${type} | null` : type;
+    const members = [...new Set(schema.enum.map(quote))];
+    // Null can already be an enum member; preserve one spelling per union member.
+    if (schema.nullable === true && !members.includes("null")) members.push("null");
+    return members.join(" | ");
   }
 
   if (schema.oneOf || schema.anyOf) {

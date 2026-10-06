@@ -582,7 +582,7 @@ export type Game = {
   competitors: GameCompetitor[];
   /** The esports series length, for example Bo3. Omitted for everything else. */
   series_format?: string;
-  /** Whether one of this game's markets pays on a draw. Read this instead of assuming a two-outcome moneyline. */
+  /** Whether this read includes a market classified as paying on a draw, including soccer's independent 1X2 draw leg. Read this instead of assuming a two-outcome moneyline. */
   draw_offered: boolean;
   /** Every market this read linked to the game, ordered by condition_id. */
   markets: GameMarket[];
@@ -650,7 +650,7 @@ export type GameMarket = {
   slug?: string;
   /** The provider's own market type, for example moneyline or spread. Omitted when the provider sent none. Not an enum: the provider owns this vocabulary and adds to it. */
   sports_market_type?: string;
-  /** Which side of the game this market's YES leg pays. draw is a real value: a 1X2 market's third leg is not a competitor. Omitted when the provider ids do not classify the leg, which is not the same as other. */
+  /** Which side of the game this market's YES leg pays. Soccer 1X2 legs are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg, which is not the same as other. */
   side?: "home" | "away" | "draw" | "other";
   /** The provider's label for the YES outcome. Omitted when the provider sent none. */
   outcome_yes?: string;
@@ -1194,8 +1194,10 @@ export type MarketSnapshot = {
     source: string;
     live_match_key?: string;
     live_league_key?: string;
-    /** Live-score period and elapsed may be omitted when unavailable (older responses use null). A score entry may omit full_name when it equals team; fall back to team. Distinct aliases and score admission markers are preserved. */
-    live_score?: Record<string, unknown>;
+    /** Live-score period and elapsed may be omitted when unavailable (older responses use null). A score entry may omit full_name when it equals team; fall back to team. Distinct aliases and score admission markers are preserved. For live esports, scores[].map_score retains an available pair through an update omitting both sides only within the same live map, series format and series totals. Map changes and final state follow current provider updates; absent detail remains unavailable. Optional tennis_points supplies independently sourced current-game points and serving side; absence means unavailable. Compatible unexpired tennis_points survives temporary supplemental snapshot unavailability or contention; expiry and set/game mismatch still clear it. */
+    live_score?: Record<string, unknown> & {
+      tennis_points?: TennisPoints;
+    };
     reason?: string;
   };
   freshness: {
@@ -1292,8 +1294,40 @@ export type PickHolder = {
   x_username?: string | null;
 };
 
+/** Recorded lead wallet facts, available only on full newly certified picks. Position and category history are frozen at publication; they are not live balances or pick win probabilities. */
+export type PickLeadBacker = {
+  /** Lead trader wallet address. */
+  address: string;
+  /** Recorded provider display name. */
+  name: string | null;
+  /** Trader grade recorded at publication. */
+  grade: string;
+  /** Canonical sport of the recorded directional history. */
+  category: string;
+  /** Provider-reported position value on the backed outcome at publication, in USD. It is the gross value on that outcome and does not subtract shares the wallet held on the other outcome; see net_position_usd. It is not the entry cost or a live balance. */
+  position_usd: number;
+  /** Net value of the lead's position toward the backed outcome at publication, in USD: shares held on the backed outcome minus shares held on the other outcome of the same market, valued at the backed outcome's provider price at publication. Present only when the wallet also held the other outcome; absent for a one-sided position, whose net equals position_usd. It is not a live balance. */
+  net_position_usd?: number;
+  /** Start time of the provider position fetch used at publication. This conservative observation clock precedes completion; the position is not a live balance. */
+  position_observed_at: string;
+  /** Distinct directional events in the recorded category history. */
+  directional_event_count: number;
+  /** Events with strictly positive native terminal P&L in the same frozen category sample as directional_event_count, realized_pnl_usd and roi. Multiple market positions in one event contribute one combined event result. Zero-profit events remain in directional_event_count but do not increase this count. This is a recorded wallet result, not a market win rate or the pick's win probability. */
+  profitable_event_count: number;
+  /** Realized P&L over the recorded directional category sample, in USD. Excludes open positions and later changes. */
+  realized_pnl_usd: number;
+  /** Recorded entry basis of that directional sample, in USD; not a claim of complete trading costs or fees. */
+  entry_basis_usd: number;
+  /** Realized P&L divided by recorded entry basis, as a fraction: 0.10 means 10%. This is a wallet statistic, not a pick win probability. */
+  roi: number;
+  /** Peak-to-trough realized P&L drawdown after each event result in the recorded sample, in USD. Excludes intragame, unrealized, and account equity drawdown. */
+  max_realized_drawdown_usd: number;
+  /** Timestamp when the directional history evidence was recorded, separate from the provider position snapshot clock. */
+  recorded_at: string;
+};
+
 export type PickOfTheDay = {
-  /** Always 'full' for an authenticated Pro key. */
+  /** Full success containing entitled proof-readable picks. */
   state: "full";
   /** The pick's local publication date (YYYY-MM-DD). */
   pick_date?: string;
@@ -1306,7 +1340,7 @@ export type PickOfTheDay = {
   picks?: PickOfTheDay[];
   /** Number of items in `picks`: the proof-readable picks. Picks held in `proof_pending_picks` are not counted. */
   pick_count?: number;
-  /** Same-day picks selected but not yet released, ordered by pick_rank. Additive and optional: present only while at least one unreleased slot exists. Each slot exposes only its rank and schedule -- no market identity before release. Schedule the next read from the earliest release_at instead of polling. */
+  /** Rank-ordered entitled selections that have not released. Every row retains release_at and kickoff; unauthorized scheduled ranks appear only in identity-free locked_picks. */
   scheduled_picks?: ScheduledPickSlot[];
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
   matchup?: string;
@@ -1316,7 +1350,7 @@ export type PickOfTheDay = {
   display_category?: string;
   /** Provider platform. Always polymarket. */
   platform?: "polymarket";
-  /** The pick's stored release instant. Normally the current provider kickoff minus one hour; an operator may override it. The actual publish instant can trail it because of worker or claim delay. */
+  /** The pick's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. Final checks, worker or claim delay can make the actual publication later. */
   release_at?: string;
   /** True only before the pick's stored release instant (a pre-release embargo flag); effectively always false on a served, already-published pick. To detect that the backed game has kicked off, use `game_started`. */
   is_locked?: boolean;
@@ -1386,7 +1420,7 @@ export type PickOfTheDay = {
   sharp_pct?: number;
   /** Recorded market-implied probability as a 0..1 fraction when available. */
   market_pct?: number;
-  /** Optional recorded specialist facts. These describe the trader and do not disclose selection decisions. Present only on a full response when available. */
+  /** Optional legacy recorded specialist facts. These describe the trader and do not disclose selection decisions. Present only on a full response when available; newly certified picks use lead_backer instead. */
   qualifying_expert?: {
     /** Trader wallet address. */
     address: string;
@@ -1409,11 +1443,11 @@ export type PickOfTheDay = {
   };
   /** Public V1 S/A wallet count on the backed side, equal to sharp_wallet_count. */
   traders?: number;
-  /** Recorded backed-side sharp-money value in USD when available. */
+  /** Recorded backed-side position value in USD when available. Newly certified picks sum only publication-certified wallet positions; legacy rows retain their recorded value. */
   backed_sharp_usd?: number;
-  /** Bounded S/A holder display projection. Historical rows retain their recorded display shape. */
+  /** Bounded S/A holder display projection. Newly certified picks include only publication-certified wallets; historical rows retain their recorded display shape. */
   holders?: PickHolder[];
-  /** Optional complete holder display roster. Each entry carries ordinary trader and recorded position facts. */
+  /** Optional complete holder display roster. Newly certified picks list the recorded lead first, then any verified supporters, then the other graded wallets that held the backed side at publication, ordered by shares; only the lead and supporters are verified, the other rows are gross holdings that may also hold the other side and are not counted in the wallet counts, holder_count or backed_sharp_usd. Legacy rows retain their recorded display shape. */
   display_holders?: PickHolder[];
   /** S/A holder count for the public V1 compatibility projection. display_holders can include additional grades. */
   holder_count?: number;
@@ -1433,10 +1467,17 @@ export type PickOfTheDay = {
   sports_context?: PickSportsContext;
   /** Risk disclaimer shown with every pick. */
   disclaimer?: string;
-  /** Published same-day picks whose holder proof is not readable yet, ordered by pick_rank. Additive and optional: present only while at least one such pick exists. While present, `picks` carries only the proof-readable picks and `pick_count` counts them. Schedule the next read from the earliest retry_at instead of polling. The route returns 503 read_model_warming only when no published pick has readable proof. */
+  /** Entitled published picks whose holder proof is unreadable, ordered by rank. Unauthorized ranks appear only in locked_picks and cannot trigger proof warming. Read retry_at for the next read. */
   proof_pending_picks?: ProofPendingPickSlot[];
   /** Optional full-response entry authorization. Missing or expired authorization cannot authorize an automated entry. */
   entry_authorization?: PotdEntryAuthorization;
+  /** Unauthorized unresolved published or scheduled ranks. Contains no game, provider identity, price, or identifying clock. Pro may upgrade to Max to open these ranks. */
+  locked_picks?: {
+    pick_rank: number;
+    required_tier: "max";
+  }[];
+  /** Actionable status, including Upgrade to Max when only locked ranks are published. */
+  message?: string;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
   pick_id?: string;
   /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
@@ -1445,12 +1486,14 @@ export type PickOfTheDay = {
   is_free_selection?: boolean;
   /** Replacement predecessor stable id; null when no lineage is recorded. */
   supersedes_pick_id: string | null;
+  /** Optional full-only lead wallet publication facts. Omitted on legacy picks or when the recorded evidence is unavailable. */
+  lead_backer?: PickLeadBacker;
 };
 
 export type PickOfTheDayArchive = {
-  /** Every published Pick of the Day, newest first by pick_date and then pick_rank within each product day. */
+  /** Published Pick of the Day selections that have not been withdrawn, newest first by pick_date and then pick_rank within each product day. Withdrawn rows stay excluded after settlement. */
   picks: PickOfTheDayArchiveEntry[];
-  /** One entry per product day that has a published pick, newest first, in the same order as picks. Each carries that day's net units, accumulated in the same backend pass and behind the same visibility gate as hit_rate.unit_score, so both cover the same population of picks. Re-adding the day totals reproduces hit_rate.unit_score to display precision rather than bit-for-bit, since that re-associates the floating-point sum. */
+  /** One entry per product day that has a published pick included in the archive, newest first, in the same order as picks. Each carries that day's net units, accumulated in the same backend pass and behind the same visibility gate as hit_rate.unit_score, so both cover the same population of picks. Re-adding the day totals reproduces hit_rate.unit_score to display precision rather than bit-for-bit, since that re-associates the floating-point sum. */
   days: PickOfTheDayArchiveDay[];
   hit_rate: PickOfTheDayHitRate;
 };
@@ -1484,12 +1527,12 @@ export type PickOfTheDayArchiveEntry = {
    * @deprecated
    */
   pick_rank?: number;
-  /** When this pick became public (RFC3339 UTC). pick_date above is the America/New_York product day, not an instant, so read this whenever you need a real time: reading the bare date as UTC midnight places it hours before the earliest instant a pick can drop (07:00 UTC on that date). A day's last pick can drop at 23:00 ET, which is the following UTC date. Omitted (not null) when the instant is unknown; additive and optional for mixed-version client compatibility. */
+  /** When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic qualification can begin at ET midnight. Absent only for historical rows whose publication instant is unknown. */
   published_at?: string;
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
-  matchup: string;
+  matchup?: string;
   /** Frozen canonical calibration/report bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
-  category: string;
+  category?: string;
   /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
   display_category?: string;
   /** Provider (Polymarket Gamma) market thumbnail URL (markets.image); omitted (not null) when the market has no image. Public regardless of the backed-side gate, so present for pending rows too. */
@@ -1534,6 +1577,10 @@ export type PickOfTheDayArchiveEntry = {
   unit_score?: number;
   /** Backend-formatted signed unit score, present exactly when unit_score is present. */
   unit_score_display?: string;
+  /** The account or paid tier needed to open this unresolved rank. */
+  required_tier?: "account" | "insider" | "max";
+  /** True for an unauthorized unresolved row. Game identity, category, image, publication clock and all backed facts are omitted. */
+  backed_side_locked?: boolean;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
   pick_id: string;
   /** Compatibility release slot. No quality claim; historic scheduling order is retained. */
@@ -1724,7 +1771,7 @@ export type PickOfTheDayLedgerOpenedEntry = {
   commitment_version: 1 | 2;
 };
 
-/** A published pick that has not settled. Carries the commitment and nothing that states a side or a price: no nonce, no payload, no outcome. Publishable the instant the pick releases. */
+/** An unresolved published pick. Carries only date, rank, hash, algorithm, seal instant and permalink. Kickoff and game identity are withheld; seal time remains public commitment provenance. */
 export type PickOfTheDayLedgerSealedEntry = {
   state: "sealed";
   /** ET product day the pick belongs to (YYYY-MM-DD). */
@@ -1740,8 +1787,6 @@ export type PickOfTheDayLedgerSealedEntry = {
   commitment_algo: "sha256(canonical_json(payload)||nonce)";
   /** When the hash was frozen. Always strictly before kickoff: a pick that reaches kickoff unsealed stays unsealed forever, because a seal written after the game started would be a backdated proof. */
   sealed_at: string;
-  /** The frozen provider kickoff in the canonical payload form: whole seconds, UTC, literal Z. This exact string reappears inside payload.kickoff when the pick opens. */
-  kickoff: string;
   /** The pick's public page. */
   permalink: string;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
@@ -1756,7 +1801,7 @@ export type PickOfTheDayLedgerSealedEntry = {
   commitment_version: 1 | 2;
 };
 
-/** A published pick with no commitment: it predates the scheme, or it reached kickoff unsealed. Nothing here is evidence of WHEN the pick was made. It is emitted rather than skipped, because a ledger with holes where the unprovable picks were would silently flatter the record. Once the pick settles, payload names its market, side and price, so the outcome can still be checked against the market's own resolution. */
+/** A pick without a commitment, retained so the record cannot omit unprovable entries. Unresolved entries omit game identity; once resolved, matchup, category and payload become public. Existing opened canonical payload bytes and hashes are unchanged. */
 export type PickOfTheDayLedgerUncommittedEntry = {
   state: "uncommitted";
   /** ET product day the pick belongs to (YYYY-MM-DD). */
@@ -1771,9 +1816,9 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   /** How the pick settled, or pending. */
   outcome: "pending" | "win" | "loss" | "void";
   /** Frozen matchup, for a reader. */
-  matchup: string;
+  matchup?: string;
   /** Frozen canonical sport bucket used for selection calibration (Basketball, MMA), not the exact public league identity; the archive owns that. */
-  category: string;
+  category?: string;
   /** When outcome was LAST written to a settled value, or null when that instant is unknown. It moves with a corrected market re-mapping an already-settled pick, while commitment_hash stays untouched -- which is how a mirror that keeps history sees a correction. */
   resolved_at: string | null;
   /** The pick's market, side and price once it has settled; null while it is pending, and null for a settled pick whose stored row lacks one of these columns. Not hashed: nothing was committed over these values, which is what pre_commitment: true says. */
@@ -1788,6 +1833,31 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   is_free_selection: boolean;
   /** Replacement predecessor stable id; null when no lineage is recorded. */
   supersedes_pick_id: string | null;
+};
+
+/** A successful current-day entitlement response when only unauthorized ranks have published. It carries an empty pick set, identity-free locked ranks and an upgrade message. Selection IDs, game identity, prices and unauthorized clocks are absent. Any scheduled or proof-pending rows are entitled rows. */
+export type PickOfTheDayNoEntitledPicks = {
+  /** Only locked ranks are published for this account. */
+  state: "none";
+  /** Current product date in America/New_York (YYYY-MM-DD). */
+  pick_date: string;
+  /** Empty: no entitled proof-readable picks are returned. */
+  picks: PickOfTheDay[];
+  /** Zero entitled proof-readable picks. */
+  pick_count: 0;
+  /** Unauthorized unresolved published or scheduled ranks. Contains no game, provider identity, price, or identifying clock. Pro may upgrade to Max to open these ranks. */
+  locked_picks: {
+    pick_rank: number;
+    required_tier: "max";
+  }[];
+  /** Actionable status, including Upgrade to Max when only locked ranks are published. */
+  message: string;
+  /** Rank-ordered entitled selections that have not released. Every row retains release_at and kickoff; unauthorized scheduled ranks appear only in identity-free locked_picks. */
+  scheduled_picks?: ScheduledPickSlot[];
+  /** Entitled published picks whose holder proof is unreadable, ordered by rank. Unauthorized ranks appear only in locked_picks and cannot trigger proof warming. Read retry_at for the next read. */
+  proof_pending_picks?: ProofPendingPickSlot[];
+  /** Null: the empty entitlement envelope has no selection lineage. */
+  supersedes_pick_id: null;
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
@@ -1842,9 +1912,9 @@ export type PickSportsTeam = {
   full_name: string | null;
   /** Provider team identifier (Polymarket /teams id). */
   provider_id: number | null;
-  /** Team crest or flag URL. Provider-owned for most teams (Polymarket /teams crest for clubs, country flag for national teams and tennis players). A club with a vendored crest carries it instead, served same-origin as a relative path (`/api/sports/team-logos/{league}/{abbr}.svg?v=<content hash>` or `.png`, resolve it against this server): every NFL and WNBA team, whose provider asset is a text tile, and the soccer clubs whose provider asset is an empty object. */
+  /** Team crest or flag URL. Official NFL (32), WNBA (15), NBA (30), NHL (32), and MLB (30) club crests use same-origin relative paths (`/api/sports/team-logos/{league}/{abbr}.svg?v=<content hash>`); resolve relative URLs against the API origin. Vendored soccer club crests use the same path with `.png`. Other teams use provider artwork, including country flags for national teams and tennis players. Novelty and national-team rows outside the vendored club sets retain provider artwork. */
   logo: string | null;
-  /** True when the team mark is dark enough to disappear on a dark background, measured from the artwork by the teams sync. Render a dark mark on a light plate. Always sent; false until the artwork has been measured. */
+  /** True when artwork measurements show that the team mark needs a light plate on a dark background. Vendored crest verdicts are tied to the exact asset bytes; provider artwork is measured by the teams sync. Always sent; false when no current measurement marks the logo dark. */
   logo_mark_dark: boolean;
   /** Team brand color as a hex string (provider-owned). */
   color: string | null;
@@ -1854,8 +1924,6 @@ export type PickSportsTeam = {
   score: string | null;
   /** Tennis player headshot URL, served same-origin. Present only for a tennis competitor the headshot resolver matched; absent for team sports and for unmatched players, where `logo` stays the fallback. */
   headshot?: string;
-  /** Optional monotonic photo revision for this tennis player, independent of the sports score revision. Legacy stored photos start at zero. Successful new or changed image bytes advance it; source checks and attribution changes do not. Compare only for the same tour and provider_id: a higher revision replaces the portrait, an equal revision may fill a missing portrait, and a lower revision must not replace a newer one. Absent when no photo resolved. */
-  headshot_revision?: number;
   /** Tennis tour this competitor belongs to. Present for every tennis entry whether or not `headshot` resolved, so a consumer can tell a tennis player with no photo from a non-tennis team. Absent for every other sport. Only `atp` and `wta` name a gender; the ITF World Tennis Tour runs men's and women's events and the provider does not say which, so `itf` means tennis with gender unknown. */
   tour?: "atp" | "wta" | "itf";
   /** Per-set score cells for this side, in set order. Backend-owned: render these rather than parsing `score`. Omitted entirely when the provider score is not a structured multi-set match or could not be parsed, so an absent array and an empty one carry the same meaning. */
@@ -1863,6 +1931,10 @@ export type PickSportsTeam = {
   format?: ScoreFormat;
   /** Completed sets won by this side. Present only when both sides expose the same set columns, so a partially parsed scoreline reports no tally rather than a misleading one. */
   sets_won?: number;
+  /** Optional monotonic photo revision for this tennis player, independent of the sports score revision. Legacy stored photos start at zero. Successful new or changed image bytes advance it; source checks and attribution changes do not. Compare only for the same tour and provider_id: a higher revision replaces the portrait, an equal revision may fill a missing portrait, and a lower revision must not replace a newer one. Absent when no photo resolved. */
+  headshot_revision?: number;
+  /** Optional latest retrieved ATP/WTA singles rank for this player. Absent for unranked, ambiguous, doubles, expired, or unavailable identities. This is not rank at match time. */
+  ranking?: TennisRanking;
 };
 
 export type PlatformCapabilities = {
@@ -1980,11 +2052,12 @@ export type PositionTimelineEvent = {
   running_avg_price: number;
 };
 
-/** Returned entry permission bound to the named market, token and outcome. Honor max_entry_price and expires_at, and check a current executable order book for the actual stake. This snapshot does not guarantee current liquidity, execution or positive expected value. */
+/** Returned entry permission bound to the named market, token and outcome. New policy-8 grants allow five cents above the first reference ask, capped at 85 cents and floored to the provider tick; policy-7 grants retain their original two-cent allowance. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value. */
 export type PotdEntryAuthorization = {
   version: 1;
   authorization_id: string;
-  policy_version: 7;
+  /** Entry allowance policy, independent of selection or feed policy. Policy 8 issues new grants at the first reference ask plus 0.05, capped at 0.85 and floored to the provider tick. Policy 7 retains its original plus-0.02 grant. Existing grants never rise or extend. */
+  policy_version: 7 | 8;
   condition_id: string;
   token_id: string;
   outcome_index: 0 | 1;
@@ -1992,13 +2065,14 @@ export type PotdEntryAuthorization = {
   category: string;
   /** Exact provider parent event ID, or provider event ID when no parent exists. */
   canonical_event_id: string;
-  /** Returned maximum entry price as an exact decimal string. Honor this bound; fees are excluded. This is not a fair probability. */
+  /** Maximum authorized order price as an exact decimal string, excluding fees. Quote a current executable book for the actual stake and keep the submitted order price at or below this bound. Actual fills may be lower; this limit does not guarantee a fill or define fair probability. */
   max_entry_price: string;
+  /** Selected-token best ask at first issuance. The entry allowance uses this immutable reference, not the published pick price or a later quote. */
   reference_best_ask: string;
   reference_book_hash: string;
   reference_book_at: string;
   issued_at: string;
-  /** Authorization expiry. An expired authorization cannot authorize a new automated entry. */
+  /** Original authorization expiry at the earlier requested or provider kickoff; never extended. An expired authorization cannot authorize a new automated entry. */
   expires_at: string;
 };
 
@@ -2372,14 +2446,14 @@ export type ResponseMeta = {
   category_skill_enriched_base_payload_hash?: string;
 };
 
-/** One same-day pick that is selected but not yet released: its stable slot rank plus the backend-owned release and kickoff instants. Deliberately minimal -- no matchup, category, platform, side, price, or holder fields exist on this shape before release. */
+/** An entitled same-day pick selected but not yet released: stable rank and backend-owned release/kickoff instants. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks. */
 export type ScheduledPickSlot = {
   /**
    * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
    * @deprecated
    */
   pick_rank: number;
-  /** The slot's scheduled release instant, normally the current provider kickoff minus one hour. The actual publish can trail it by bounded worker delay. */
+  /** The slot's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. The actual publication can follow final checks and worker delay. */
   release_at: string;
   /** The backed game's current kickoff instant. */
   kickoff: string;
@@ -2504,6 +2578,43 @@ export type SuspiciousTrade = {
   evidence: unknown;
   /** Stored trade timestamp. */
   created_at: string;
+};
+
+/** Optional current-game tennis facts from API-Tennis, aligned with live_score.scores display order. These facts have their own revision and expiry; Polymarket remains the source of sets, match status, period, and the outer live-score revision. New observations require corroborated identity, current set/games, and live state. Cached responses and replayed frames may still carry expired facts, so clients must enforce expires_at. */
+export type TennisPoints = {
+  source: "api_tennis";
+  /** API-Tennis match ID. This is not a Polymarket market or event ID. */
+  match_key: number;
+  /** API-Tennis player IDs in the same first/second order as live_score.scores. These are not Polymarket team IDs. */
+  player_keys: number[];
+  /** Current-game point values in first/second order. Read strings, including A for advantage and numeric tiebreak points. Missing points are not zero. */
+  points: string[];
+  /** The serving player in live_score.scores display order. Omitted when API-Tennis does not identify the server. */
+  serving_side?: "first" | "second";
+  /** Orders only the tennis_points group for the same match. Never compare this with live_score.source_revision. */
+  source_revision: number;
+  /** When 0xinsider observed these API-Tennis facts. This is not a timestamp from the court. */
+  observed_at: string;
+  /** Stop displaying the point group at this instant, even if the enclosing score remains fresh. The group expires 30 seconds after observed_at. */
+  expires_at: string;
+  /** Current set number. Display points only while this matches the enclosing scoreboard. */
+  set_number: number;
+  /** Current-set games in first/second order. Display points only while these match the enclosing scoreboard. */
+  games: number[];
+};
+
+/** A provider-reported ATP/WTA singles rank with independent retrieval and expiry clocks. API-Tennis provides no ranking publication date. Retrieval time does not establish when the tour published the ranking. */
+export type TennisRanking = {
+  /** Provider-reported singles rank. */
+  rank: number;
+  /** The player ranking tour. */
+  tour: "atp" | "wta";
+  /** The standings provider. */
+  source: "api_tennis";
+  /** Successful snapshot retrieval time in UTC, not ranking publication date. */
+  observed_at: string;
+  /** UTC deadline after which clients must hide this rank, including when an older game or pick response remains cached. */
+  expires_at: string;
 };
 
 export type Trader = {
@@ -3073,7 +3184,7 @@ export type Usage = {
       reset_at: number;
       window_seconds: number;
     };
-    /** The monthly request quota (#16111): where the account stands against the requests Pro includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
+    /** The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
     monthly_quota: {
       /** Admitted requests so far this UTC calendar month. */
       used: number;
@@ -3090,6 +3201,8 @@ export type Usage = {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or 1,000,000 with pay as you go on. null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
+      /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
+      unavailable_reason?: "usage_price_reconciliation_required" | null;
     } | null;
   };
   meta: ResponseMeta;
@@ -3513,7 +3626,7 @@ export interface OperationData {
   getMarketIntel: MarketFlow;
   getMarketSnapshot: MarketSnapshot;
   getMonthlyReportSnapshot: ReportSnapshot;
-  getPickOfTheDay: PickOfTheDay;
+  getPickOfTheDay: PickOfTheDay | PickOfTheDayNoEntitledPicks;
   getPickOfTheDayArchive: PickOfTheDayArchive;
   getPickOfTheDayLedger: PickOfTheDayLedger;
   getPickOfTheDayLedgerEntry: PickOfTheDayLedgerEntry;
@@ -3595,7 +3708,7 @@ export interface OperationData {
       reset_at: number;
       window_seconds: number;
     };
-    /** The monthly request quota (#16111): where the account stands against the requests Pro includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
+    /** The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
     monthly_quota: {
       /** Admitted requests so far this UTC calendar month. */
       used: number;
@@ -3612,6 +3725,8 @@ export interface OperationData {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or 1,000,000 with pay as you go on. null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
+      /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
+      unavailable_reason?: "usage_price_reconciliation_required" | null;
     } | null;
   };
   getWebhook: WebhookEndpoint;
@@ -3882,7 +3997,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B";
     /** Maximum holders per page. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque pagination cursor from the previous response's next_cursor. It encodes a page of one shared roster, so it stays valid across the roster's refresh, but a page read after a refresh can repeat or skip a holder. */
+    /** Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Legacy page-only cursors remain accepted without scheduled retirement and require their original limit; their next response emits the new format. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes. */
     cursor?: string;
   };
   getMarketIntel: {

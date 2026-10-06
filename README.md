@@ -34,6 +34,9 @@ npm install ./0xinsider-node   # from your project, with the path to the clone
 
 The package is ESM-only (`import`, not `require`) and ships its own type declarations.
 
+Development checks use `npm run check-types` and `npm run lint`. The SDK checks collection indexing and optional fields strictly: callers guard missing array entries, and request options omit absent fields. These checks preserve API payloads and caller-owned abort reasons.
+The [lint contract exceptions](https://github.com/0xinsider/0xinsider-node/blob/main/docs/typescript-safety.md) record the named compatibility aliases, exact abort reasons and stream cleanup behavior preserved by the configuration.
+
 Try it with no key against the [sandbox](#sandbox):
 
 ```bash

@@ -338,6 +338,7 @@ export type {
   McpJsonRpcError,
   OutcomeCandles,
   PickHolder,
+  PickLeadBacker,
   PickOfTheDay,
   PickOfTheDayArchive,
   PickOfTheDayArchiveDay,

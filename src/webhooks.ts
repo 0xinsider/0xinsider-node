@@ -161,8 +161,8 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
  * `web/public/api/v1/openapi.json` -> components.schemas.WebhookEventType.enum.
  * `large_trades_inserted`, `whale_trades_inserted`, `wallet_grade_changed`,
  * `suspicious_trade_flagged`, `insider_radar_flag_raised`,
- * `sharp_money_flow_detected`, and `smart_money_flow_detected` are Pro-only:
- * they deliver only to API keys on an active Pro subscription.
+ * `sharp_money_flow_detected`, and `smart_money_flow_detected` are Pro and Max:
+ * they deliver only to API keys on an active Pro or Max subscription.
  *
  * Some entries are two spellings of ONE event, not two events: either one
  * subscribes, and an endpoint receives its deliveries under the spelling it
@@ -183,7 +183,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "wallet_grade_changed",
   "suspicious_trade_flagged",
   "insider_radar_flag_raised",
-  // Pro-only. `sharp_money_flow_detected` is the canonical spelling since
+  // Pro and Max. `sharp_money_flow_detected` is the canonical spelling since
   // #16308 ("sharp money" is the pinned product term);
   // `smart_money_flow_detected` is its deprecated twin, kept live, and stays
   // the `type` an endpoint that registered it receives.
@@ -214,7 +214,7 @@ export interface WebhookEventEnvelope<
   data: TData;
 }
 
-/** `whale_trades_inserted` data (Pro-only): a batch of new whale trades was ingested. */
+/** `whale_trades_inserted` data (Pro and Max): a batch of new whale trades was ingested. */
 export interface WhaleTradesInsertedData {
   count: number;
 }
@@ -281,7 +281,7 @@ export interface LargePositionsUpdatedData {
 }
 
 /**
- * `wallet_grade_changed` data (Pro-only): a tracked wallet's grade moved.
+ * `wallet_grade_changed` data (Pro and Max): a tracked wallet's grade moved.
  * Source: `backend/crates/sync/src/periodic/heavy_pipeline.rs`.
  */
 export interface WalletGradeChangedData {
@@ -297,7 +297,7 @@ export interface WalletGradeChangedData {
 }
 
 /**
- * `suspicious_trade_flagged` data (Pro-only): a suspicion threshold was
+ * `suspicious_trade_flagged` data (Pro and Max): a suspicion threshold was
  * crossed on a fresh fill. Source: `backend/src/polymarket_rtds_ingest/flushing.rs`.
  *
  * Delivered identically under the deprecated spelling
@@ -324,7 +324,7 @@ export interface SuspiciousTradeFlaggedData {
 export type InsiderRadarFlagRaisedData = SuspiciousTradeFlaggedData;
 
 /**
- * `sharp_money_flow_detected` payload (Pro-only). Fires when a scheduled
+ * `sharp_money_flow_detected` payload (Pro and Max). Fires when a scheduled
  * scanner detects ranked-trader net flow crossing a threshold on a market.
  *
  * One payload for both spellings of the event: the deprecated
