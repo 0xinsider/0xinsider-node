@@ -3,8 +3,8 @@
  *
  * Analytics for Polymarket sports and esports markets: wallet grades, large
  * trades, profitable-wallet flows, market flow/candles, the live SSE feed, and
- * webhooks. Drift-tested
- * against the public OpenAPI contract (`web/public/api/v1/openapi.json`).
+ * webhooks. Checked
+ * against the repository's public OpenAPI contract (`web/public/api/v1/openapi.json`).
  *
  * @example
  * import { OxinsiderApiClient, paginate, streamFeed, verifySignature } from "@0xinsider/sdk";
@@ -296,6 +296,46 @@ export {
 // method are typed by (#16136). Regenerate rather than edit:
 // `node scripts/generate-sdk-types.mjs`.
 export type {
+  AccountIdentity,
+  ApiErrorBody,
+  CategorySkillModelReadiness,
+  CategorySkillV2,
+  DataQuality,
+  DataQualityGroup,
+  ExactDecimal,
+  GameCompetitor,
+  GameCoverage,
+  GameFreshness,
+  GameMarket,
+  GameMarketPriceBindingProvenance,
+  GameMarketPriceCompetitor,
+  GameMarketPriceIncomplete,
+  GameMarketPriceInvalid,
+  GameMarketPricePaired,
+  GameMarketPrices,
+  GameMarketProviderPrices,
+  GameStatus,
+  GamesCoverage,
+  HolderCategoryEvidence,
+  LargeTradeSubscriptionFilters,
+  MarketHolder,
+  MarketHoldersMarket,
+  MarketHoldersScan,
+  MarketHoldersSideGrades,
+  MarketHoldersTotals,
+  PickOfTheDayCommitmentPayloadV1,
+  PickOfTheDayCommitmentPayloadV2,
+  PositionExact,
+  TraderPnlExact,
+  TraderStatsExact,
+  WebhookEventType,
+  WebhookSecretRotation,
+  WhaleDatasetArtifactManifest,
+  WhaleDatasetContinuation,
+  WhaleDatasetFilters,
+  WhaleDatasetGeneration,
+  WhaleDatasetJob,
+  WhaleDatasetTrade,
   AgentRegistration,
   ApiDiscovery,
   ApiError,
