@@ -2,7 +2,7 @@
 
 Official TypeScript SDK for the [0xinsider](https://0xinsider.com) API: analytics for Polymarket sports and esports markets. Wallet grades, large trades, profitable-wallet flows, market intel and OHLC candles, a live SSE feed, and signed webhooks.
 
-The types are generated from the [published OpenAPI document](https://0xinsider.com/api/v1/openapi.json), and a drift check pins the operation table to it, so the SDK cannot silently diverge from the live API surface.
+The types are generated from the [published OpenAPI document](https://0xinsider.com/api/v1/openapi.json). The release check compares generated types and the operation table against the committed OpenAPI snapshot.
 
 - Website and API keys: https://0xinsider.com/developers
 - Authentication (API keys and OAuth 2.1): https://0xinsider.com/auth.md
