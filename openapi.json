@@ -36147,7 +36147,7 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 15,
+            "maximum": 20,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
@@ -36204,7 +36204,7 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 15,
+            "maximum": 20,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
@@ -36528,7 +36528,7 @@
                 "pick_rank": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 15
+                  "maximum": 20
                 },
                 "required_tier": {
                   "type": "string",
@@ -36867,14 +36867,14 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 15,
+            "maximum": 20,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
           "published_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic qualification can begin at ET midnight. Absent only for historical rows whose publication instant is unknown."
+            "description": "When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic picks publish from 03:00 America/New_York on pick_date. Absent only for historical rows whose publication instant is unknown."
           },
           "matchup": {
             "type": "string",
@@ -40209,7 +40209,7 @@
           "retry_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 07:00 UTC operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew."
+            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 03:00 America/New_York operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew."
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessFailure"
@@ -42828,7 +42828,7 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 15,
+            "maximum": 20,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
@@ -44192,7 +44192,7 @@
                 "pick_rank": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 15
+                  "maximum": 20
                 },
                 "required_tier": {
                   "type": "string",
@@ -44632,7 +44632,7 @@
         }
       },
       "PickNotReleased": {
-        "description": "No pick is published for the current product day. Qualified automatic signals are due immediately after qualification and publish after final checks. Explicitly scheduled selections retain their stored release time. The product day uses America/New_York. A skipped day publishes nothing.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both name the same instant, always in the future.\n\nThe instant is the earliest of:\n\n- the next scheduled release, when a slot is selected;\n- the next automatic selector attempt, about every 15 minutes, while the selector still scans the day and can add an earlier slot;\n- the next product-day opening, after a skipped day;\n- about 60 seconds, when the schedule is absent, due, or a pick is overdue.\n\nThe value is advisory. A new qualified signal or operator action can publish a pick earlier. Schedule one request for the instant; do not poll.",
+        "description": "No pick is published for the current product day. Automatic publication opens at 03:00 America/New_York and closes at 23:30. A qualified automatic signal is due at qualification, or at 03:00 when it qualifies earlier, and publishes after final checks. Explicitly scheduled selections retain their stored release time. The product day uses America/New_York. A skipped day publishes nothing.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both name the same instant, always in the future.\n\nThe instant is the earliest of:\n\n- the next scheduled release, when a slot is selected;\n- the next automatic selector attempt, about every 15 minutes from 03:00, while the selector still scans the day and can add an earlier slot;\n- the 03:00 publication opening, before it or after a skipped day;\n- about 60 seconds, when the schedule is absent, due, or a pick is overdue.\n\nThe value is advisory. A new qualified signal or operator action can publish a pick earlier. Schedule one request for the instant; do not poll.",
         "headers": {
           "Retry-After": {
             "description": "Seconds until the recommended next request. Always at least 1. Names the same instant as `error.retry_at`. Prefer this header for the sleep duration; it is immune to clock skew.",
