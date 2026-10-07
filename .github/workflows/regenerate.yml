@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # The organization forbids Actions from opening pull requests
+  # (0xinsider/0xinsider#22185), so a regeneration that cannot open one is
+  # announced as an issue instead.
+  issues: write
 
 concurrency:
   group: regenerate
@@ -67,8 +71,19 @@ jobs:
             "- npm test: ${TEST}" \
             "" \
             "A failed check means the document gained or lost an operation, a query parameter or an Idempotency-Key route that src/client.ts does not follow yet: run npm run check locally, update the client, then bump package.json and publish a release.")"
+          title="Regenerate from the published OpenAPI document"
           if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
             gh pr edit "$branch" --body "$body"
-          else
-            gh pr create --head "$branch" --title "Regenerate from the published OpenAPI document" --body "$body"
+          elif ! gh pr create --head "$branch" --title "$title" --body "$body"; then
+            # gh printed the refusal above. Announce the pushed branch as an issue
+            # so the regeneration is not lost; open the pull request from it by hand.
+            compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}"
+            issue_body="$(printf '%s\n' "$body" "" "Branch \`${branch}\`: ${compare}" "" "Actions cannot open pull requests in this organization (0xinsider/0xinsider#22185), so open one from that branch.")"
+            existing="$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')"
+            if [ -n "$existing" ]; then
+              gh issue edit "$existing" --body "$issue_body"
+              echo "Updated issue #${existing}."
+            else
+              gh issue create --title "$title" --body "$issue_body"
+            fi
           fi
