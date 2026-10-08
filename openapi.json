@@ -10112,7 +10112,6 @@
                 }
               ],
               "holder_count": 1,
-              "editorial_note": null,
               "thesis": "Profitable wallets hold Portugal, led by a grade-A trader.",
               "market_url": "https://0xinsider.com/event/portugal-vs-uzbekistan",
               "event_slug": "portugal-vs-uzbekistan",
@@ -13825,7 +13824,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from 1 October 2026 the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until rate limit resets.",
@@ -14202,7 +14201,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from 1 October 2026 the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until rate limit resets.",
@@ -30325,13 +30324,13 @@
                         },
                         "monthly_quota": {
                           "used": 41230,
-                          "limit": 250000,
-                          "remaining": 208770,
+                          "limit": 500000,
+                          "remaining": 458770,
                           "reset_at": 1793491200,
                           "enforced_from": 1790812800,
                           "binding": false,
                           "pay_as_you_go": false,
-                          "ceiling": 250000
+                          "ceiling": 500000
                         }
                       },
                       "meta": {
@@ -32104,7 +32103,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until rate limit resets.",
@@ -32378,7 +32377,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until rate limit resets.",
@@ -32729,7 +32728,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 250,000 authenticated requests per UTC calendar month, whatever the billing cadence. Over 250,000: with pay as you go on, requests keep answering and the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to 1,000,000 requests a month; without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset, and from the same day a pay-as-you-go account answers the same past 1,000,000. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until rate limit resets.",
@@ -32927,6 +32926,1101 @@
             "oauth2": [
               "webhooks"
             ]
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/combos/fills": {
+      "get": {
+        "operationId": "listComboFills",
+        "summary": "List combo fills",
+        "description": "Returns live Polymarket combo taker fills with exact decimal-string economics, wallet identities, grades, legs, conjunction results, and ingest coverage. Requires an active Pro or Max API key. Listing includes executions with price at most 0.95; use combo detail for complete history. Recent ordering uses an exclusive cursor; largest and payout use offsets. Continuations are based on page fullness and may lead to an empty final page.",
+        "tags": [
+          "Combos"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag from a prior response; a matching representation returns 304.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "CSV of pending, won, or lost; all clears the filter. Unknown results appear only in unfiltered lists.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "legs",
+            "in": "query",
+            "description": "CSV of 2, 3, 4, or 5+; all clears the filter. A combo matches any named pick count.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_stake",
+            "in": "query",
+            "description": "Minimum collateral in whole USDC.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000000,
+              "default": 0
+            }
+          },
+          {
+            "name": "min_multiplier",
+            "in": "query",
+            "description": "0 disables the filter; otherwise use 2..1000000. Minimum shares per dollar at execution.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0,
+              "not": {
+                "const": 1
+              }
+            }
+          },
+          {
+            "name": "grades",
+            "in": "query",
+            "description": "CSV of S, A, B, C, D, F; all clears the filter. Ungraded wallets do not match.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sports",
+            "in": "query",
+            "description": "CSV of nfl, ncaaf, nba, wnba, baseball, hockey, soccer, tennis, table-tennis, esports, mma, boxing, golf, cricket, f1, pickleball; all clears the filter. Matches when any leg belongs to a selected sport.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Recent is newest first; largest ranks collateral; payout ranks buy-fill shares and excludes sells.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "recent",
+                "largest",
+                "payout"
+              ],
+              "default": "recent"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "description": "Defaults to all for recent and 24h for largest or payout.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Integer values outside the range are clamped to 1..200.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Exclusive block_number:log_index cursor for recent only; send the returned next_cursor unchanged.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset for ranked largest or payout ordering; use returned next_offset.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List combo fills",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComboFillsResponse"
+                },
+                "example": {
+                  "object": "list",
+                  "data": [
+                    {
+                      "id": "example_fill",
+                      "block_number": 80000000,
+                      "log_index": 1,
+                      "block_timestamp": "2026-10-08T09:00:00Z",
+                      "tx_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                      "trader": "0xcccccccccccccccccccccccccccccccccccccccc",
+                      "trader_name": null,
+                      "trader_grade": null,
+                      "last_traded_at": null,
+                      "action": "buy",
+                      "condition_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                      "outcome_index": 0,
+                      "shares": "100",
+                      "collateral_usdc": "25",
+                      "price": "0.25",
+                      "price_yes": "0.25",
+                      "fee_usdc": "0.1",
+                      "leg_count": null,
+                      "status": "unknown",
+                      "status_reason": "legs_not_indexed",
+                      "won_legs": 0,
+                      "payout_multiplier": "4",
+                      "legs": []
+                    }
+                  ],
+                  "sort": "recent",
+                  "window": "all",
+                  "limit": 50,
+                  "coverage": {
+                    "state": "live",
+                    "ingest_enabled": true,
+                    "cursors": [],
+                    "max_lag_blocks": 0,
+                    "oldest_cursor_update": null,
+                    "lifecycle_lag_blocks": null,
+                    "lifecycle_backfilling": false,
+                    "computed_at": "2026-10-08T09:00:00Z"
+                  },
+                  "has_more": false,
+                  "meta": {
+                    "request_id": "req_example",
+                    "cached": false,
+                    "cost": 1
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Validator for the unchanged payload.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Combo reads may be temporarily unavailable (code internal_error). A verified database outage uses code rate_limit_unavailable with reason database_unavailable. Middleware may also refuse rate-limit admission with code rate_limit_unavailable. Retry a transient read after a short delay; honor Retry-After when present. A sport filter whose index is still being built uses reason read_model_warming, with Retry-After and error.retry_at.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \"https://api.0xinsider.com/api/v1/combos/fills\""
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/combos/summary": {
+      "get": {
+        "operationId": "getCombosSummary",
+        "summary": "Get live combo count",
+        "description": "Returns the stored count of traded combos whose YES conjunction remains pending, with its computation timestamp. Requires an active Pro or Max API key. The count is refreshed by the ingest owner at most every five minutes and cached for 60 seconds. A null live value is unknown, never zero.",
+        "tags": [
+          "Combos"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag from a prior response; a matching representation returns 304.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get live combo count",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CombosSummaryResponse"
+                },
+                "example": {
+                  "object": "combos_summary",
+                  "data": {
+                    "live": {
+                      "count": 12,
+                      "computed_at": "2026-10-08T09:00:00Z"
+                    }
+                  },
+                  "meta": {
+                    "request_id": "req_example",
+                    "cached": false,
+                    "cost": 1
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Validator for the unchanged payload.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Combo reads may be temporarily unavailable (code internal_error). A verified database outage uses code rate_limit_unavailable with reason database_unavailable. Middleware may also refuse rate-limit admission with code rate_limit_unavailable. Retry a transient read after a short delay; honor Retry-After when present.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \"https://api.0xinsider.com/api/v1/combos/summary\""
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/combos/{condition_id}": {
+      "get": {
+        "operationId": "getCombo",
+        "summary": "Get combo detail",
+        "description": "Returns one Polymarket combo with its legs, conjunction result, all-time trade totals, newest 100 taker fills, lifecycle totals, and ingest coverage. Requires an active Pro or Max API key. Detail retains execution history above the listing price cap. A malformed combo ID returns 400; an unknown well-formed ID returns 404. Null lifecycle or missing leg facts remain unknown.",
+        "tags": [
+          "Combos"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "ETag from a prior response; a matching representation returns 304.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "path",
+            "required": true,
+            "description": "Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID.",
+            "schema": {
+              "type": "string",
+              "description": "Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID.",
+              "pattern": "^0x[0-9a-f]{62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get combo detail",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComboResponse"
+                },
+                "example": {
+                  "object": "combo",
+                  "data": {
+                    "access": "full",
+                    "combo": {
+                      "condition_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                      "leg_count": null,
+                      "prepared_at": null,
+                      "legs_known": false,
+                      "legs": [],
+                      "window": null,
+                      "totals": null,
+                      "status": "unknown",
+                      "status_reason": "legs_not_indexed"
+                    },
+                    "fills": [
+                      {
+                        "id": "example_fill",
+                        "block_number": 80000000,
+                        "log_index": 1,
+                        "block_timestamp": "2026-10-08T09:00:00Z",
+                        "tx_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "trader": "0xcccccccccccccccccccccccccccccccccccccccc",
+                        "trader_name": null,
+                        "trader_grade": null,
+                        "last_traded_at": null,
+                        "action": "buy",
+                        "condition_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "outcome_index": 0,
+                        "shares": "100",
+                        "collateral_usdc": "25",
+                        "price": "0.25",
+                        "price_yes": "0.25",
+                        "fee_usdc": "0.1",
+                        "leg_count": null,
+                        "status": "unknown",
+                        "status_reason": "legs_not_indexed",
+                        "won_legs": 0,
+                        "payout_multiplier": "4",
+                        "legs": []
+                      }
+                    ],
+                    "lifecycle": null,
+                    "coverage": {
+                      "state": "live",
+                      "ingest_enabled": true,
+                      "cursors": [],
+                      "max_lag_blocks": 0,
+                      "oldest_cursor_update": null,
+                      "lifecycle_lag_blocks": null,
+                      "lifecycle_backfilling": false,
+                      "computed_at": "2026-10-08T09:00:00Z"
+                    }
+                  },
+                  "meta": {
+                    "request_id": "req_example",
+                    "cached": false,
+                    "cost": 1
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Validator for the unchanged payload.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Combo reads may be temporarily unavailable (code internal_error). A verified database outage uses code rate_limit_unavailable with reason database_unavailable. Middleware may also refuse rate-limit admission with code rate_limit_unavailable. Retry a transient read after a short delay; honor Retry-After when present.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No indexed combo preparation or fill exists for this well-formed condition_id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \"https://api.0xinsider.com/api/v1/combos/{condition_id}\""
           }
         ],
         "x-latency-budget": {
@@ -34805,6 +35899,7 @@
         "required": [
           "total_pnl",
           "realized_pnl",
+          "net_total_pnl",
           "unrealized_pnl",
           "markets_traded",
           "win_rate",
@@ -34830,6 +35925,9 @@
             "$ref": "#/components/schemas/TrustMetadata"
           },
           "realized_pnl": {
+            "$ref": "#/components/schemas/TrustMetadata"
+          },
+          "net_total_pnl": {
             "$ref": "#/components/schemas/TrustMetadata"
           },
           "unrealized_pnl": {
@@ -35182,7 +36280,12 @@
             "type": "object",
             "properties": {
               "total": {
-                "type": "number"
+                "type": "number",
+                "description": "Polymarket leaderboard all-time P&L in USD (traders.total_pnl), kept for provider parity and back-compat. Not the profile's Total P&L and not realized plus unrealized: it can differ from net_total by a wide margin. Read net_total for the figure the 0xinsider profile shows."
+              },
+              "net_total": {
+                "type": "number",
+                "description": "The profile's Total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The same figure the 0xinsider profile, search, live feed, portfolio and watchlist show. Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted."
               },
               "realized": {
                 "type": "number",
@@ -35324,7 +36427,7 @@
           },
           "data_quality": {
             "$ref": "#/components/schemas/DataQuality",
-            "description": "Data age and coverage for this trader body. Always present. Its five groups are sync (traders.last_synced, covering pnl.total, pnl.realized, stats.markets_traded, stats.win_rate, stats.daily_win_rate, last_active, synced_at and sync_status), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (trader_usd_volume.observed_at, covering stats.total_volume) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync; it does not date closed or native accounting values. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers."
+            "description": "Data age and coverage for this trader body. Always present. Its five groups are sync (traders.last_synced, covering pnl.total, pnl.net_total, pnl.realized, stats.markets_traded, stats.win_rate, stats.daily_win_rate, last_active, synced_at and sync_status), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (trader_usd_volume.observed_at, covering stats.total_volume) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync; it does not date closed or native accounting values. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers."
           },
           "trust": {
             "$ref": "#/components/schemas/TraderTrust",
@@ -35563,7 +36666,8 @@
                 "description": "Percentage 0-100."
               },
               "pnl": {
-                "type": "number"
+                "type": "number",
+                "description": "The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted."
               },
               "markets": {
                 "type": "integer"
@@ -35709,7 +36813,7 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "This fill's size relative to its market: size_usd divided by a market volume figure recorded at or after the trade, so the value always falls between 0 and 1 inclusive. A $10,000 fill is 0.00005 of a $200M market and 0.125 of an $80,000 one, which size_usd alone cannot distinguish. Absent when no volume figure recorded at or after the trade is available; never 0 as a stand-in and never capped at 1, because a denominator we cannot trust publishes nothing rather than a trimmed number. A market's volume keeps growing, so the same trade reports a smaller share as the market trades on."
+            "description": "This fill's size relative to its market: its share count (size_usd / price) divided by the shares the market has traded, Polymarket's recorded volume, which counts shares rather than dollars, as observed at or after the trade, so the value always falls between 0 and 1 inclusive. A 20,000-share fill is 0.00005 of a market that has traded 400M shares and 0.125 of one that has traded 160,000, which size_usd alone cannot distinguish. Absent when no volume figure recorded at or after the trade is available, or when that figure is smaller than the fill; never 0 as a stand-in and never capped at 1, because a denominator we cannot trust publishes nothing rather than a trimmed number. A market's volume keeps growing, so the same trade reports a smaller share as the market trades on."
           },
           "trader": {
             "type": "object",
@@ -36238,7 +37342,7 @@
           },
           "display_category": {
             "type": "string",
-            "description": "Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. \"WNBA\" or \"UFC\"), the esports title (e.g. \"CS2\", \"LoL\", \"Dota 2\" or \"Valorant\"), or a soccer competition (e.g. \"LaLiga\", \"Premier League\", \"Serie A\" or \"UEFA Champions League\"); any other competition carries the provider's own competition name without its season year (e.g. \"UEFA Nations League\", \"ATP\" or \"Wimbledon\"). It equals category only when the provider names no competition. An esports pick keeps the pooled \"Esports\" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility."
+            "description": "Frozen public presentation category. Tennis uses the provider-verified ATP or WTA tour, including Wimbledon and doubles; unknown tours retain Tennis. Every men's and women's cricket competition uses Cricket. Other sports use the curated league, esports title or soccer competition label, then the provider series name without its season year, then category when no competition is known. The canonical category and measured cohort are unchanged: an esports title still uses the pooled Esports category. Optional for mixed-version client compatibility."
           },
           "platform": {
             "type": "string",
@@ -36466,10 +37570,6 @@
           "holder_count": {
             "type": "integer",
             "description": "S/A holder count for the public V1 compatibility projection. display_holders can include additional grades."
-          },
-          "editorial_note": {
-            "type": "string",
-            "description": "Optional editorial note attached to the pick."
           },
           "thesis": {
             "type": "string",
@@ -36886,7 +37986,7 @@
           },
           "display_category": {
             "type": "string",
-            "description": "Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. \"WNBA\" or \"UFC\"), the esports title (e.g. \"CS2\", \"LoL\", \"Dota 2\" or \"Valorant\"), or a soccer competition (e.g. \"LaLiga\", \"Premier League\", \"Serie A\" or \"UEFA Champions League\"); any other competition carries the provider's own competition name without its season year (e.g. \"UEFA Nations League\", \"ATP\" or \"Wimbledon\"). It equals category only when the provider names no competition. An esports pick keeps the pooled \"Esports\" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility."
+            "description": "Frozen public presentation category. Tennis uses the provider-verified ATP or WTA tour, including Wimbledon and doubles; unknown tours retain Tennis. Every men's and women's cricket competition uses Cricket. Other sports use the curated league, esports title or soccer competition label, then the provider series name without its season year, then category when no competition is known. The canonical category and measured cohort are unchanged: an esports title still uses the pooled Esports category. Optional for mixed-version client compatibility."
           },
           "image_url": {
             "type": "string",
@@ -37678,7 +38778,7 @@
           },
           "pnl": {
             "type": "number",
-            "description": "All-time P&L in USD (total_pnl), including unrealized open positions. Kept for back-compat; prefer realized_pnl for the banked figure."
+            "description": "Polymarket leaderboard all-time P&L in USD (traders.total_pnl), including unrealized open positions. Kept for back-compat. Not the profile's Total P&L, which GET /api/v1/trader/{address} serves as pnl.net_total; the two can differ by a wide margin. Prefer realized_pnl for the banked figure."
           },
           "realized_pnl": {
             "type": "number",
@@ -40244,7 +41344,7 @@
               "export_expired",
               "freshness_ceiling_unsatisfied"
             ],
-            "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown."
+            "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown."
           }
         }
       },
@@ -40490,7 +41590,7 @@
                   "export_expired",
                   "freshness_ceiling_unsatisfied"
                 ],
-                "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown."
+                "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown."
               }
             }
           },
@@ -41717,12 +42817,12 @@
                   },
                   "limit": {
                     "type": "integer",
-                    "example": 250000,
-                    "description": "Requests Pro includes per UTC calendar month."
+                    "example": 500000,
+                    "description": "Requests the account's plan includes per UTC calendar month: 500,000 for Pro, 2,000,000 for Max."
                   },
                   "remaining": {
                     "type": "integer",
-                    "example": 208770
+                    "example": 458770
                   },
                   "reset_at": {
                     "type": "integer",
@@ -41749,8 +42849,8 @@
                       "integer",
                       "null"
                     ],
-                    "example": 250000,
-                    "description": "The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or 1,000,000 with pay as you go on. null for an admin account, which no number stops. Additive since 2026-09-22."
+                    "example": 500000,
+                    "description": "The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22."
                   },
                   "unavailable_reason": {
                     "type": [
@@ -41937,7 +43037,7 @@
               },
               "pnl": {
                 "type": "number",
-                "description": "Trader lifetime realized P&L across all markets."
+                "description": "The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot."
               },
               "markets_traded": {
                 "type": "integer"
@@ -42055,7 +43155,8 @@
             "description": "Hot-streak tier (trailing-7d cross-sectional percentile). Omitted when there is no recent activity."
           },
           "all_time_pnl_usd": {
-            "type": "number"
+            "type": "number",
+            "description": "The wallet's all-time Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted."
           },
           "all_time_score": {
             "type": "number"
@@ -42222,7 +43323,7 @@
               "model_version": {
                 "type": "string",
                 "nullable": true,
-                "description": "Writer-proven model family, such as grading-v4. Null when unknown."
+                "description": "Writer-proven model family, such as grading. Null when unknown."
               },
               "model_build_sha": {
                 "type": "string",
@@ -44358,6 +45459,862 @@
             "description": "UTC deadline after which clients must hide this rank, including when an older game or pick response remains cached."
           }
         }
+      },
+      "ComboLegMarket": {
+        "type": "object",
+        "required": [
+          "source",
+          "condition_id",
+          "title",
+          "slug",
+          "event_slug",
+          "outcome_label",
+          "image",
+          "category",
+          "winning_outcome",
+          "resolved_at",
+          "market_closed",
+          "pick_price_daily",
+          "pick_price_as_of",
+          "pick_price_age_days",
+          "provider_leg_status"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source of the leg facts.",
+            "enum": [
+              "markets",
+              "provider"
+            ]
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "Full binary CTF condition ID for this leg."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "polymarket_url": {
+            "type": "string",
+            "description": "Provider-resolved URL including the referral tag.",
+            "format": "uri"
+          },
+          "outcome_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "winning_outcome": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Provider outcome index; negative sentinels describe void or unresolved states."
+          },
+          "resolved_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "market_closed": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "A closed market may still have no terminal outcome."
+          },
+          "pick_price_daily": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Stored daily price for this leg outcome token; not a live quote."
+          },
+          "pick_price_as_of": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Observation time of the stored daily price.",
+            "format": "date-time"
+          },
+          "pick_price_age_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Whole days since the stored daily bucket."
+          },
+          "provider_leg_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Unmodified provider leg status when available."
+          }
+        }
+      },
+      "ComboLeg": {
+        "type": "object",
+        "required": [
+          "leg_index",
+          "outcome_index",
+          "module_id",
+          "state",
+          "market"
+        ],
+        "properties": {
+          "leg_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "outcome_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "module_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "won",
+              "lost",
+              "void",
+              "unknown"
+            ]
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComboLegMarket"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ComboWindowStats": {
+        "type": "object",
+        "required": [
+          "fills",
+          "volume_usdc",
+          "distinct_traders",
+          "largest_fill_usdc"
+        ],
+        "properties": {
+          "fills": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "volume_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "distinct_traders": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "largest_fill_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          }
+        }
+      },
+      "ComboTotals": {
+        "type": "object",
+        "required": [
+          "fills",
+          "volume_usdc",
+          "largest_fill_usdc",
+          "first_fill_at",
+          "last_fill_at",
+          "last_fill_price_yes",
+          "last_fill_outcome_index",
+          "last_fill_action"
+        ],
+        "properties": {
+          "fills": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "volume_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "largest_fill_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "first_fill_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_fill_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_fill_price_yes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Last taker execution normalized to YES; not a current quote."
+          },
+          "last_fill_outcome_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "last_fill_action": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ]
+          }
+        }
+      },
+      "Combo": {
+        "type": "object",
+        "required": [
+          "condition_id",
+          "leg_count",
+          "prepared_at",
+          "legs_known",
+          "legs",
+          "window",
+          "totals",
+          "status",
+          "status_reason"
+        ],
+        "properties": {
+          "condition_id": {
+            "type": "string",
+            "description": "Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID.",
+            "pattern": "^0x[0-9a-f]{62}$"
+          },
+          "leg_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "prepared_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "legs_known": {
+            "type": "boolean",
+            "description": "Whether the preparation event has been indexed."
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComboLeg"
+            }
+          },
+          "window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComboWindowStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComboTotals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Result of the YES conjunction, independent of the wallet side or its P&L.",
+            "enum": [
+              "pending",
+              "won",
+              "lost",
+              "unknown"
+            ]
+          },
+          "status_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reason the conjunction result cannot be verified, when unknown."
+          }
+        }
+      },
+      "ComboCoverageCursor": {
+        "type": "object",
+        "required": [
+          "contract",
+          "last_block",
+          "seed_block",
+          "seed_origin",
+          "chain_finalized_block",
+          "lag_blocks",
+          "updated_at"
+        ],
+        "properties": {
+          "contract": {
+            "type": "string",
+            "description": "Indexed contract."
+          },
+          "last_block": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "seed_block": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "seed_origin": {
+            "type": "string"
+          },
+          "chain_finalized_block": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "lag_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ComboCoverage": {
+        "type": "object",
+        "required": [
+          "state",
+          "ingest_enabled",
+          "cursors",
+          "max_lag_blocks",
+          "oldest_cursor_update",
+          "lifecycle_lag_blocks",
+          "lifecycle_backfilling",
+          "computed_at"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "paused",
+              "uninitialized",
+              "stale",
+              "backfilling",
+              "live"
+            ]
+          },
+          "ingest_enabled": {
+            "type": "boolean"
+          },
+          "cursors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComboCoverageCursor"
+            }
+          },
+          "max_lag_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "oldest_cursor_update": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lifecycle_lag_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "lifecycle_backfilling": {
+            "type": "boolean"
+          },
+          "computed_at": {
+            "type": "string",
+            "description": "Time the coverage state was evaluated; not a market-price timestamp.",
+            "format": "date-time"
+          }
+        }
+      },
+      "ComboFill": {
+        "type": "object",
+        "required": [
+          "id",
+          "block_number",
+          "log_index",
+          "block_timestamp",
+          "tx_hash",
+          "trader",
+          "trader_name",
+          "trader_grade",
+          "last_traded_at",
+          "action",
+          "condition_id",
+          "outcome_index",
+          "shares",
+          "collateral_usdc",
+          "price",
+          "price_yes",
+          "fee_usdc",
+          "leg_count",
+          "status",
+          "status_reason",
+          "won_legs",
+          "payout_multiplier",
+          "legs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable fill identity."
+          },
+          "block_number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "log_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "block_timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tx_hash": {
+            "type": "string"
+          },
+          "trader": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Taker wallet address."
+          },
+          "trader_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trader_grade": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F",
+              null
+            ]
+          },
+          "last_traded_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Recorded wallet-wide trade time.",
+            "format": "date-time"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ]
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID.",
+            "pattern": "^0x[0-9a-f]{62}$"
+          },
+          "outcome_index": {
+            "type": "integer",
+            "format": "int64",
+            "description": "0 is YES, 1 is NO."
+          },
+          "shares": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "collateral_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "price": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Execution price for the traded outcome; null for a zero-share event."
+          },
+          "price_yes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Execution price normalized to YES."
+          },
+          "fee_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "leg_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "Result of the YES conjunction, independent of the wallet side or its P&L.",
+            "enum": [
+              "pending",
+              "won",
+              "lost",
+              "unknown"
+            ]
+          },
+          "status_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "won_legs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payout_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Shares per dollar at execution; not a forecast or guaranteed return."
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComboLeg"
+            }
+          }
+        }
+      },
+      "ComboLifecycleStats": {
+        "type": "object",
+        "required": [
+          "splits",
+          "merges",
+          "redeems",
+          "compresses",
+          "split_usdc",
+          "merge_usdc",
+          "redeemed_shares",
+          "redeemed_usdc",
+          "compressed_usdc",
+          "last_event_at"
+        ],
+        "properties": {
+          "splits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "merges": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "redeems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "compresses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "split_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "merge_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "redeemed_shares": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "redeemed_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "compressed_usdc": {
+            "type": "string",
+            "description": "Exact decimal string from the stored chain or SQL value; preserve precision until display."
+          },
+          "last_event_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ComboDetail": {
+        "type": "object",
+        "required": [
+          "access",
+          "combo",
+          "fills",
+          "lifecycle",
+          "coverage"
+        ],
+        "properties": {
+          "access": {
+            "type": "string",
+            "enum": [
+              "full"
+            ]
+          },
+          "combo": {
+            "$ref": "#/components/schemas/Combo"
+          },
+          "fills": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/ComboFill"
+            }
+          },
+          "lifecycle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComboLifecycleStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/ComboCoverage"
+          }
+        },
+        "description": "One combo with its newest 100 fills and all-time lifecycle totals. Paid API callers receive full access."
+      },
+      "ComboLiveCount": {
+        "type": "object",
+        "required": [
+          "count",
+          "computed_at"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Traded combos whose YES conjunction remains pending."
+          },
+          "computed_at": {
+            "type": "string",
+            "description": "Time the count was computed; check its age before using it.",
+            "format": "date-time"
+          }
+        }
+      },
+      "CombosSummary": {
+        "type": "object",
+        "required": [
+          "live"
+        ],
+        "properties": {
+          "live": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComboLiveCount"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "Stored live combo count. Null means the first count is unavailable, never zero."
+      },
+      "ComboFillsResponse": {
+        "type": "object",
+        "required": [
+          "object",
+          "data",
+          "sort",
+          "window",
+          "limit",
+          "coverage",
+          "has_more",
+          "meta"
+        ],
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "list"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComboFill"
+            }
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "largest",
+              "payout"
+            ]
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "24h",
+              "7d",
+              "all"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/ComboCoverage"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "A continuation is available based on page fullness. Its next page may be empty."
+          },
+          "next_cursor": {
+            "type": "string",
+            "description": "Exclusive block_number:log_index continuation for recent ordering."
+          },
+          "next_offset": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Continuation offset for largest or payout ordering."
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Not computed for combo fill pages; omitted."
+          }
+        }
+      },
+      "ComboResponse": {
+        "type": "object",
+        "required": [
+          "object",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "combo"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ComboDetail"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          }
+        }
+      },
+      "CombosSummaryResponse": {
+        "type": "object",
+        "required": [
+          "object",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "combos_summary"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CombosSummary"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          }
+        }
       }
     },
     "responses": {
@@ -44744,17 +46701,17 @@
         }
       },
       "X-Monthly-Quota-Limit": {
-        "description": "Authenticated requests Pro includes per UTC calendar month (#16111). On every authenticated response.",
+        "description": "Authenticated requests the account's plan includes per UTC calendar month (#16111): 500,000 for Pro, 2,000,000 for Max. On every authenticated response.",
         "schema": {
           "type": "integer",
-          "example": 250000
+          "example": 500000
         }
       },
       "X-Monthly-Quota-Remaining": {
         "description": "Included requests left this UTC calendar month; 0 once the quota is used. On every authenticated response.",
         "schema": {
           "type": "integer",
-          "example": 208770
+          "example": 458770
         }
       },
       "X-Monthly-Quota-Reset": {
@@ -44883,6 +46840,10 @@
     {
       "name": "Account",
       "description": "Identify the account and credential authenticated for a paid API request."
+    },
+    {
+      "name": "Combos",
+      "description": "Polymarket multi-leg combo fills, details, and live counts."
     }
   ]
 }

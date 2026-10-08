@@ -148,6 +148,24 @@ export interface ApiUnsupportedOperation {
  * operation belongs in `REDIRECT_OPERATIONS` below, not here.
  */
 export const API_CLIENT_OPERATIONS = [
+  {
+    method: "GET",
+    path: "/api/v1/combos/fills",
+    operationId: "listComboFills",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/combos/summary",
+    operationId: "getCombosSummary",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/combos/{condition_id}",
+    operationId: "getCombo",
+    auth: "bearer",
+  },
   { method: "POST", path: "/api/v1/datasets/whale-trades", operationId: "submitWhaleDataset", auth: "bearer" },
   { method: "GET", path: "/api/v1/datasets/whale-trades/{job_id}", operationId: "getWhaleDatasetStatus", auth: "bearer" },
   { method: "POST", path: "/api/v1/datasets/whale-trades/{job_id}/cancel", operationId: "cancelWhaleDataset", auth: "bearer" },
@@ -1860,6 +1878,9 @@ export type WhaleTradeHistoryParams = OperationQuery["listWhaleTradeHistory"];
 /** Query parameters of `GET /api/v1/positions`. */
 export type PositionsListParams = OperationQuery["listPositions"];
 
+/** Query parameters of `GET /api/v1/combos/fills`. */
+export type ComboFillsParams = OperationQuery["listComboFills"];
+
 /** Query parameters of `GET /api/v1/large-positions`. */
 export type LargePositionsListParams = OperationQuery["listLargePositions"];
 
@@ -1913,6 +1934,18 @@ export class OxinsiderApiClient {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number | null;
   private readonly maxRetries: number;
+
+  /** Polymarket combo fills, live count, and one combo's observed details. */
+  readonly combos = {
+    /** Recent pages use next_cursor; ranked pages use next_offset. */
+    fills: (params: ComboFillsParams = {}, options: ConvenienceOptions = {}) =>
+      this.list("listComboFills", { ...options, query: params }),
+    summary: (options: ConvenienceOptions = {}) => this.call("getCombosSummary", options),
+    get: (
+      conditionId: OperationPath["getCombo"]["condition_id"],
+      options: ConvenienceOptions = {},
+    ) => this.call("getCombo", { ...options, path: { condition_id: conditionId } }),
+  };
 
   /**
    * A client for the sandbox server (#16138): `SANDBOX_BASE_URL`, no

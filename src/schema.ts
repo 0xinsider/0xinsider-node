@@ -85,7 +85,7 @@ export type ApiError = {
     /** The recommended next request instant (RFC3339), always in the future. Present on every retryable error: `pick_not_released`, `rate_limited`, `rate_limit_unavailable`, and `read_model_warming`. Omitted otherwise. The absolute twin of `Retry-After`; prefer the header for the sleep duration. For `pick_not_released`, the earliest of the next scheduled release, the next automatic selector attempt, the operating-window start, or about 60 seconds. See that response. */
     retry_at?: string;
     freshness?: FreshnessFailure;
-    /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
+    /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
     reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied";
   };
   meta: ResponseMeta;
@@ -100,7 +100,7 @@ export type ApiErrorBody = {
   /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 03:00 America/New_York operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
   retry_at?: string;
   freshness?: FreshnessFailure;
-  /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests Pro includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
+  /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is outside the HOT/WARM sync tiers -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. */
   reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied";
 };
 
@@ -187,6 +187,211 @@ export type CategorySkillV2 = {
   edge_se: number | null;
   edge_lower_95: number | null;
   brier_event_avg: number | null;
+};
+
+export type Combo = {
+  /** Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID. */
+  condition_id: string;
+  leg_count: number | null;
+  prepared_at: string | null;
+  /** Whether the preparation event has been indexed. */
+  legs_known: boolean;
+  legs: ComboLeg[];
+  window: ComboWindowStats | null;
+  totals: ComboTotals | null;
+  /** Result of the YES conjunction, independent of the wallet side or its P&L. */
+  status: "pending" | "won" | "lost" | "unknown";
+  /** Reason the conjunction result cannot be verified, when unknown. */
+  status_reason: string | null;
+};
+
+export type ComboCoverage = {
+  state: "paused" | "uninitialized" | "stale" | "backfilling" | "live";
+  ingest_enabled: boolean;
+  cursors: ComboCoverageCursor[];
+  max_lag_blocks: number | null;
+  oldest_cursor_update: string | null;
+  lifecycle_lag_blocks: number | null;
+  lifecycle_backfilling: boolean;
+  /** Time the coverage state was evaluated; not a market-price timestamp. */
+  computed_at: string;
+};
+
+export type ComboCoverageCursor = {
+  /** Indexed contract. */
+  contract: string;
+  last_block: number;
+  seed_block: number;
+  seed_origin: string;
+  chain_finalized_block: number | null;
+  lag_blocks: number | null;
+  updated_at: string;
+};
+
+/** One combo with its newest 100 fills and all-time lifecycle totals. Paid API callers receive full access. */
+export type ComboDetail = {
+  access: "full";
+  combo: Combo;
+  fills: ComboFill[];
+  lifecycle: ComboLifecycleStats | null;
+  coverage: ComboCoverage;
+};
+
+export type ComboFill = {
+  /** Stable fill identity. */
+  id: string;
+  block_number: number;
+  log_index: number;
+  block_timestamp: string;
+  tx_hash: string;
+  /** Taker wallet address. */
+  trader: string | null;
+  trader_name: string | null;
+  trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** Recorded wallet-wide trade time. */
+  last_traded_at: string | null;
+  action: "buy" | "sell";
+  /** Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID. */
+  condition_id: string;
+  /** 0 is YES, 1 is NO. */
+  outcome_index: number;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  shares: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  collateral_usdc: string;
+  /** Execution price for the traded outcome; null for a zero-share event. */
+  price: string | null;
+  /** Execution price normalized to YES. */
+  price_yes: string | null;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  fee_usdc: string;
+  leg_count: number | null;
+  /** Result of the YES conjunction, independent of the wallet side or its P&L. */
+  status: "pending" | "won" | "lost" | "unknown";
+  status_reason: string | null;
+  won_legs: number;
+  /** Shares per dollar at execution; not a forecast or guaranteed return. */
+  payout_multiplier: string | null;
+  legs: ComboLeg[];
+};
+
+export type ComboFillsResponse = {
+  object: "list";
+  data: ComboFill[];
+  sort: "recent" | "largest" | "payout";
+  window: "24h" | "7d" | "all";
+  limit: number;
+  coverage: ComboCoverage;
+  /** A continuation is available based on page fullness. Its next page may be empty. */
+  has_more: boolean;
+  /** Exclusive block_number:log_index continuation for recent ordering. */
+  next_cursor?: string;
+  /** Continuation offset for largest or payout ordering. */
+  next_offset?: number;
+  meta: ResponseMeta;
+  /** Not computed for combo fill pages; omitted. */
+  total?: number;
+};
+
+export type ComboLeg = {
+  leg_index: number;
+  outcome_index: number;
+  module_id: number;
+  state: "pending" | "won" | "lost" | "void" | "unknown";
+  market: ComboLegMarket | null;
+};
+
+export type ComboLegMarket = {
+  /** Source of the leg facts. */
+  source: "markets" | "provider";
+  /** Full binary CTF condition ID for this leg. */
+  condition_id: string;
+  title: string | null;
+  slug: string | null;
+  event_slug: string | null;
+  /** Provider-resolved URL including the referral tag. */
+  polymarket_url?: string;
+  outcome_label: string | null;
+  image: string | null;
+  category: string | null;
+  /** Provider outcome index; negative sentinels describe void or unresolved states. */
+  winning_outcome: number | null;
+  resolved_at: string | null;
+  /** A closed market may still have no terminal outcome. */
+  market_closed: boolean | null;
+  /** Stored daily price for this leg outcome token; not a live quote. */
+  pick_price_daily: number | null;
+  /** Observation time of the stored daily price. */
+  pick_price_as_of: string | null;
+  /** Whole days since the stored daily bucket. */
+  pick_price_age_days: number | null;
+  /** Unmodified provider leg status when available. */
+  provider_leg_status: string | null;
+};
+
+export type ComboLifecycleStats = {
+  splits: number;
+  merges: number;
+  redeems: number;
+  compresses: number;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  split_usdc: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  merge_usdc: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  redeemed_shares: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  redeemed_usdc: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  compressed_usdc: string;
+  last_event_at: string;
+};
+
+export type ComboLiveCount = {
+  /** Traded combos whose YES conjunction remains pending. */
+  count: number;
+  /** Time the count was computed; check its age before using it. */
+  computed_at: string;
+};
+
+export type ComboResponse = {
+  object: "combo";
+  data: ComboDetail;
+  meta: ResponseMeta;
+};
+
+/** Stored live combo count. Null means the first count is unavailable, never zero. */
+export type CombosSummary = {
+  live: ComboLiveCount | null;
+};
+
+export type CombosSummaryResponse = {
+  object: "combos_summary";
+  data: CombosSummary;
+  meta: ResponseMeta;
+};
+
+export type ComboTotals = {
+  fills: number;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  volume_usdc: string;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  largest_fill_usdc: string;
+  first_fill_at: string;
+  last_fill_at: string;
+  /** Last taker execution normalized to YES; not a current quote. */
+  last_fill_price_yes: string | null;
+  last_fill_outcome_index: number;
+  last_fill_action: "buy" | "sell";
+};
+
+export type ComboWindowStats = {
+  fills: number;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  volume_usdc: string;
+  distinct_traders: number;
+  /** Exact decimal string from the stored chain or SQL value; preserve precision until display. */
+  largest_fill_usdc: string;
 };
 
 export type ContentSearchResult = {
@@ -841,7 +1046,7 @@ export type LargePosition = {
     username?: string;
     grade?: "S" | "A" | "B" | "C" | "D" | "F";
     win_rate?: number;
-    /** Trader lifetime realized P&L across all markets. */
+    /** The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot. */
     pnl?: number;
     markets_traded?: number;
   };
@@ -885,7 +1090,7 @@ export type LargeTrade = {
   suspicion_score: number | null;
   /** Persisted scorer track. Null when a legacy row has no stored track label. */
   suspicion_track: "whale" | "fresh_conviction" | "sliced_position" | null;
-  /** This fill's size relative to its market: size_usd divided by a market volume figure recorded at or after the trade, so the value always falls between 0 and 1 inclusive. A $10,000 fill is 0.00005 of a $200M market and 0.125 of an $80,000 one, which size_usd alone cannot distinguish. Absent when no volume figure recorded at or after the trade is available; never 0 as a stand-in and never capped at 1, because a denominator we cannot trust publishes nothing rather than a trimmed number. A market's volume keeps growing, so the same trade reports a smaller share as the market trades on. */
+  /** This fill's size relative to its market: its share count (size_usd / price) divided by the shares the market has traded, Polymarket's recorded volume, which counts shares rather than dollars, as observed at or after the trade, so the value always falls between 0 and 1 inclusive. A 20,000-share fill is 0.00005 of a market that has traded 400M shares and 0.125 of one that has traded 160,000, which size_usd alone cannot distinguish. Absent when no volume figure recorded at or after the trade is available, or when that figure is smaller than the fill; never 0 as a stand-in and never capped at 1, because a denominator we cannot trust publishes nothing rather than a trimmed number. A market's volume keeps growing, so the same trade reports a smaller share as the market trades on. */
   market_volume_share?: number;
   trader: {
     id: string;
@@ -950,7 +1155,7 @@ export type LeaderboardEntry = {
   /** Hot-streak tier (trailing-7d cross-sectional percentile); a separate axis from the all-time grade. Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
   score?: number;
-  /** All-time P&L in USD (total_pnl), including unrealized open positions. Kept for back-compat; prefer realized_pnl for the banked figure. */
+  /** Polymarket leaderboard all-time P&L in USD (traders.total_pnl), including unrealized open positions. Kept for back-compat. Not the profile's Total P&L, which GET /api/v1/trader/{address} serves as pnl.net_total; the two can differ by a wide margin. Prefer realized_pnl for the banked figure. */
   pnl?: number;
   /** Native realized P&L plus credited maker and taker rebates in USD, with fees already included. The exact numeric value is truncated toward zero to cents before JSON conversion. Wallets without a native snapshot retain their historical stored realized P&L. Omitted when the native snapshot has no net realized value. */
   realized_pnl?: number;
@@ -1346,7 +1551,7 @@ export type PickOfTheDay = {
   matchup?: string;
   /** Recorded canonical sport category. Prefer display_category for the public competition label. */
   category?: string;
-  /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
+  /** Frozen public presentation category. Tennis uses the provider-verified ATP or WTA tour, including Wimbledon and doubles; unknown tours retain Tennis. Every men's and women's cricket competition uses Cricket. Other sports use the curated league, esports title or soccer competition label, then the provider series name without its season year, then category when no competition is known. The canonical category and measured cohort are unchanged: an esports title still uses the pooled Esports category. Optional for mixed-version client compatibility. */
   display_category?: string;
   /** Provider platform. Always polymarket. */
   platform?: "polymarket";
@@ -1451,8 +1656,6 @@ export type PickOfTheDay = {
   display_holders?: PickHolder[];
   /** S/A holder count for the public V1 compatibility projection. display_holders can include additional grades. */
   holder_count?: number;
-  /** Optional editorial note attached to the pick. */
-  editorial_note?: string;
   /** Required truthful thesis. With at least one profitable-wallet holder: Profitable wallets hold {pick_outcome_label}[, led by a grade-{top_grade} trader]. Without holder backing: 0xInsider's Pick of the Day is {pick_outcome_label}. Wallet counts are not appended. */
   thesis?: string;
   /** Canonical web market URL. */
@@ -1533,7 +1736,7 @@ export type PickOfTheDayArchiveEntry = {
   matchup?: string;
   /** Frozen canonical calibration/report bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
   category?: string;
-  /** Frozen public presentation category: the competition the Polymarket event belongs to. A curated label comes first -- an official league (e.g. "WNBA" or "UFC"), the esports title (e.g. "CS2", "LoL", "Dota 2" or "Valorant"), or a soccer competition (e.g. "LaLiga", "Premier League", "Serie A" or "UEFA Champions League"); any other competition carries the provider's own competition name without its season year (e.g. "UEFA Nations League", "ATP" or "Wimbledon"). It equals category only when the provider names no competition. An esports pick keeps the pooled "Esports" bucket in category, so a per-title label never implies a per-title measured cohort. Additive and optional for mixed-version client compatibility. */
+  /** Frozen public presentation category. Tennis uses the provider-verified ATP or WTA tour, including Wimbledon and doubles; unknown tours retain Tennis. Every men's and women's cricket competition uses Cricket. Other sports use the curated league, esports title or soccer competition label, then the provider series name without its season year, then category when no competition is known. The canonical category and measured cohort are unchanged: an esports title still uses the pooled Esports category. Optional for mixed-version client compatibility. */
   display_category?: string;
   /** Provider (Polymarket Gamma) market thumbnail URL (markets.image); omitted (not null) when the market has no image. Public regardless of the backed-side gate, so present for pending rows too. */
   image_url?: string;
@@ -1995,6 +2198,7 @@ export type Position = {
     grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Percentage 0-100. */
     win_rate?: number;
+    /** The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted. */
     pnl?: number;
     markets?: number;
     wallet_age_days?: number;
@@ -2632,7 +2836,10 @@ export type Trader = {
   forecast_evidence?: number;
   rank?: number;
   pnl: {
+    /** Polymarket leaderboard all-time P&L in USD (traders.total_pnl), kept for provider parity and back-compat. Not the profile's Total P&L and not realized plus unrealized: it can differ from net_total by a wide margin. Read net_total for the figure the 0xinsider profile shows. */
     total?: number;
+    /** The profile's Total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The same figure the 0xinsider profile, search, live feed, portfolio and watchlist show. Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted. */
+    net_total?: number;
     /** For pnl.realized, expand=trust marks a matching native accounting snapshot as computed: native Polymarket realized P&L plus credited maker and taker rebates, with fees already included. The exact numeric value is truncated toward zero to cents before conversion to a JSON number. Without a matching native accounting snapshot, pnl.realized is omitted and its trust metadata is unavailable. Raw total P&L is never substituted for realized P&L. */
     realized?: number;
     unrealized?: number;
@@ -2685,7 +2892,7 @@ export type Trader = {
   synced_at?: string;
   /** synced, unknown, or pending. */
   sync_status?: string;
-  /** Data age and coverage for this trader body. Always present. Its five groups are sync (traders.last_synced, covering pnl.total, pnl.realized, stats.markets_traded, stats.win_rate, stats.daily_win_rate, last_active, synced_at and sync_status), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (trader_usd_volume.observed_at, covering stats.total_volume) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync; it does not date closed or native accounting values. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
+  /** Data age and coverage for this trader body. Always present. Its five groups are sync (traders.last_synced, covering pnl.total, pnl.net_total, pnl.realized, stats.markets_traded, stats.win_rate, stats.daily_win_rate, last_active, synced_at and sync_status), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (trader_usd_volume.observed_at, covering stats.total_volume) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync; it does not date closed or native accounting values. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
   data_quality: DataQuality;
   /** Field-level trust metadata. Present only when expand=trust or expand[]=trust is requested. */
   trust?: TraderTrust;
@@ -2928,7 +3135,7 @@ export type TraderGradeAt = {
     observed_at: string;
     /** Upper bound: a later snapshot confirmed the observation was committed. This is not an exact commit timestamp. */
     published_by: string;
-    /** Writer-proven model family, such as grading-v4. Null when unknown. */
+    /** Writer-proven model family, such as grading. Null when unknown. */
     model_version: string | null;
     /** Exact writer build SHA when recorded. Null on old and non-model observations. */
     model_build_sha: string | null;
@@ -3066,6 +3273,7 @@ export type TraderStatsExact = {
 export type TraderTrust = {
   total_pnl: TrustMetadata;
   realized_pnl: TrustMetadata;
+  net_total_pnl: TrustMetadata;
   unrealized_pnl: TrustMetadata;
   markets_traded: TrustMetadata;
   win_rate: TrustMetadata;
@@ -3111,6 +3319,7 @@ export type TrendingWallet = {
   grade?: "S" | "A" | "B" | "C" | "D" | "F";
   /** Hot-streak tier (trailing-7d cross-sectional percentile). Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
+  /** The wallet's all-time Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted. */
   all_time_pnl_usd?: number;
   all_time_score?: number;
   last_synced?: string;
@@ -3188,7 +3397,7 @@ export type Usage = {
     monthly_quota: {
       /** Admitted requests so far this UTC calendar month. */
       used: number;
-      /** Requests Pro includes per UTC calendar month. */
+      /** Requests the account's plan includes per UTC calendar month: 500,000 for Pro, 2,000,000 for Max. */
       limit: number;
       remaining: number;
       /** Unix seconds: the first instant of the next UTC calendar month. */
@@ -3199,7 +3408,7 @@ export type Usage = {
       binding: boolean;
       /** Pay as you go is on: requests over the quota keep answering and bill on a monthly invoice, up to ceiling. */
       pay_as_you_go: boolean;
-      /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or 1,000,000 with pay as you go on. null for an admin account, which no number stops. Additive since 2026-09-22. */
+      /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
       /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
       unavailable_reason?: "usage_price_reconciliation_required" | null;
@@ -3591,6 +3800,8 @@ export interface OperationData {
     scopes: string[] | null;
   };
   getApiDiscovery: ApiDiscovery;
+  getCombo: ComboDetail;
+  getCombosSummary: CombosSummary;
   getCoverage: Platforms;
   getDailyReportSnapshot: ReportSnapshot;
   getEventReplaySince: EventReplayEvent[];
@@ -3712,7 +3923,7 @@ export interface OperationData {
     monthly_quota: {
       /** Admitted requests so far this UTC calendar month. */
       used: number;
-      /** Requests Pro includes per UTC calendar month. */
+      /** Requests the account's plan includes per UTC calendar month: 500,000 for Pro, 2,000,000 for Max. */
       limit: number;
       remaining: number;
       /** Unix seconds: the first instant of the next UTC calendar month. */
@@ -3723,7 +3934,7 @@ export interface OperationData {
       binding: boolean;
       /** Pay as you go is on: requests over the quota keep answering and bill on a monthly invoice, up to ceiling. */
       pay_as_you_go: boolean;
-      /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or 1,000,000 with pay as you go on. null for an admin account, which no number stops. Additive since 2026-09-22. */
+      /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
       /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
       unavailable_reason?: "usage_price_reconciliation_required" | null;
@@ -3783,6 +3994,7 @@ export interface OperationData {
     filters: WhaleDatasetFilters;
   };
   getWhaleTrade: LargeTradeDetail;
+  listComboFills: ComboFill[];
   listGames: Game[];
   listInsiderRadar: SuspiciousTrade[];
   listLargePositions: LargePosition[];
@@ -3950,6 +4162,8 @@ export interface OperationQuery {
   };
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCombo: Record<string, never>;
+  getCombosSummary: Record<string, never>;
   getCoverage: Record<string, never>;
   getDailyReportSnapshot: {
     /** UTC report date in YYYY-MM-DD format, from 2024-03-01 (the first day report data covers) through tomorrow UTC. Any other date returns 400 bad_request with error.param=date. */
@@ -4104,6 +4318,30 @@ export interface OperationQuery {
   };
   getWhaleDatasetStatus: Record<string, never>;
   getWhaleTrade: Record<string, never>;
+  listComboFills: {
+    /** CSV of pending, won, or lost; all clears the filter. Unknown results appear only in unfiltered lists. */
+    result?: string;
+    /** CSV of 2, 3, 4, or 5+; all clears the filter. A combo matches any named pick count. */
+    legs?: string;
+    /** Minimum collateral in whole USDC. */
+    min_stake?: number;
+    /** 0 disables the filter; otherwise use 2..1000000. Minimum shares per dollar at execution. */
+    min_multiplier?: number;
+    /** CSV of S, A, B, C, D, F; all clears the filter. Ungraded wallets do not match. */
+    grades?: string;
+    /** CSV of nfl, ncaaf, nba, wnba, baseball, hockey, soccer, tennis, table-tennis, esports, mma, boxing, golf, cricket, f1, pickleball; all clears the filter. Matches when any leg belongs to a selected sport. */
+    sports?: string;
+    /** Recent is newest first; largest ranks collateral; payout ranks buy-fill shares and excludes sells. */
+    sort?: "recent" | "largest" | "payout";
+    /** Defaults to all for recent and 24h for largest or payout. */
+    window?: "24h" | "7d" | "all";
+    /** Page size. Integer values outside the range are clamped to 1..200. */
+    limit?: number;
+    /** Exclusive block_number:log_index cursor for recent only; send the returned next_cursor unchanged. */
+    cursor?: string;
+    /** Offset for ranked largest or payout ordering; use returned next_offset. */
+    offset?: number;
+  };
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
     sport?: string;
@@ -4474,6 +4712,11 @@ export interface OperationPath {
   exploreMarkets: Record<string, never>;
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCombo: {
+    /** Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID. */
+    condition_id: string;
+  };
+  getCombosSummary: Record<string, never>;
   getCoverage: Record<string, never>;
   getDailyReportSnapshot: Record<string, never>;
   getEventReplaySince: Record<string, never>;
@@ -4589,6 +4832,7 @@ export interface OperationPath {
     /** Raw whale_alerts.id or wt_-prefixed whale trade id. */
     id: string;
   };
+  listComboFills: Record<string, never>;
   listGames: Record<string, never>;
   listInsiderRadar: Record<string, never>;
   listLargePositions: Record<string, never>;
@@ -4707,6 +4951,8 @@ export interface OperationBody {
   exploreMarkets: never;
   getAccountIdentity: never;
   getApiDiscovery: never;
+  getCombo: never;
+  getCombosSummary: never;
   getCoverage: never;
   getDailyReportSnapshot: never;
   getEventReplaySince: never;
@@ -4745,6 +4991,7 @@ export interface OperationBody {
   getWeeklyReportSnapshot: never;
   getWhaleDatasetStatus: never;
   getWhaleTrade: never;
+  listComboFills: never;
   listGames: never;
   listInsiderRadar: never;
   listLargePositions: never;
@@ -4861,6 +5108,8 @@ export interface OperationResponse {
     data: OperationData["getApiDiscovery"];
     meta: ResponseMeta;
   };
+  getCombo: ComboResponse;
+  getCombosSummary: CombosSummaryResponse;
   getCoverage: {
     object: "platforms";
     data: OperationData["getCoverage"];
@@ -5047,6 +5296,7 @@ export interface OperationResponse {
     data: OperationData["getWhaleTrade"];
     meta: ResponseMeta;
   };
+  listComboFills: ComboFillsResponse;
   listGames: {
     object: "list";
     data: OperationData["listGames"];

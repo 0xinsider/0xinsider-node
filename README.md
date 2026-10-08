@@ -1,6 +1,6 @@
 # @0xinsider/sdk
 
-Official TypeScript SDK for the [0xinsider](https://0xinsider.com) API: analytics for Polymarket sports and esports markets. Wallet grades, large trades, profitable-wallet flows, market intel and OHLC candles, a live SSE feed, and signed webhooks.
+Official TypeScript SDK for the [0xinsider](https://0xinsider.com) API: analytics for Polymarket sports and esports markets. Wallet grades, large trades, combos, profitable-wallet flows, market intel and OHLC candles, a live SSE feed, and signed webhooks.
 
 The types are generated from the [published OpenAPI document](https://0xinsider.com/api/v1/openapi.json). The release check compares generated types and the operation table against the committed OpenAPI snapshot.
 
@@ -90,6 +90,25 @@ for the caller that asserts the shape itself.
 `npm run check` regenerates from the committed snapshot and compares on every
 push, so a contract change that nobody regenerated fails CI rather than
 shipping as a stale type.
+
+## Combos
+
+`client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
+
+```ts
+const page = await client.combos.fills({ sort: "recent", limit: 20 });
+for (const fill of page.data) console.log(fill);
+
+const summary = await client.combos.summary();
+if (summary.object === "combos_summary") console.log(summary.data.live);
+
+const detail = await client.combos.get(conditionId);
+if (detail.object === "combo") console.log(detail.data);
+```
+
+Keep the same filters while paging. For `sort: "recent"`, send `next_cursor` as `cursor` on the next request. Ranked sorts return `next_offset`; send it as `offset` instead, and stop when `has_more` is false. Use `combos.fills()` directly for ranked pages because the shared `paginate()` helper follows cursors only.
+
+Read `coverage` before treating the observed fills as a complete history. An unavailable live count is `null`, not zero; the response types preserve nullable and optional provider values.
 
 ## Pick proof by stable identity
 
