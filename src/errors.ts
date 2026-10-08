@@ -557,10 +557,12 @@ export class RateLimitUnavailableError extends OxinsiderApiError {
  * current product day (#7209).
  *
  * This is NOT "the endpoint is broken" and NOT "the resource does not exist".
- * Qualified automatic picks publish as soon as final checks pass. Explicit
- * schedules retain their stored time. The product day rolls at midnight
- * America/New_York. Until a pick publishes, and on skipped days, this response
- * is expected. Returned retry timing is advisory; new signals can arrive earlier.
+ * Qualified automatic picks publish as soon as they qualify and their final
+ * checks pass, from 3am ET to no later than 30 minutes before their own
+ * kickoff. Explicit schedules retain their stored time.
+ * The product day rolls at midnight America/New_York. Until a pick publishes,
+ * and on skipped days, this response is expected. Returned retry timing is
+ * advisory; new signals can arrive earlier.
  *
  * DO NOT POLL. Sleep for `retryAfterSeconds` (or until `retryAt`) and request
  * once. Blind polling through this window was 91.8% of all logged v1 API errors.
