@@ -33340,11 +33340,24 @@
             }
           },
           "503": {
-            "description": "Combo reads may be temporarily unavailable (code internal_error). A verified database outage uses code rate_limit_unavailable with reason database_unavailable. Middleware may also refuse rate-limit admission with code rate_limit_unavailable. Retry a transient read after a short delay; honor Retry-After when present.",
+            "description": "Combo reads may be temporarily unavailable (code internal_error). A verified database outage uses code rate_limit_unavailable with reason database_unavailable. Middleware may also refuse rate-limit admission with code rate_limit_unavailable. Retry a transient read after a short delay; honor Retry-After when present. A sport filter whose index is still being built uses reason read_model_warming, with Retry-After and error.retry_at.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -33625,6 +33638,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -33962,6 +33988,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
