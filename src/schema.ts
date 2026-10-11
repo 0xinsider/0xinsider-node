@@ -532,6 +532,140 @@ export type EdgeHunterBoard = {
   rows: EdgeHunterRow[];
 };
 
+export type EdgeHunterBoardResponse = {
+  object: "edge_hunter";
+  data: EdgeHunterBoard;
+  meta: ResponseMeta;
+};
+
+/** Category evidence over the full uncapped piled-side S/A/B holder allocation. It never changes signal membership, ordering, routing, or sizing. */
+export type EdgeHunterCategorySkill = {
+  status: "live" | "insufficient" | "stale" | "unknown" | "degraded";
+  model_version: string;
+  taxonomy_version: string | null;
+  platform: "polymarket";
+  scope: "observed_goldsky_primary_taker_fill";
+  source_coverage: "partial_whale_threshold_fills" | "graded_wallet_fills";
+  observation_started_at: string;
+  as_of: string;
+  canonical_category: string | null;
+  eligible_holders: number;
+  covered_holders: number;
+  backed_sharp_usd: number | null;
+  covered_backed_usd: number | null;
+  coverage_pct: number | null;
+  weighted_edge_mean: number | null;
+  weighted_holder_lower_mean: number | null;
+  specialist_backed_usd: number | null;
+  specialist_backed_usd_pct: number | null;
+  largest_holder_backed_usd_pct: number | null;
+  minimum_holder_event_count: number | null;
+};
+
+/** Per-sport accountable funnel for the full observation snapshot, returned on every page. */
+export type EdgeHunterFunnelReport = {
+  sports: EdgeHunterSportFunnelReport[];
+};
+
+/** One explicitly observation-only holder-pile measurement. It is evidence for cohort evaluation, not an execution instruction, and is isolated from the funded Edge Hunter signals view. */
+export type EdgeHunterObservation = {
+  /** The side profitable wallets hold, as a provider-backed display label. Canonical spelling of piled_side (#16310), same value: when provider group context is unavailable it may remain a bare Yes/No/Over/Under, so do not use it alone as participant identity. */
+  side: string | null;
+  /** Recorded side backing score; higher values indicate stronger backing. */
+  backing_score: number;
+  /** Signed share of graded money on the side, in [-1, 1]. Canonical spelling of smart_score (#16309, #16310), same value. */
+  side_share: number;
+  /** Raw Polymarket condition id. */
+  condition_id: string;
+  /** Provider-backed Polymarket CLOB token id for the piled outcome. Rows without a verified token terminate before emission. */
+  token_id: string;
+  /** Canonical sport bucket. */
+  category: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
+  /** Raw provider category as stored. */
+  raw_category: string | null;
+  /** Provider-backed market title. */
+  title: string;
+  event_slug: string | null;
+  /** Provider event id when available. */
+  event_id: string | null;
+  /** Provider parent-event id used as the first event-cap identity when available. */
+  parent_event_id: string | null;
+  /** Provider-backed kickoff time in UTC. */
+  game_start_time: string;
+  /** UTC instant when this row finished provider/holder evaluation. */
+  observed_at: string;
+  /** Source cohort or additive projection view. emerging_pile is projected from wider_holder after source computation, overlaps its funnel denominator, and uses the source row's directional evidence. */
+  cohort: "wider_holder" | "in_play" | "emerging_pile";
+  /** Always true. This row must not be routed to an order executor. */
+  observation_only: true;
+  /**
+   * Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
+  piled_side: string | null;
+  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
+  piled_outcome_index: 0 | 1;
+  /** Aggregate piled-side market midpoint recorded at observed_at. This is an observation price mark, not a wallet entry cost. */
+  backed_price: number;
+  /** Piled-side graded-holder dollar concentration. */
+  sharp_pct: number;
+  /** Raw graded-holder USD on the piled outcome. */
+  backed_sharp_usd: number;
+  s_count: number;
+  a_count: number;
+  b_count: number;
+  /** Piled-side S/A/B holder count. */
+  graded_holders: number;
+  top_grade: "S" | "A" | "B";
+  /**
+   * Canonical signed holder-pile score. Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
+  smart_score: number;
+  /** Cumulative provider taker volume in shares, not cash or dollars. */
+  volume: number;
+  /**
+   * Recorded conviction score; higher values indicate stronger conviction.
+   * @deprecated
+   */
+  conviction_score: number;
+  /** Whether the provider holder page came from the shared cache or a live provider read. */
+  provider_read_source: "cached" | "live";
+  /** True only when neither provider outcome holder page hit the top-100 scan bound. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
+  holder_scan_complete: boolean;
+  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
+  holder_snapshot_at: string | null;
+  /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
+  directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
+  one_way_holder_count: number | null;
+  hedged_holder_count: number | null;
+  one_way_graded_usd: number | null;
+  directional_confidence: number | null;
+  /** Recorded side ordering score; higher values sort first. */
+  directional_rank_score: number;
+  /** 1-based rank within this observation cohort and snapshot. */
+  rank: number;
+};
+
+/** Full Edge Hunter observations list envelope. The view literal distinguishes advanced collections, including empty pages. */
+export type EdgeHunterObservationsResponse = {
+  object: "list";
+  view: "observations";
+  data: EdgeHunterObservation[];
+  has_more: boolean;
+  /** Pass as cursor for the next page. Always sent; null on the last page. */
+  next_cursor: string | null;
+  /** Completion time of the shared observation snapshot pinned by the cursor. */
+  snapshot_as_of: string;
+  /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field. */
+  degraded: boolean;
+  funnel: EdgeHunterFunnelReport;
+  meta: ResponseMeta;
+};
+
+/** Closed 25-value terminal-reason vocabulary for the accountable Edge Hunter observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
+export type EdgeHunterObservationTerminalReason = "outside_horizon" | "resolved" | "provider_closed" | "provider_excluded" | "invalid_market" | "missing_token" | "missing_stored_market" | "not_provider_live" | "board_source_unavailable" | "board_deadline_unavailable" | "primary_slate_candidate" | "zero_indexed_holder_research" | "capacity_limited" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "holder_scan_incomplete" | "no_current_graded_holder" | "split_holder_pile" | "price_unavailable" | "wider_holder_emitted" | "in_play_emitted" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified";
+
 /** One provider outcome in YES/NO order. Null current_price means no verified current quote is available. */
 export type EdgeHunterOutcome = {
   index: 0 | 1;
@@ -559,6 +693,83 @@ export type EdgeHunterPrice = {
   ts: string;
   /** Backend validation clock in epoch milliseconds. Omitted when no current-source validation is available. */
   validated_at?: string;
+};
+
+/** One ranked pre-game sports market where graded sharp money is piled on one side, with required-status category evidence from partial forward-observed Polymarket fills. */
+export type EdgeHunterRankedSignal = {
+  /** The side profitable wallets hold, as a provider-backed display label. Canonical spelling of piled_side (#16310), same value: when provider group context is unavailable it may remain a bare Yes/No/Over/Under, so do not use it alone as participant identity. */
+  side: string | null;
+  /** UTC time at which the snapshot that ranked this row was computed. Canonical spelling of signal_created_at (#16310), same value. */
+  ranked_at: string;
+  /** Recorded side backing score; higher values indicate stronger backing. */
+  backing_score: number;
+  /** Signed share of graded money on the side, (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (side-yes positive, side-no negative). Canonical spelling of smart_score (#16309, #16310), same value. */
+  side_share: number | null;
+  /** Polymarket condition id. */
+  condition_id: string;
+  /**
+   * UTC time at which the immutable signal snapshot was computed. Every row from one snapshot shares this value; it is not provider market creation time and is not rewritten at request time. Deprecated (#16310): `ranked_at` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
+  signal_created_at: string;
+  /** Polymarket CLOB token id (ERC1155 asset id, decimal string) for the PILED outcome; null when unavailable. */
+  token_id: string | null;
+  /** Canonical sport bucket (e.g. Basketball, Tennis); null when the raw category has no canonical mapping. */
+  category: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball" | null;
+  /** Raw provider category as stored (e.g. NBA, EPL). */
+  raw_category: string | null;
+  title: string | null;
+  event_slug: string | null;
+  /** Kickoff (UTC). In the future at SNAPSHOT time and within the requested horizon; because the response is served from a shared snapshot cached up to the ~180s TTL, a served kickoff can be up to ~180s in the past relative to the response time. Not a live guarantee that the game has not yet started. */
+  game_start_time: string | null;
+  /**
+   * Nullable provider-backed piled-outcome display label. When provider group context is unavailable, it may remain a bare Yes/No/Over/Under; do not use it alone as participant identity. Deprecated (#16310): `side` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
+  piled_side: string | null;
+  /** Provider binary-column selector: 0 selects outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. It does not identify home/away or a participant. Use piled_side together with title/event context for display. */
+  piled_outcome_index: number;
+  /** Piled-side dollar concentration backed_usd / (yes_usd + no_usd), in (0.5, 1] for a real pile; null when there is no sharp USD. */
+  sharp_pct: number | null;
+  /** Raw piled-side sharp-money USD. */
+  backed_sharp_usd: number;
+  /** S-grade graded holders on the piled side. */
+  s_count: number;
+  /** A-grade graded holders on the piled side. */
+  a_count: number;
+  /** B-grade graded holders on the piled side. */
+  b_count: number;
+  /** Piled-side graded holder count (s_count + a_count + b_count). */
+  graded_holders: number;
+  /** Best grade present on the piled side; null when none. */
+  top_grade: "S" | "A" | "B" | null;
+  /**
+   * Canonical sharp-money score (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (piled-yes positive, piled-no negative). Deprecated (#16310): `side_share` is the canonical spelling and carries the same value; this key stays on the wire.
+   * @deprecated
+   */
+  smart_score: number | null;
+  /** Cumulative provider taker volume in shares, not cash or dollars. */
+  volume: number | null;
+  /** Aggregate recent flow direction on the market; null when unavailable. */
+  net_side: "BUY" | "SELL" | null;
+  /**
+   * Recorded conviction score; higher values indicate stronger conviction.
+   * @deprecated
+   */
+  conviction_score: number;
+  /** Piled-side graded holders read one-way: their fresh open legs across the signal game's markets (cross-market within the one game; moneyline+spread family only) all back the same team, or, when the market's holder scan was complete, Polymarket's currentValue shows no opposite leg on this market worth 10% of the backed leg and no fresh leg opposes it. Null when the directional read was not computed (no groupable game, no holder-level data on this ranking path, or the enrichment read failed) or classified nobody. */
+  one_way_holder_count: number | null;
+  /** Piled-side graded holders classified HEDGED across the game by fresh legs (they back two or more distinct teams). A wallet long both outcomes of this market is not one-way and not counted here. Null when the directional read was not computed or classified nobody. */
+  hedged_holder_count: number | null;
+  /** Piled-side graded USD held by one-way wallets (share-weighted allocation of backed_sharp_usd). Null when the directional read was not computed or classified nobody. */
+  one_way_graded_usd: number | null;
+  /** One-way fraction of the piled graded dollars, in [0, 1] -- the metric orthogonal to sharp_pct. Stale, unknown, hedged, and two-sided dollars dilute it toward zero (conservative). Null when the directional read was not computed or classified nobody. */
+  directional_confidence: number | null;
+  /** Recorded side ordering score; higher values sort first. */
+  directional_rank_score: number;
+  category_skill: EdgeHunterCategorySkill;
+  /** 1-based rank within the (min_grade-filtered) ranked result. */
+  rank: number;
 };
 
 /** One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null. */
@@ -601,6 +812,42 @@ export type EdgeHunterSignal = {
   directional_confidence: number | null;
   directional_rank_score: number;
   current_price: EdgeHunterPrice;
+};
+
+/** Full Edge Hunter signals list envelope. The view literal distinguishes advanced collections, including empty pages. */
+export type EdgeHunterSignalsResponse = {
+  object: "list";
+  view: "signals";
+  data: EdgeHunterRankedSignal[];
+  has_more: boolean;
+  next_cursor?: string;
+  total?: number;
+  meta: ResponseMeta;
+};
+
+/** Independent sports-board supply plus stored-universe terminal accounting for one canonical sport. */
+export type EdgeHunterSportFunnelReport = {
+  sport: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
+  /** Unique condition ids independently visible on the provider-first sports board. */
+  board_input: number;
+  /** Whether the always-applicable live-board source completed as available. False can mean a completed source failure (board_source_unavailable) or live-board work missing an internal configured-scope deadline or the outer fair-wave deadline (board_deadline_unavailable); inspect terminals to distinguish them. */
+  board_live_available: boolean;
+  /** Whether a provider-backed upcoming-board source is configured and applicable for this sport. False means not applicable, not provider failure. */
+  board_upcoming_configured: boolean;
+  /** Whether every configured upcoming-board scope completed as available. False with board_upcoming_configured=false means not applicable. When board_upcoming_configured is true and this flag is false, read board_upcoming_status for the cause (it reads unknown, i.e. no recorded cause, only on a snapshot cached before that field existed, which self-clears within one TTL): the board_source_unavailable and board_deadline_unavailable terminals are assigned only to already-started rows (the live half) and are structurally 0 for the upcoming source, so they never explain this flag. */
+  board_upcoming_available: boolean;
+  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to 3,000 rows or an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available. */
+  board_upcoming_status: "unknown" | "not_configured" | "available" | "capacity_limited" | "source_unavailable" | "cold_unavailable" | "deadline_unavailable";
+  /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
+  board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "euroleague-basketball" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
+  /** Stored-universe rows plus provider-board rows missing from storage. */
+  input: number;
+  /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means exact admission by the funded route's raw shared signals query before provider/holder enrichment; recent-flow rows rejected by its event, bucket, or total caps remain eligible for wider_holder measurement. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means an attempted holder-provider read failed; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable. */
+  terminals: Record<string, number>;
+  /** Sum of every sparse terminal count. */
+  terminal_total: number;
+  /** True exactly when input equals terminal_total. */
+  reconciled: boolean;
 };
 
 export type EventReplayEvent = {
@@ -2508,9 +2755,9 @@ export type ResponseMeta = {
   ranking_generation?: number;
   /** Authoritative RFC3339 timestamp from cache_generations.updated_at for ranking_generation. It is read in the same repeatable-read snapshot as the leaderboard rows and is not request time, cache write time, or row insertion order. */
   ranking_as_of?: string;
-  /** Compatibility field from the retired sports-edge signal APIs. Edge Hunter omits this field from meta; read data.directional_source for whether the directional read ran (live) or failed (degraded). This is independent of data.ranking_source. */
+  /** Directional evidence provenance for Edge Hunter signals collections. The default board carries this provenance in data.directional_source and omits this optional meta field. */
   directional_source?: "live" | "degraded";
-  /** Compatibility field from the retired sports-edge signal APIs. Edge Hunter omits this field from meta; read data.ranking_source for its live or db_only ranking input path. */
+  /** Ranking evidence provenance for Edge Hunter signals collections. The default board carries this clock/provenance in data.ranking_source and omits this optional meta field. */
   ranking_source?: "live" | "db_only";
   /** Whole filtered snapshot category-evidence status before pagination. Operational live always remains partial source coverage. */
   category_skill_source?: "live" | "partial" | "degraded" | "unavailable";
@@ -2520,7 +2767,7 @@ export type ResponseMeta = {
   category_skill_scope?: "observed_goldsky_primary_taker_fill";
   category_skill_source_coverage?: "partial_whale_threshold_fills" | "graded_wallet_fills";
   category_skill_observation_started_at?: string;
-  /** Whole-model operational readiness captured with the category model snapshot. Present on category-enriched responses even when the filtered signal list is empty. When true, category_skill_source is degraded and the ranked sports snapshot uses the shorter degraded cache TTL. */
+  /** Whole-model operational readiness captured with the category model snapshot. Present on category-enriched responses even when the filtered signal list is empty. When true, category_skill_source is degraded and Edge Hunter signals uses the shorter degraded cache TTL. */
   category_skill_model_operationally_degraded?: boolean;
   category_skill_status_counts?: {
     live: number;
@@ -2529,9 +2776,9 @@ export type ResponseMeta = {
     unknown: number;
     degraded: number;
   };
-  /** Legacy compatibility metadata for the retired sports-edge signal APIs: SHA-256 of funded signal membership, order, rank and cursor before category-skill enrichment. Edge Hunter does not emit this field. */
+  /** SHA-256 of the funded signal membership/order/rank/cursor vector immediately before category-skill enrichment. Edge Hunter signals view only. */
   category_skill_base_payload_hash?: string;
-  /** Legacy compatibility metadata for the retired sports-edge signal APIs: independent SHA-256 recomputation after category-skill enrichment. Equality with category_skill_base_payload_hash proves the retired snapshot retained its funded inputs. Edge Hunter does not emit this field. */
+  /** Independent SHA-256 recomputation over the same base fields immediately after category-skill enrichment. Equality with category_skill_base_payload_hash proves category-skill enrichment did not change funded inputs. Edge Hunter signals view only. */
   category_skill_enriched_base_payload_hash?: string;
 };
 
@@ -3690,7 +3937,7 @@ export interface OperationData {
   getCombosSummary: CombosSummary;
   getCoverage: Platforms;
   getDailyReportSnapshot: ReportSnapshot;
-  getEdgeHunter: EdgeHunterBoard;
+  getEdgeHunter: EdgeHunterBoard | EdgeHunterRankedSignal[] | EdgeHunterObservation[];
   getEventReplaySince: EventReplayEvent[];
   getGame: Game;
   getHealth: {
@@ -4053,7 +4300,19 @@ export interface OperationQuery {
     date: string;
   };
   getEdgeHunter: {
-    /** Kickoff window in hours from the snapshot anchor. Defaults to 48; integer values below 1 or above 48 are clamped to 1 or 48. */
+    /** Response mode. board preserves the full quoted board; signals exposes ranked records and category evidence; observations exposes cohort measurements and accountable funnel evidence. Defaults to board. */
+    view?: "board" | "signals" | "observations";
+    /** Optional canonical sport filter for signals and observations. Raw provider aliases canonicalize; non-sport categories return an empty collection. Rejected in board. */
+    category?: string;
+    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
+    cohort?: "wider_holder" | "in_play" | "emerging_pile";
+    /** Signals only: S, A or B, default B. Requires at least one piled-side holder at the selected floor or better; it does not remove other holders. Rejected for board and observations. */
+    min_grade?: "S" | "A" | "B";
+    /** Page size for signals and observations: defaults to 20 and clamps integer values to 1..100. Rejected in board. */
+    limit?: number;
+    /** Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, normalized filters, source snapshot and ordering; observation cursors also bind cohort and emerging cutoff. Replaced snapshots return cursor_expired. Restart at page one when migrating from retired route cursors. Rejected in board. */
+    cursor?: string;
+    /** Kickoff window for board (default 48) or signals (default 12). Integer values clamp to 1..48. Rejected for observations, whose pre-game universe is fixed at 48 hours with a 12-hour in-play kickoff lookback. */
     horizon_hours?: number;
   };
   getEventReplaySince: {
@@ -4957,11 +5216,7 @@ export interface OperationResponse {
     data: OperationData["getDailyReportSnapshot"];
     meta: ResponseMeta;
   };
-  getEdgeHunter: {
-    object: "edge_hunter";
-    data: OperationData["getEdgeHunter"];
-    meta: ResponseMeta;
-  };
+  getEdgeHunter: EdgeHunterBoardResponse | EdgeHunterSignalsResponse | EdgeHunterObservationsResponse;
   getEventReplaySince: {
     object: "event_replay";
     data: OperationData["getEventReplaySince"];
