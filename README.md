@@ -251,6 +251,7 @@ A Pro credential throws `MaxPlanRequiredError` (403 `forbidden`,
 same key. All four previous sports-edge and pre-game-side paths are retired
 and return 410 `endpoint_retired`. Their list and conditional-read methods
 were removed in SDK 0.20.0. Migrate to `client.edgeHunter.get()`.
+SDK 0.20.1 adds `endpoint_retired` to the shared error types and corrects the board provenance documentation; runtime helper behavior is unchanged.
 
 ### Beyond the JSON envelope
 
