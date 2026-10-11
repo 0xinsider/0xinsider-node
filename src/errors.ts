@@ -29,6 +29,7 @@ export const API_ERROR_CODES = [
   "subscription_required",
   "forbidden",
   "not_found",
+  "endpoint_retired",
   "account_locked",
   "rate_limited",
   "rate_limit_unavailable",
@@ -121,6 +122,11 @@ export const API_ERROR_REASONS = [
   // could not be met by the stored body. The response carries the requested
   // ceiling and the measured clock when one exists; retrying does not refresh it.
   "freshness_ceiling_unsatisfied",
+  // 403 `forbidden` refinement (#23085): the key is valid and its account is
+  // on Pro, but the Edge Hunter route is part of Max. Not a deleted account: every Pro route keeps working with the
+  // same key. Dispatched to MaxPlanRequiredError below.
+  "max_plan_required",
+  "endpoint_retired",
 ] as const;
 
 export type ApiErrorReason = (typeof API_ERROR_REASONS)[number];
@@ -473,6 +479,37 @@ export class ForbiddenError extends OxinsiderApiError {
   }
 }
 
+/**
+ * 403 `reason: max_plan_required` - the key is valid and its account is on
+ * Pro, but Edge Hunter is part of Max. Every Pro route
+ * keeps working with the same key, so do not disable it; surface `upgradeUrl`
+ * to your own user. A retry never clears it.
+ */
+export class MaxPlanRequiredError extends ForbiddenError {
+  override readonly reason = "max_plan_required" as const;
+  /** Where a Pro account upgrades to Max. */
+  readonly upgradeUrl = "https://0xinsider.com/pricing";
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
+    this.name = "MaxPlanRequiredError";
+  }
+}
+
+/** 410 - this endpoint no longer serves data. Migrate; never retry this path. */
+export class EndpointRetiredError extends OxinsiderApiError {
+  override readonly code = "endpoint_retired" as const;
+  override readonly reason = "endpoint_retired" as const;
+  readonly replacementPath = "/api/v1/edge-hunter";
+  constructor(status: number, body: unknown, transport: ApiErrorTransportMetadata = {}) {
+    super(status, body, transport);
+    this.name = "EndpointRetiredError";
+  }
+}
+
 /** 404 - the requested resource does not exist. */
 export class NotFoundError extends OxinsiderApiError {
   override readonly code = "not_found" as const;
@@ -704,8 +741,8 @@ export class UnknownEndpointError extends NotFoundError {
 
 /**
  * 404 `reason: trader_not_tracked` - the wallet is real and the URL is right, but
- * the trader is outside the HOT/WARM sync tiers so we do not capture this data
- * for them (#7209). Stop asking for this wallet; do not hunt for a different URL.
+ * the trader is not on the warm sync tier (the wallets we sync most often), so we
+ * do not capture this data for them (#7209). Stop asking for this wallet; do not hunt for a different URL.
  */
 export class TraderNotTrackedError extends NotFoundError {
   override readonly reason = "trader_not_tracked" as const;
@@ -789,6 +826,8 @@ export function errorFromResponse(
   // "warming" vs "rate limiter down". Falling through to `code` here is what made
   // the SDK re-assert the very lie the backend removed.
   switch (parsed?.reason) {
+    case "endpoint_retired":
+      return new EndpointRetiredError(status, body, metadata);
     case "freshness_ceiling_unsatisfied":
       return new FreshnessCeilingUnsatisfiedError(status, body, metadata);
     case "pick_not_released":
@@ -813,6 +852,8 @@ export function errorFromResponse(
       return new SandboxApiKeyError(status, body, metadata);
     case "api_key_in_query":
       return new ApiKeyInQueryError(status, body, metadata);
+    case "max_plan_required":
+      return new MaxPlanRequiredError(status, body, metadata);
     case "unknown_query_parameter":
       return new UnknownQueryParameterError(status, body, metadata);
     default:
@@ -820,6 +861,8 @@ export function errorFromResponse(
   }
 
   switch (code) {
+    case "endpoint_retired":
+      return new EndpointRetiredError(status, body, metadata);
     case "bad_request":
       return new BadRequestError(status, body, metadata);
     case "invalid_api_key":

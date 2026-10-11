@@ -223,81 +223,34 @@ access lapses and returns `credential_status` plus
 paid data routes still return `402 subscription_required` until access is
 renewed.
 
-For `listPreGameSides`, require every row's `category_skill` object and
-compare `meta.category_skill_base_payload_hash` with
-`meta.category_skill_enriched_base_payload_hash` before consuming category
-evidence. The evidence is Polymarket-only, forward-observed, and explicitly
-partial; `degraded` or mismatched hashes must not be treated as a measured edge.
+### Edge Hunter (Max only)
 
-Rows carry `side`, `ranked_at`, `backing_score` and `side_share`. The older
-`piled_side`, `signal_created_at`, `conviction_score` and `smart_score` keys
-carry the same values and stay on the wire. `listSportsEdgeSignals` and
-`listSportsEdgeObservations` remain as deprecated aliases on the deprecated
-`/api/v1/sports-edge-*` paths, which answer with `Deprecation` and successor
-`Link` headers.
-
-### Observation-only pre-game side cohorts
-
-`listPreGameSideObservations` exposes the measured `wider_holder`, the
-overlapping `emerging_pile` projection, and provider-confirmed `in_play`
-cohorts without changing the funded pre-game sides route. The response
-includes `snapshot_as_of` and a
-required snapshot-wide operational/unknown-completeness `degraded` verdict plus
-a per-sport terminal-reason `funnel`; every row is tagged
-`observation_only: true`. Do not route these rows to an order executor.
+Read the same experimental board as [Edge Hunter](https://0xinsider.com/sports/edge):
 
 ```ts
-const tennis = await client.listPreGameSideObservations({
-  cohort: "wider_holder",
-  category: "Tennis",
-  limit: 20,
-});
-
-console.log(tennis.degraded, tennis.data, tennis.funnel.sports);
-const previousEtag = tennis.meta.etag;
-```
-
-Treat `degraded: true` as partial evidence even when a row or the funnel's
-single terminal reason does not independently expose every contributing
-operational or unknown-completeness failure. `capacity_limited` is different:
-it records intentional bounded provider-work admission, remains accountable in
-the funnel, and does not by itself set `degraded: true`.
-
-All category and all-sports cache scopes share one global observation
-provider-work admission. Healthy `wider_holder` requests may reuse a snapshot
-for about 180 seconds. `emerging_pile` projects `wider_holder` rows with finite
-`sharp_pct` in the `[0.75, 0.85)` band, `holder_scan_complete: true`, and a
-kickoff after the first-page projection cutoff. It overlaps the `wider_holder`
-source and is not arrival history or an independent denominator. `in_play`
-never serves a cached observation snapshot older than about 30 seconds and
-fails closed when the provider live-board snapshot is stale or unavailable.
-
-The SDK copies a successful response's weak semantic `ETag` header into
-`meta.etag`; it is client metadata, not an additional field in the server's
-JSON body. The validator covers the stable page payload, including the stable
-page position in `next_cursor`, but excludes request-specific `meta` and, for
-`emerging_pile`, the opaque projection cutoff inside that cursor.
-
-For a conditional request, use `listPreGameSideObservationsConditional()` so a
-`304` returns the typed `{ object: "not_modified", data: null, meta }` result
-while a `200` retains the full observation response type:
-
-```ts
-import { isApiNotModifiedResponse } from "@0xinsider/sdk";
-
-if (previousEtag) {
-  const conditional = await client.listPreGameSideObservationsConditional(
-    { cohort: "wider_holder", category: "Tennis", limit: 20 },
-    {
-      headers: { "If-None-Match": previousEtag },
-    },
-  );
-
-  if (isApiNotModifiedResponse(conditional)) {
-    console.log("snapshot unchanged");
-  }
+const board = await client.edgeHunter.get({ horizon_hours: 48 });
+if (board.object === "edge_hunter") {
+  console.log(board.data.total, board.data.rows, board.data.as_of);
 }
 ```
+
+The board covers all sports and esports, uses a fixed B grade floor, and returns
+at most 30 ranked rows. `total` counts rows before that cap. `horizon_hours`
+defaults to 48 and is clamped to 1..48. There is no category, cohort, cursor,
+limit, or minimum-grade option, and this endpoint does not provide an ETag.
+
+Every row includes provider participants, both outcome quotes, and backed-side
+analytics. Current prices are decimal strings with their own `basis`, `ts`,
+and optional `validated_at`; compare those clocks independently from `as_of`.
+Null means unavailable. `ranking_source: "db_only"` and
+`directional_source: "degraded"` identify weaker evidence. This board is
+analytics, not an instruction to place an order.
+
+A Pro credential throws `MaxPlanRequiredError` (403 `forbidden`,
+`reason: max_plan_required`); every other Pro route keeps working with the
+same key. All four previous sports-edge and pre-game-side paths are retired
+and return 410 `endpoint_retired`. Their list and conditional-read methods
+were removed in SDK 0.20.0. Migrate to `client.edgeHunter.get()`.
 
 ### Beyond the JSON envelope
 

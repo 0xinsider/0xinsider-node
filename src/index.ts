@@ -66,6 +66,7 @@ export type {
   CategorySkillStatusCounts,
   ClientMeta,
   ComboFillsParams,
+  EdgeHunterParams,
   ConvenienceOptions,
   EnvelopeOperationId,
   ExploreMarketsParams,
@@ -103,20 +104,6 @@ export type {
   TraderExportDownloadTarget,
   SharpMoneyFlowsParams,
   PickQualifyingExpert,
-  PreGameSidesParams,
-  PreGameSideObservationsParams,
-  PreGameSideObservationsResponse,
-  SportsEdgeSignalsParams,
-  SportsEdgeObservationBoardUnavailableScope,
-  SportsEdgeObservationBoardUpcomingStatus,
-  SportsEdgeObservationCohort,
-  SportsEdgeObservationDirectionalStatus,
-  SportsEdgeObservationOutcomeIndex,
-  SportsEdgeObservationProviderSource,
-  SportsEdgeObservationSport,
-  SportsEdgeObservationTopGrade,
-  SportsEdgeObservationsParams,
-  SportsEdgeObservationsResponse,
   SuspiciousTradesListParams,
   TennisTour,
   LargeTradeHistoryParams,
@@ -134,6 +121,7 @@ export {
   API_ERROR_REASONS,
   AccountLockedError,
   BadRequestError,
+  EndpointRetiredError,
   CursorExpiredError,
   ExportIntegrityError,
   ForbiddenError,
@@ -141,6 +129,7 @@ export {
   InternalServerError,
   InvalidApiKeyError,
   InvalidResponseError,
+  MaxPlanRequiredError,
   NotFoundError,
   OxinsiderApiError,
   PickNotReleasedError,
@@ -335,6 +324,12 @@ export type {
   CreateWebhookVerificationAttemptRequest,
   DataQuality,
   DataQualityGroup,
+  EdgeHunterBoard,
+  EdgeHunterOutcome,
+  EdgeHunterParticipant,
+  EdgeHunterPrice,
+  EdgeHunterRow,
+  EdgeHunterSignal,
   EventReplayEvent,
   EventReplayFreshness,
   EventReplayMeta,
@@ -416,12 +411,6 @@ export type {
   PositionExact,
   PositionTimelineEvent,
   PotdEntryAuthorization,
-  PreGameSide,
-  PreGameSideCategorySkill,
-  PreGameSideFunnelReport,
-  PreGameSideObservation,
-  PreGameSideObservationTerminalReason,
-  PreGameSideSportFunnelReport,
   ProofPendingPickSlot,
   ReportPayload,
   ReportReconciliation,
@@ -505,23 +494,3 @@ export type WhaleTrade = LargeTrade;
 export type WhaleTradeDetail = LargeTradeDetail;
 /** @deprecated Use {@link LargeTradeHistoryMeta} (#16304). */
 export type WhaleTradeHistoryMeta = LargeTradeHistoryMeta;
-import type {
-  PreGameSide,
-  PreGameSideCategorySkill,
-  PreGameSideFunnelReport,
-  PreGameSideObservation,
-  PreGameSideObservationTerminalReason,
-  PreGameSideSportFunnelReport,
-} from "./schema.js";
-/** @deprecated Use {@link PreGameSide} (#16310). */
-export type SportsEdgeSignal = PreGameSide;
-/** @deprecated Use {@link PreGameSideCategorySkill} (#16310). */
-export type SportsEdgeSignalCategorySkill = PreGameSideCategorySkill;
-/** @deprecated Use {@link PreGameSideObservation} (#16310). */
-export type SportsEdgeObservation = PreGameSideObservation;
-/** @deprecated Use {@link PreGameSideObservationTerminalReason} (#16310). */
-export type SportsEdgeObservationTerminalReason = PreGameSideObservationTerminalReason;
-/** @deprecated Use {@link PreGameSideFunnelReport} (#16310). */
-export type SportsEdgeFunnelReport = PreGameSideFunnelReport;
-/** @deprecated Use {@link PreGameSideSportFunnelReport} (#16310). */
-export type SportsEdgeSportFunnelReport = PreGameSideSportFunnelReport;
