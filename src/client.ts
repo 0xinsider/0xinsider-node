@@ -1361,14 +1361,37 @@ export type GamesListParams = OperationQuery["listGames"];
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
 
-/** The unchanged quoted board; advanced-only parameters are unavailable here. */
-export type EdgeHunterBoardParams = Pick<OperationQuery["getEdgeHunter"], "horizon_hours"> & { view?: "board" };
+/** Optional selection axes shared by every Max-only Edge Hunter view. */
+export type EdgeHunterSelectionParams = Pick<OperationQuery["getEdgeHunter"],
+  "kind" | "sports" | "leagues" | "market_types" | "condition_ids" | "event_slugs" | "series_slugs" | "category">;
+/** Quoted board selection, grade floor and cap; existing defaults remain compatible. */
+export type EdgeHunterBoardParams = EdgeHunterSelectionParams &
+  Pick<OperationQuery["getEdgeHunter"], "horizon_hours" | "min_grade" | "limit"> & { view?: "board" };
 /** Full ranked records with category, grade and horizon projection before pagination. */
-export type EdgeHunterSignalsParams = Pick<OperationQuery["getEdgeHunter"], "category" | "limit" | "cursor" | "horizon_hours" | "min_grade"> & { view: "signals" };
+export type EdgeHunterSignalsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "horizon_hours" | "min_grade"> & { view: "signals" };
 /** Full observation evidence; cohort is required, including for empty pages. */
-export type EdgeHunterObservationsParams = Pick<OperationQuery["getEdgeHunter"], "category" | "limit" | "cursor"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
+export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
 export type EdgeHunterAdvancedParams = EdgeHunterSignalsParams | EdgeHunterObservationsParams;
 export type EdgeHunterParams = EdgeHunterBoardParams | EdgeHunterAdvancedParams;
+const EDGE_HUNTER_SELECTION_ARRAYS = ["sports", "leagues", "market_types", "condition_ids", "event_slugs", "series_slugs"] as const;
+const EDGE_HUNTER_SELECTION_AXES = ["kind", "category", ...EDGE_HUNTER_SELECTION_ARRAYS] as const;
+
+function requestedEdgeHunterAxes(query: ApiRequestOptions["query"] = {}): (typeof EDGE_HUNTER_SELECTION_AXES)[number][] {
+  return EDGE_HUNTER_SELECTION_AXES.filter(key => {
+    const value = query[key];
+    if (value === undefined || value === null) return false;
+    return key !== "category" || typeof value !== "string" || value.trim().length > 0;
+  });
+}
+
+function requireEdgeHunterSelectionEcho(envelope: object, axes: ReturnType<typeof requestedEdgeHunterAxes>): void {
+  if (axes.length === 0) return;
+  const selection: unknown = Reflect.get(envelope, "selection");
+  if (typeof selection !== "object" || selection === null || Array.isArray(selection) ||
+    axes.some(key => !Object.hasOwn(selection, key))) {
+    throw new InvalidResponseError(200, "Selected Edge Hunter response is missing its normalized selection echo", envelope);
+  }
+}
 export type EdgeHunterBoardResult = ClientEnvelope<EdgeHunterBoardResponse> | ApiNotModifiedResponse;
 export type EdgeHunterSignalsResult = ClientEnvelope<EdgeHunterSignalsResponse> | ApiNotModifiedResponse;
 export type EdgeHunterObservationsResult = ClientEnvelope<EdgeHunterObservationsResponse> | ApiNotModifiedResponse;
@@ -2023,6 +2046,9 @@ export class OxinsiderApiClient {
       }
       const envelope = await parseJson(response);
       if (isApiEnvelope<unknown>(envelope)) {
+        if (operationId === "getEdgeHunter") {
+          requireEdgeHunterSelectionEcho(envelope, requestedEdgeHunterAxes(options.query));
+        }
         const etag = response.headers.get("etag");
         const sandbox = response.headers.get("x-oxi-sandbox") === "true";
         const queryIgnored = response.headers.get("x-query-ignored");
@@ -3183,6 +3209,14 @@ export class OxinsiderApiClient {
   }
 
   buildUrl(operation: ApiClientOperation, options: ApiRequestOptions): string {
+    if (operation.operationId === "getEdgeHunter") {
+      for (const key of EDGE_HUNTER_SELECTION_ARRAYS) {
+        const value = options.query?.[key];
+        if (Array.isArray(value) && (value.length === 0 || value.length > 100)) {
+          throw new TypeError(`Edge Hunter ${key} selection must contain 1..100 values`);
+        }
+      }
+    }
     const url = resolveApiUrl(
       this.baseUrl,
       interpolatePath(operation.path, options.path ?? {}),
@@ -3230,7 +3264,8 @@ export class OxinsiderApiClient {
         );
       }
     }
-    if (options.strictQuery) {
+    if (options.strictQuery || (operation.operationId === "getEdgeHunter" &&
+      requestedEdgeHunterAxes(options.query).length > 0)) {
       headers.set("x-query-validation", "strict");
     }
     return headers;

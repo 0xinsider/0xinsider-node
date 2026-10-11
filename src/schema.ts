@@ -513,12 +513,13 @@ export type DataQualityGroup = {
   reason?: string;
 };
 
-/** The full Edge Hunter board shown at https://0xinsider.com/sports/edge, for Max credentials. It covers all sports and esports with a fixed B grade floor and returns the first 30 ranked rows. No cursor or observation cohorts are exposed. */
+/** The full Max-only Edge Hunter board. Defaults cover all sports and esports with B grade floor, 48-hour horizon and at most 30 rows; common selections, legacy category, min_grade and limit narrow that projection. No pagination or ETag. Rows add frozen market_context discovery metadata. */
 export type EdgeHunterBoard = {
   /** When the ranked snapshot was computed. Date current quotes with their own ts values. */
   as_of: string;
   horizon_hours: number;
-  min_grade: "B";
+  /** Requested holder-presence grade floor, S/A/B. A holder at that grade or better admits the row; other holders remain visible. */
+  min_grade: "S" | "A" | "B";
   /** live uses the current graded holder pile; db_only is a weaker stored-data fallback. */
   ranking_source: "live" | "db_only";
   /** degraded means directional enrichment was unavailable. */
@@ -527,7 +528,7 @@ export type EdgeHunterBoard = {
   viewer: "max";
   /** Always null: Edge Hunter has no free signal slot. */
   free_rank: number | null;
-  /** Ranked rows in this window before the 30-row cap. */
+  /** Ranked rows after normalized selections and grade filtering, before the view-specific limit cap. */
   total: number;
   rows: EdgeHunterRow[];
 };
@@ -536,6 +537,8 @@ export type EdgeHunterBoardResponse = {
   object: "edge_hunter";
   data: EdgeHunterBoard;
   meta: ResponseMeta;
+  /** Normalized axes requested with a selector or category; omitted on an unselected default read. */
+  selection?: EdgeHunterSelection;
 };
 
 /** Category evidence over the full uncapped piled-side S/A/B holder allocation. It never changes signal membership, ordering, routing, or sizing. */
@@ -565,6 +568,18 @@ export type EdgeHunterCategorySkill = {
 /** Per-sport accountable funnel for the full observation snapshot, returned on every page. */
 export type EdgeHunterFunnelReport = {
   sports: EdgeHunterSportFunnelReport[];
+};
+
+/** Metadata frozen with the read generation. Values are nullable when the provider/canonical source has no value; no title-based inference or current-clock fallback. */
+export type EdgeHunterMarketContext = {
+  /** Normalized machine/provider league identity. Known wire/tag aliases normalize; other provider identities match exact lowercase keys. */
+  league: string | null;
+  /** Exact provider series slug, usable in series_slugs selection. */
+  series_slug: string | null;
+  /** Exact provider sports_market_type, usable in market_types selection. */
+  market_type: string | null;
+  /** Exact local canonical metadata writer market_canonical.updated_at. This is not a provider observation clock; null means unavailable. */
+  metadata_updated_at: string | null;
 };
 
 /** One explicitly observation-only holder-pile measurement. It is evidence for cohort evaluation, not an execution instruction, and is isolated from the funded Edge Hunter signals view. */
@@ -645,6 +660,8 @@ export type EdgeHunterObservation = {
   directional_rank_score: number;
   /** 1-based rank within this observation cohort and snapshot. */
   rank: number;
+  /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
+  market_context: EdgeHunterMarketContext | null;
 };
 
 /** Full Edge Hunter observations list envelope. The view literal distinguishes advanced collections, including empty pages. */
@@ -661,6 +678,8 @@ export type EdgeHunterObservationsResponse = {
   degraded: boolean;
   funnel: EdgeHunterFunnelReport;
   meta: ResponseMeta;
+  /** Normalized axes requested with a selector or category; omitted on an unselected default read. */
+  selection?: EdgeHunterSelection;
 };
 
 /** Closed 25-value terminal-reason vocabulary for the accountable Edge Hunter observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
@@ -770,6 +789,8 @@ export type EdgeHunterRankedSignal = {
   category_skill: EdgeHunterCategorySkill;
   /** 1-based rank within the (min_grade-filtered) ranked result. */
   rank: number;
+  /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
+  market_context: EdgeHunterMarketContext | null;
 };
 
 /** One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null. */
@@ -789,6 +810,27 @@ export type EdgeHunterRow = {
   image: string | null;
   outcomes: EdgeHunterOutcome[];
   signal: EdgeHunterSignal;
+  /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
+  market_context: EdgeHunterMarketContext | null;
+};
+
+/** Normalized requested selection axes. Only requested axes appear; omitted for unselected defaults. Arrays are nonempty, sorted and deduplicated. OR within an axis, AND across axes. */
+export type EdgeHunterSelection = {
+  kind?: "sports" | "esports";
+  /** Resolved legacy canonical bucket or non_sport for an unmappable category. */
+  category?: string;
+  /** Canonical sport buckets, including Esports and Table Tennis, matched case-insensitively. Unknown names and league aliases such as NFL are rejected in sports; use category for legacy bucket aliases or leagues for exact league selection. Omission covers every sport admitted by the selected view. */
+  sports?: string[];
+  /** Normalized machine/provider league identities, such as nfl, cfb, nba, epl, cs2, lol, dota2 or valorant. Known wire/tag aliases normalize; other provider keys match exact lowercase identity. This is separate from category: category=NFL selects Football, while leagues=nfl selects NFL only. Read market_context.league for authoritative values. */
+  leagues?: string[];
+  /** Exact provider sports_market_type values. This is an open provider taxonomy, distinct from exact market IDs. Read market_context.market_type; missing selected metadata excludes the row. */
+  market_types?: string[];
+  /** Exact market selections. Raw provider condition IDs and the existing mkt_-prefixed aliases normalize to raw IDs. Unknown well-formed IDs return an empty result. */
+  condition_ids?: string[];
+  /** Exact provider event slugs. Use event_slug returned on the row; no title or slug-prefix guessing. */
+  event_slugs?: string[];
+  /** Exact provider series slugs. Read market_context.series_slug; a missing selected series excludes the row. */
+  series_slugs?: string[];
 };
 
 /** Backed-side analytics from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions. */
@@ -823,6 +865,8 @@ export type EdgeHunterSignalsResponse = {
   next_cursor?: string;
   total?: number;
   meta: ResponseMeta;
+  /** Normalized axes requested with a selector or category; omitted on an unselected default read. */
+  selection?: EdgeHunterSelection;
 };
 
 /** Independent sports-board supply plus stored-universe terminal accounting for one canonical sport. */
@@ -4302,18 +4346,32 @@ export interface OperationQuery {
   getEdgeHunter: {
     /** Response mode. board preserves the full quoted board; signals exposes ranked records and category evidence; observations exposes cohort measurements and accountable funnel evidence. Defaults to board. */
     view?: "board" | "signals" | "observations";
-    /** Optional canonical sport filter for signals and observations. Raw provider aliases canonicalize; non-sport categories return an empty collection. Rejected in board. */
+    /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
     category?: string;
     /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
-    /** Signals only: S, A or B, default B. Requires at least one piled-side holder at the selected floor or better; it does not remove other holders. Rejected for board and observations. */
+    /** Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations. */
     min_grade?: "S" | "A" | "B";
-    /** Page size for signals and observations: defaults to 20 and clamps integer values to 1..100. Rejected in board. */
+    /** Board row cap defaults to 30 and clamps integer values to 1..30; total counts selected admitted rows before the cap. Signals and observations page size defaults to 20 and clamps to 1..100. */
     limit?: number;
-    /** Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, normalized filters, source snapshot and ordering; observation cursors also bind cohort and emerging cutoff. Replaced snapshots return cursor_expired. Restart at page one when migrating from retired route cursors. Rejected in board. */
+    /** Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, every normalized selection axis, grade/horizon where applicable, source snapshot and ordering; observations also bind cohort and emerging cutoff. Changed selections or replaced snapshots return cursor_expired. Rejected in board. */
     cursor?: string;
     /** Kickoff window for board (default 48) or signals (default 12). Integer values clamp to 1..48. Rejected for observations, whose pre-game universe is fixed at 48 hours with a 12-hour in-play kickoff lookback. */
     horizon_hours?: number;
+    /** All views: sports excludes the Esports bucket; esports selects only Esports. Omit for both. Combines with other selections using AND. Selected reads echo normalized selection and require frozen metadata readiness. */
+    kind?: "sports" | "esports";
+    /** Canonical sport buckets, including Esports and Table Tennis, matched case-insensitively. Unknown names and league aliases such as NFL are rejected in sports; use category for legacy bucket aliases or leagues for exact league selection. Omission covers every sport admitted by the selected view. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    sports?: string[];
+    /** Normalized machine/provider league identities, such as nfl, cfb, nba, epl, cs2, lol, dota2 or valorant. Known wire/tag aliases normalize; other provider keys match exact lowercase identity. This is separate from category: category=NFL selects Football, while leagues=nfl selects NFL only. Read market_context.league for authoritative values. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    leagues?: string[];
+    /** Exact provider sports_market_type values. This is an open provider taxonomy, distinct from exact market IDs. Read market_context.market_type; missing selected metadata excludes the row. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    market_types?: string[];
+    /** Exact market selections. Raw provider condition IDs and the existing mkt_-prefixed aliases normalize to raw IDs. Unknown well-formed IDs return an empty result. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    condition_ids?: string[];
+    /** Exact provider event slugs. Use event_slug returned on the row; no title or slug-prefix guessing. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    event_slugs?: string[];
+    /** Exact provider series slugs. Read market_context.series_slug; a missing selected series excludes the row. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags. */
+    series_slugs?: string[];
   };
   getEventReplaySince: {
     /** Opaque event replay cursor returned as next_cursor by a prior response. The cursor maps to the global (whale_alerts.inserted_xid, whale_alerts.id) commit-order position, is valid across backend replicas, and is bound to the filter set the walk ran with (trader, condition_id, min_grade, min_size): presenting it under different filters answers 400 bad_request with error.reason cursor_expired, and the walk restarts without a cursor. Cursors issued before 2026-09-22 (id-only) stay accepted and are bound to no filters. Omit to fetch the latest durable public suffix. */
