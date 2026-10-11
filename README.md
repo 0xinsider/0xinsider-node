@@ -234,9 +234,10 @@ if (board.object === "edge_hunter") {
 }
 ```
 
-The board covers all sports and esports, uses a fixed B grade floor, and returns
-at most 30 ranked rows. `total` counts rows before that cap. `horizon_hours`
-defaults to 48 and is clamped to 1..48. The default board accepts only `view` and `horizon_hours` and has no ETag or pagination.
+The board defaults cover all sports and esports with a B grade floor and at most
+30 ranked rows. `total` counts selected admitted rows before the cap.
+`horizon_hours` defaults to 48 and clamps to 1..48; `min_grade` accepts S/A/B
+and `limit` defaults to 30 and clamps to 1..30. The board has no ETag or pagination.
 
 Every row includes provider participants, both outcome quotes, and backed-side
 analytics. Current prices are decimal strings with their own `basis`, `ts`,
@@ -281,7 +282,7 @@ In-play reuse is capped at 30 seconds and fails closed without fresh source evid
 
 Literal view queries have distinct result types, including on empty pages. Advanced
 responses add `view: "signals" | "observations"` beside `object: "list"`. Both advanced
-views support ETag/304 and private revalidation. They read warmed generations only;
+views support ETag/304 and private revalidation. All public views read warmed generations only;
 missing/stale readiness returns 503 `read_model_warming` with `Retry-After: 5`
 without running holder/provider computation in the request. `getConditional()`
 accepts advanced views only. Parameters for another view return 400, and a refreshed
@@ -296,6 +297,55 @@ for await (const page of paginatePages(client, "getEdgeHunter", {
   maxPages: 2,
 })) console.log(page.view, page.funnel, page.data);
 ```
+
+SDK 0.22.0 adds common selections to every Edge Hunter view:
+
+```ts
+const nfl = await client.edgeHunter.get({ kind: "sports", leagues: ["nfl"], limit: 10 });
+if (nfl.object === "edge_hunter") {
+  console.log(nfl.selection, nfl.data.rows.map(row => row.market_context));
+}
+const selectedSignals = await client.edgeHunter.signals({
+  sports: ["Soccer", "Football"], market_types: ["moneyline"], min_grade: "A", limit: 20,
+});
+const selectedObservations = await client.edgeHunter.observations({
+  cohort: "in_play", kind: "esports", leagues: ["cs2", "lol"], limit: 20,
+});
+```
+
+| Selection | Meaning |
+| --- | --- |
+| `kind` | `sports` or `esports`; omit for both |
+| `sports` | Canonical sport buckets, including `Football`, `Soccer`, `Esports` and `Table Tennis`; case-insensitive |
+| `leagues` | Machine/provider league identities such as `nfl`, `epl`, `cs2` and `lol`; known wire/tag aliases normalize |
+| `market_types` | Exact provider `sports_market_type` values from `market_context.market_type` |
+| `condition_ids` | Exact markets by raw provider ID or `mkt_` alias |
+| `event_slugs` / `series_slugs` | Exact provider event/series identities from the row and `market_context.series_slug` |
+| `category` | Legacy canonical bucket alias: `NFL` selects all Football; use `leagues: ["nfl"]` for NFL only |
+
+Lists match OR within an axis and AND across axes. Each array must contain 1..100
+supplied values before server normalization and deduplication; empty SDK arrays
+fail before HTTP. The SDK serializes repeated bare query names, and the server
+also accepts CSV inside a value. Market types and event/series slugs are trimmed
+exact case-sensitive strings. Unknown canonical sport names are invalid; unknown
+provider identities or market IDs can yield an empty selected collection.
+
+A selected 200 response adds top-level `selection` with only requested normalized
+axes. Blank `category` retains omission behavior. Selected SDK reads always send
+`X-Query-Validation: strict`, even if `strictQuery: false` was supplied, and refuse
+responses missing their echo so an older serving instance cannot silently ignore
+new filters. Generic `call()`, `list()` and pagination use the same protection.
+Advanced cursors and ETags bind the normalized selection; restart at page one
+when changing it.
+
+Every row adds required nullable `market_context` with required nullable `league`,
+`series_slug`, `market_type` and `metadata_updated_at`. Discover exact selectors
+from those frozen facts. The clock is local `market_canonical.updated_at`, not a
+provider observation time. Unselected legacy cache generations may carry
+`market_context: null`; selected reads require a ready frozen sidecar and return
+503 warming if it is absent. Missing selected metadata excludes rows. Observation
+`funnel` remains source-generation/category accounting rather than a league/type/ID
+request-input census.
 
 ### Beyond the JSON envelope
 

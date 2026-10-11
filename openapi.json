@@ -32158,7 +32158,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Read Edge Hunter at https://0xinsider.com/sports/edge. All views require Max; an active Pro credential returns 403 forbidden with reason max_plan_required. view defaults to board and preserves the full all-sports quoted board, fixed B grade floor, 48-hour default and 30-row cap with total before the cap. view=signals returns the complete ranked records, category-skill evidence, category/min_grade/horizon filters and cursor pagination (default 20, maximum 100). Signals horizon defaults to 12 hours. view=observations requires wider_holder, in_play or emerging_pile cohort and returns full observation records, snapshot_as_of, degraded and accountable per-sport funnel diagnostics. Observations retain a 48-hour pre-game universe and 12-hour in-play kickoff lookback; in_play cached snapshots must be at most 30 seconds old and fail closed without fresh provider-live, holder and directional evidence. Both advanced views are warmed read models: requests only read a fresh generation and never run holder/provider computation. A missing or stale generation returns 503 read_model_warming with Retry-After: 5. Advanced views support semantic ETag/If-None-Match/304 and return private, no-cache. The default board has no ETag and no pagination. Parameters belonging to another view return 400; unknown names retain compatible/strict query validation. Observation price marks are market midpoints, not wallet entry prices; volume is shares. Snapshot and quote clocks are independent. Analytics is not an order instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded and source-generation/category funnel evidence. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -32202,7 +32202,7 @@
             "name": "category",
             "in": "query",
             "required": false,
-            "description": "Optional canonical sport filter for signals and observations. Raw provider aliases canonicalize; non-sport categories return an empty collection. Rejected in board.",
+            "description": "Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND.",
             "schema": {
               "type": "string"
             }
@@ -32221,7 +32221,7 @@
             "name": "min_grade",
             "in": "query",
             "required": false,
-            "description": "Signals only: S, A or B, default B. Requires at least one piled-side holder at the selected floor or better; it does not remove other holders. Rejected for board and observations.",
+            "description": "Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations.",
             "schema": {
               "type": "string",
               "enum": ["S", "A", "B"]
@@ -32231,19 +32231,19 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Page size for signals and observations: defaults to 20 and clamps integer values to 1..100. Rejected in board.",
+            "description": "Board row cap defaults to 30 and clamps integer values to 1..30; total counts selected admitted rows before the cap. Signals and observations page size defaults to 20 and clamps to 1..100.",
             "schema": {
               "type": "integer",
-              "default": 20,
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "default": 20
             }
           },
           {
             "name": "cursor",
             "in": "query",
             "required": false,
-            "description": "Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, normalized filters, source snapshot and ordering; observation cursors also bind cohort and emerging cutoff. Replaced snapshots return cursor_expired. Restart at page one when migrating from retired route cursors. Rejected in board.",
+            "description": "Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, every normalized selection axis, grade/horizon where applicable, source snapshot and ordering; observations also bind cohort and emerging cutoff. Changed selections or replaced snapshots return cursor_expired. Rejected in board.",
             "schema": {
               "type": "string"
             }
@@ -32255,6 +32255,118 @@
             "description": "Kickoff window for board (default 48) or signals (default 12). Integer values clamp to 1..48. Rejected for observations, whose pre-game universe is fixed at 48 hours with a 12-hour in-play kickoff lookback.",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "description": "All views: sports excludes the Esports bucket; esports selects only Esports. Omit for both. Combines with other selections using AND. Selected reads echo normalized selection and require frozen metadata readiness.",
+            "schema": {
+              "type": "string",
+              "enum": ["sports", "esports"]
+            }
+          },
+          {
+            "name": "sports",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Canonical sport buckets, including Esports and Table Tennis, matched case-insensitively. Unknown names and league aliases such as NFL are rejected in sports; use category for legacy bucket aliases or leagues for exact league selection. Omission covers every sport admitted by the selected view. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "leagues",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Normalized machine/provider league identities, such as nfl, cfb, nba, epl, cs2, lol, dota2 or valorant. Known wire/tag aliases normalize; other provider keys match exact lowercase identity. This is separate from category: category=NFL selects Football, while leagues=nfl selects NFL only. Read market_context.league for authoritative values. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "market_types",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Exact provider sports_market_type values. This is an open provider taxonomy, distinct from exact market IDs. Read market_context.market_type; missing selected metadata excludes the row. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "condition_ids",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Exact market selections. Raw provider condition IDs and the existing mkt_-prefixed aliases normalize to raw IDs. Unknown well-formed IDs return an empty result. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "event_slugs",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Exact provider event slugs. Use event_slug returned on the row; no title or slug-prefix guessing. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "series_slugs",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Exact provider series slugs. Read market_context.series_slug; a missing selected series excludes the row. All views. Repeat this query key or put comma-separated values inside a value. Values normalize, sort and deduplicate; at most 100 supplied values before deduplication. Values within this axis match OR; different selected axes match AND. An empty selection is invalid. Filtering precedes the board cap or advanced pagination and is bound to advanced cursors and ETags.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         ],
@@ -32344,7 +32456,7 @@
             }
           },
           "400": {
-            "description": "Invalid view or view-specific query value, missing observation cohort, parameter belonging to another view, invalid/mismatched cursor, or cursor_expired after a snapshot refresh. Send integers for horizon_hours and limit and S/A/B for signals min_grade. With X-Query-Validation: strict, an unsupported query name returns unknown_query_parameter.",
+            "description": "Invalid view, selector value or view-specific query value; empty or over-100 selector list; bracket selector name; missing observation cohort; parameter belonging to another view; invalid/mismatched cursor or cursor_expired after a snapshot refresh. Send integers for horizon_hours and limit and S/A/B for board or signals min_grade. With X-Query-Validation: strict, an unsupported query name returns unknown_query_parameter.",
             "content": {
               "application/json": {
                 "schema": {
@@ -32407,7 +32519,7 @@
             "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user (sliding window), on every authenticated route. (2) On the BATCH routes only: 2500 batch item units/minute per user, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch, which is the most item work a key can buy through the request limiter at all: a caller may spend their entire 100-request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. Every authenticated response carries X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month). (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until rate limit resets.",
+                "description": "Seconds before retrying when a warmed generation or required selection sidecar is unavailable; 5 for read_model_warming. Also applies to admission overload where documented.",
                 "schema": {
                   "type": "integer"
                 }
@@ -32461,10 +32573,10 @@
             }
           },
           "503": {
-            "description": "An advanced view has no fresh, ready source generation, or the Redis-backed rate limiter is unavailable. Signals and observations are warmed read models; the request never runs holder/provider computation or fabricates an empty complete collection. A missing or stale advanced generation returns read_model_warming with Retry-After: 5. Retry according to Retry-After and error.retry_at.",
+            "description": "A fresh warmed generation or required frozen selection sidecar is unavailable for any view. No request holder/provider computation occurs. Retry-After: 5 identifies the bounded retry time; missing metadata never widens a selected result.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until retry: 5 for an advanced read model warming or missing a fresh generation; the middleware supplies its own delay when the Redis-backed rate limiter is unavailable.",
+                "description": "Seconds before retrying when a warmed generation or required selection sidecar is unavailable; 5 for read_model_warming. Also applies to admission overload where documented.",
                 "schema": {
                   "type": "integer"
                 }
@@ -42935,7 +43047,8 @@
           "participants",
           "image",
           "outcomes",
-          "signal"
+          "signal",
+          "market_context"
         ],
         "properties": {
           "rank": {
@@ -43016,6 +43129,18 @@
           "signal": {
             "$ref": "#/components/schemas/EdgeHunterSignal",
             "nullable": true
+          },
+          "market_context": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EdgeHunterMarketContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead."
           }
         },
         "description": "One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null."
@@ -43047,7 +43172,9 @@
           },
           "min_grade": {
             "type": "string",
-            "const": "B"
+            "enum": ["S", "A", "B"],
+            "default": "B",
+            "description": "Requested holder-presence grade floor, S/A/B. A holder at that grade or better admits the row; other holders remain visible."
           },
           "ranking_source": {
             "type": "string",
@@ -43076,7 +43203,7 @@
           "total": {
             "type": "integer",
             "minimum": 0,
-            "description": "Ranked rows in this window before the 30-row cap."
+            "description": "Ranked rows after normalized selections and grade filtering, before the view-specific limit cap."
           },
           "rows": {
             "type": "array",
@@ -43086,7 +43213,7 @@
             }
           }
         },
-        "description": "The full Edge Hunter board shown at https://0xinsider.com/sports/edge, for Max credentials. It covers all sports and esports with a fixed B grade floor and returns the first 30 ranked rows. No cursor or observation cohorts are exposed."
+        "description": "The full Max-only Edge Hunter board. Defaults cover all sports and esports with B grade floor, 48-hour horizon and at most 30 rows; common selections, legacy category, min_grade and limit narrow that projection. No pagination or ETag. Rows add frozen market_context discovery metadata."
       },
       "EdgeHunterRankedSignal": {
         "type": "object",
@@ -43123,7 +43250,8 @@
           "side",
           "ranked_at",
           "backing_score",
-          "side_share"
+          "side_share",
+          "market_context"
         ],
         "properties": {
           "side": {
@@ -43291,6 +43419,18 @@
           "rank": {
             "type": "integer",
             "description": "1-based rank within the (min_grade-filtered) ranked result."
+          },
+          "market_context": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EdgeHunterMarketContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead."
           }
         }
       },
@@ -43454,7 +43594,8 @@
           "rank",
           "side",
           "backing_score",
-          "side_share"
+          "side_share",
+          "market_context"
         ],
         "properties": {
           "side": {
@@ -43661,6 +43802,18 @@
             "type": "integer",
             "minimum": 1,
             "description": "1-based rank within this observation cohort and snapshot."
+          },
+          "market_context": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EdgeHunterMarketContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead."
           }
         }
       },
@@ -43839,6 +43992,10 @@
           },
           "meta": {
             "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/EdgeHunterSelection",
+            "description": "Normalized axes requested with a selector or category; omitted on an unselected default read."
           }
         }
       },
@@ -43871,6 +44028,10 @@
           },
           "meta": {
             "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/EdgeHunterSelection",
+            "description": "Normalized axes requested with a selector or category; omitted on an unselected default read."
           }
         },
         "description": "Full Edge Hunter signals list envelope. The view literal distinguishes advanced collections, including empty pages."
@@ -43925,9 +44086,109 @@
           },
           "meta": {
             "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/EdgeHunterSelection",
+            "description": "Normalized axes requested with a selector or category; omitted on an unselected default read."
           }
         },
         "description": "Full Edge Hunter observations list envelope. The view literal distinguishes advanced collections, including empty pages."
+      },
+      "EdgeHunterSelection": {
+        "type": "object",
+        "description": "Normalized requested selection axes. Only requested axes appear; omitted for unselected defaults. Arrays are nonempty, sorted and deduplicated. OR within an axis, AND across axes.",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["sports", "esports"]
+          },
+          "category": {
+            "type": "string",
+            "description": "Resolved legacy canonical bucket or non_sport for an unmappable category."
+          },
+          "sports": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Canonical sport buckets, including Esports and Table Tennis, matched case-insensitively. Unknown names and league aliases such as NFL are rejected in sports; use category for legacy bucket aliases or leagues for exact league selection. Omission covers every sport admitted by the selected view."
+          },
+          "leagues": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Normalized machine/provider league identities, such as nfl, cfb, nba, epl, cs2, lol, dota2 or valorant. Known wire/tag aliases normalize; other provider keys match exact lowercase identity. This is separate from category: category=NFL selects Football, while leagues=nfl selects NFL only. Read market_context.league for authoritative values."
+          },
+          "market_types": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact provider sports_market_type values. This is an open provider taxonomy, distinct from exact market IDs. Read market_context.market_type; missing selected metadata excludes the row."
+          },
+          "condition_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact market selections. Raw provider condition IDs and the existing mkt_-prefixed aliases normalize to raw IDs. Unknown well-formed IDs return an empty result."
+          },
+          "event_slugs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact provider event slugs. Use event_slug returned on the row; no title or slug-prefix guessing."
+          },
+          "series_slugs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact provider series slugs. Read market_context.series_slug; a missing selected series excludes the row."
+          }
+        }
+      },
+      "EdgeHunterMarketContext": {
+        "type": "object",
+        "description": "Metadata frozen with the read generation. Values are nullable when the provider/canonical source has no value; no title-based inference or current-clock fallback.",
+        "required": ["league", "series_slug", "market_type", "metadata_updated_at"],
+        "properties": {
+          "league": {
+            "type": "string",
+            "nullable": true,
+            "description": "Normalized machine/provider league identity. Known wire/tag aliases normalize; other provider identities match exact lowercase keys."
+          },
+          "series_slug": {
+            "type": "string",
+            "nullable": true,
+            "description": "Exact provider series slug, usable in series_slugs selection."
+          },
+          "market_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Exact provider sports_market_type, usable in market_types selection."
+          },
+          "metadata_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Exact local canonical metadata writer market_canonical.updated_at. This is not a provider observation clock; null means unavailable."
+          }
+        }
       }
     },
     "responses": {
