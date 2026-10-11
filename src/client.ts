@@ -275,31 +275,10 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "listTrendingWallets",
     auth: "bearer",
   },
-  // Pre-existing gap, fixed here (#7209): the route has shipped in openapi.json,
-  // llms-full.txt, agents.md, and the discovery doc, but never in the SDK table --
-  // so `drift.test.ts` was RED on main and SDK users had no typed method for it.
   {
     method: "GET",
-    path: "/api/v1/sports/pre-game-sides",
-    operationId: "listPreGameSides",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/sports/pre-game-side-observations",
-    operationId: "listPreGameSideObservations",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/sports-edge-signals",
-    operationId: "listSportsEdgeSignals",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/sports-edge-observations",
-    operationId: "listSportsEdgeObservations",
+    path: "/api/v1/edge-hunter",
+    operationId: "getEdgeHunter",
     auth: "bearer",
   },
   {
@@ -744,6 +723,31 @@ export const REDIRECT_OPERATIONS = [
  * accounted for here, so "unsupported" is always a stated decision.
  */
 export const UNSUPPORTED_OPERATIONS = [
+  {
+    method: "GET",
+    path: "/api/v1/sports/pre-game-sides",
+    operationId: "listPreGameSides",
+    reason: "Retired permanently: this path returns 410 endpoint_retired. Use edgeHunter.get() with a Max credential.",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/sports/pre-game-side-observations",
+    operationId: "listPreGameSideObservations",
+    reason: "Retired permanently: this path returns 410 endpoint_retired. Use edgeHunter.get() with a Max credential.",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/sports-edge-signals",
+    operationId: "listSportsEdgeSignals",
+    reason: "Retired permanently: this path returns 410 endpoint_retired. Use edgeHunter.get() with a Max credential.",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/sports-edge-observations",
+    operationId: "listSportsEdgeObservations",
+    reason: "Retired permanently: this path returns 410 endpoint_retired. Use edgeHunter.get() with a Max credential.",
+  },
+
   {
     method: "GET",
     path: "/api/v1/mcp",
@@ -1354,96 +1358,8 @@ export type GamesListParams = OperationQuery["listGames"];
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
 
-/** Query parameters of `GET /api/v1/sports/pre-game-sides` (#16310). */
-export type PreGameSidesParams = OperationQuery["listPreGameSides"];
-
-/** @deprecated Use {@link PreGameSidesParams} (#16310). */
-export type SportsEdgeSignalsParams = PreGameSidesParams;
-
-/** Observation cohorts exposed by `listPreGameSideObservations`. */
-export type SportsEdgeObservationCohort =
-  | "wider_holder"
-  | "in_play"
-  | "emerging_pile";
-
-/** Source of the provider holder snapshot used to build an observation. */
-export type SportsEdgeObservationProviderSource = "cached" | "live";
-
-/** Why a sport's upcoming-board source is (un)available in the funnel report. */
-export type SportsEdgeObservationBoardUpcomingStatus =
-  | "unknown"
-  | "not_configured"
-  | "available"
-  | "capacity_limited"
-  | "source_unavailable"
-  | "cold_unavailable"
-  | "deadline_unavailable";
-
-/** Scope attribution for an unavailable upcoming-board union. */
-export type SportsEdgeObservationBoardUnavailableScope =
-  | "category"
-  | "nfl"
-  | "cfb"
-  | "nba"
-  | "wnba"
-  | "nhl"
-  | "mls"
-  | "valorant"
-  | "league-of-legends"
-  | "counter-strike-2"
-  | "dota-2"
-  | "registry"
-  | "union"
-  | "wave";
-
-/** Truthful state of the cross-market directional read. */
-export type SportsEdgeObservationDirectionalStatus =
-  "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
-
-/**
- * Provider binary-column selector for observation markets: 0 selects
- * outcome_yes/token_id_yes; 1 selects outcome_no/token_id_no. Use piled_side,
- * not this index, for participant identity.
- */
-export type SportsEdgeObservationOutcomeIndex = 0 | 1;
-
-/** Closed grade vocabulary for the best holder grade on an observation. */
-export type SportsEdgeObservationTopGrade = "S" | "A" | "B";
-
-/** Canonical sports emitted by observation responses. */
-export type SportsEdgeObservationSport =
-  | "Basketball"
-  | "Football"
-  | "Baseball"
-  | "Hockey"
-  | "MMA"
-  | "Boxing"
-  | "Soccer"
-  | "Cricket"
-  | "Golf"
-  | "Tennis"
-  | "Esports"
-  | "Racing"
-  | "Table Tennis"
-  | "Pickleball";
-
-/**
- * Full list response, including the observation snapshot and accountable
- * funnel: the operation's own envelope (#16136). `degraded` is the
- * snapshot-wide verdict; fully accounted `capacity_limited` rows alone do
- * not set it.
- */
-export type PreGameSideObservationsResponse =
-  OperationEnvelope<"listPreGameSideObservations">;
-
-/** @deprecated Use {@link PreGameSideObservationsResponse} (#16310). */
-export type SportsEdgeObservationsResponse = PreGameSideObservationsResponse;
-
-/** Query parameters of `GET /api/v1/sports/pre-game-side-observations` (#16310). */
-export type PreGameSideObservationsParams = OperationQuery["listPreGameSideObservations"];
-
-/** @deprecated Use {@link PreGameSideObservationsParams} (#16310). */
-export type SportsEdgeObservationsParams = PreGameSideObservationsParams;
+/** Query parameters accepted by the Max-only Edge Hunter board. */
+export type EdgeHunterParams = OperationQuery["getEdgeHunter"];
 
 /** Public wallet facts associated with a recorded pick. */
 export interface PickQualifyingExpert {
@@ -1934,6 +1850,12 @@ export class OxinsiderApiClient {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number | null;
   private readonly maxRetries: number;
+
+  /** Full experimental Edge Hunter board. Requires a Max credential. */
+  readonly edgeHunter = {
+    get: (params: EdgeHunterParams = {}, options: ConvenienceOptions = {}) =>
+      this.call("getEdgeHunter", { ...options, query: params }),
+  };
 
   /** Polymarket combo fills, live count, and one combo's observed details. */
   readonly combos = {
@@ -2781,103 +2703,6 @@ export class OxinsiderApiClient {
     return this.call("getGame", { ...options, path: { event_slug: eventSlug } });
   }
 
-  /**
-   * List upcoming games and their public market-side data.
-   * Rows carry `side`, `ranked_at`,
-   * `backing_score` and `side_share`; the older `piled_side`,
-   * `signal_created_at`, `conviction_score` and `smart_score` keys carry the
-   * same values and stay on the wire.
-   */
-  listPreGameSides(params: PreGameSidesParams = {}, options: ConvenienceOptions = {}) {
-    return this.list("listPreGameSides", { ...options, query: params });
-  }
-
-  /**
-   * @deprecated Use {@link listPreGameSides} (#16310). Kept live; it calls the
-   * deprecated `/api/v1/sports-edge-signals` path, which answers with
-   * `Deprecation` and successor `Link` headers and the same body.
-   */
-  listSportsEdgeSignals(params: SportsEdgeSignalsParams = {}, options: ConvenienceOptions = {}) {
-    return this.list("listSportsEdgeSignals", { ...options, query: params });
-  }
-
-  /**
-   * Read an explicitly observation-only sports cohort and its accountable
-   * per-sport funnel. This surface is isolated from the funded signals route.
-   * Healthy wider-holder and emerging-pile snapshots may be served for about
-   * 180 seconds; in-play cached snapshots are capped at about 30 seconds and
-   * stale provider live-board evidence fails closed. emerging-pile is an
-   * additive wider-holder projection, not an arrival-history or independent
-   * denominator view.
-   */
-  async listPreGameSideObservations(
-    params: PreGameSideObservationsParams,
-    options: ConvenienceOptions = {},
-  ): Promise<PreGameSideObservationsResponse> {
-    const response = await this.list("listPreGameSideObservations", {
-      ...options,
-      query: params,
-    });
-    return sportsEdgeObservationsResponse(response);
-  }
-
-  /**
-   * @deprecated Use {@link listPreGameSideObservations} (#16310). Kept live; it
-   * calls the deprecated `/api/v1/sports-edge-observations` path, which answers
-   * with `Deprecation` and successor `Link` headers and the same body.
-   */
-  async listSportsEdgeObservations(
-    params: SportsEdgeObservationsParams,
-    options: ConvenienceOptions = {},
-  ): Promise<SportsEdgeObservationsResponse> {
-    const response = await this.list("listSportsEdgeObservations", {
-      ...options,
-      query: params,
-    });
-    return sportsEdgeObservationsResponse(response);
-  }
-
-  /**
-   * Typed conditional-read variant of {@link listSportsEdgeObservations}.
-   * Returns the full observation response on 200 or a typed `not_modified`
-   * envelope on 304 instead of routing the latter through generic `call()`.
-   * The endpoint emits a weak semantic ETag over the stable response payload;
-   * request-specific `meta` is excluded. For emerging-pile, the opaque
-   * projection cutoff inside `next_cursor` is excluded while its stable page
-   * position remains covered.
-   */
-  async listPreGameSideObservationsConditional(
-    params: PreGameSideObservationsParams,
-    options: ConvenienceOptions = {},
-  ): Promise<PreGameSideObservationsResponse | ApiNotModifiedResponse> {
-    const response = await this.call("listPreGameSideObservations", {
-      ...options,
-      query: params,
-    });
-    if (isNotModified(response)) {
-      return response;
-    }
-    return sportsEdgeObservationsResponse(response);
-  }
-
-  /**
-   * @deprecated Use {@link listPreGameSideObservationsConditional} (#16310).
-   * Kept live on the deprecated `/api/v1/sports-edge-observations` path.
-   */
-  async listSportsEdgeObservationsConditional(
-    params: SportsEdgeObservationsParams,
-    options: ConvenienceOptions = {},
-  ): Promise<SportsEdgeObservationsResponse | ApiNotModifiedResponse> {
-    const response = await this.call("listSportsEdgeObservations", {
-      ...options,
-      query: params,
-    });
-    if (isNotModified(response)) {
-      return response;
-    }
-    return sportsEdgeObservationsResponse(response);
-  }
-
   searchMarkets(
     q: OperationQuery["searchMarkets"]["q"],
     options: ConvenienceOptions & { query?: Omit<OperationQuery["searchMarkets"], "q"> } = {},
@@ -3445,44 +3270,4 @@ export function isListEnvelope<T>(body: unknown): body is ApiListEnvelope<T> {
       candidate.next_cursor === null ||
       typeof candidate.next_cursor === "string")
   );
-}
-
-function sportsEdgeObservationsResponse(
-  response: OperationEnvelope<"listSportsEdgeObservations">,
-): SportsEdgeObservationsResponse {
-  const candidate = response as unknown as Record<string, unknown>;
-  const funnel = candidate["funnel"] as Record<string, unknown> | null | undefined;
-  const meta = candidate["meta"] as Record<string, unknown> | null | undefined;
-  if (
-    candidate["object"] !== "list" ||
-    !Array.isArray(candidate["data"]) ||
-    typeof candidate["has_more"] !== "boolean" ||
-    !(
-      candidate["next_cursor"] === null ||
-      typeof candidate["next_cursor"] === "string"
-    ) ||
-    typeof candidate["snapshot_as_of"] !== "string" ||
-    typeof candidate["degraded"] !== "boolean" ||
-    typeof funnel !== "object" ||
-    funnel === null ||
-    Array.isArray(funnel) ||
-    !Array.isArray(funnel["sports"]) ||
-    typeof meta !== "object" ||
-    meta === null ||
-    Array.isArray(meta) ||
-    typeof meta["request_id"] !== "string" ||
-    typeof meta["cached"] !== "boolean" ||
-    typeof meta["cost"] !== "number" ||
-    !Number.isInteger(meta["cost"])
-  ) {
-    throw new OxinsiderApiError(200, {
-      object: "error",
-      error: {
-        code: "invalid_response",
-        message:
-          "listSportsEdgeObservations returned an invalid required response envelope",
-      },
-    });
-  }
-  return response;
 }
