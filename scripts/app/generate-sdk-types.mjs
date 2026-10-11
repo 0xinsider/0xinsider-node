@@ -250,6 +250,10 @@ function dataType({ operation }) {
     );
   }
   const schema = json.schema.$ref ? schemas[refName(json.schema.$ref)] : json.schema;
+  const branches = schema.oneOf ?? schema.anyOf;
+  if (branches) {
+    return branches.map((branch) => dataType({ operation: { ...operation, responses: { [successStatus(operation)]: { content: { "application/json": { schema: branch } } } } } })).join(" | ");
+  }
   const data = schema.properties?.data;
   if (!data) {
     // Not an envelope: the payload IS the body.

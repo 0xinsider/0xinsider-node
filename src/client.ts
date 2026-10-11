@@ -39,6 +39,9 @@ import type {
   OperationQuery,
   OperationResponse,
   ResponseMeta,
+  EdgeHunterBoardResponse,
+  EdgeHunterSignalsResponse,
+  EdgeHunterObservationsResponse,
   TraderExportArtifactManifest,
 } from "./schema.js";
 
@@ -1358,8 +1361,22 @@ export type GamesListParams = OperationQuery["listGames"];
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
 
-/** Query parameters accepted by the Max-only Edge Hunter board. */
-export type EdgeHunterParams = OperationQuery["getEdgeHunter"];
+/** The unchanged quoted board; advanced-only parameters are unavailable here. */
+export type EdgeHunterBoardParams = Pick<OperationQuery["getEdgeHunter"], "horizon_hours"> & { view?: "board" };
+/** Full ranked records with category, grade and horizon projection before pagination. */
+export type EdgeHunterSignalsParams = Pick<OperationQuery["getEdgeHunter"], "category" | "limit" | "cursor" | "horizon_hours" | "min_grade"> & { view: "signals" };
+/** Full observation evidence; cohort is required, including for empty pages. */
+export type EdgeHunterObservationsParams = Pick<OperationQuery["getEdgeHunter"], "category" | "limit" | "cursor"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
+export type EdgeHunterAdvancedParams = EdgeHunterSignalsParams | EdgeHunterObservationsParams;
+export type EdgeHunterParams = EdgeHunterBoardParams | EdgeHunterAdvancedParams;
+export type EdgeHunterBoardResult = ClientEnvelope<EdgeHunterBoardResponse> | ApiNotModifiedResponse;
+export type EdgeHunterSignalsResult = ClientEnvelope<EdgeHunterSignalsResponse> | ApiNotModifiedResponse;
+export type EdgeHunterObservationsResult = ClientEnvelope<EdgeHunterObservationsResponse> | ApiNotModifiedResponse;
+export type EdgeHunterAdvancedResult = EdgeHunterSignalsResult | EdgeHunterObservationsResult;
+/** Full advanced collection envelope for a literal view; excludes conditional 304 results. */
+export type EdgeHunterCollection<P extends EdgeHunterAdvancedParams> = P extends EdgeHunterSignalsParams
+  ? Exclude<EdgeHunterSignalsResult, ApiNotModifiedResponse>
+  : Exclude<EdgeHunterObservationsResult, ApiNotModifiedResponse>;
 
 /** Public wallet facts associated with a recorded pick. */
 export interface PickQualifyingExpert {
@@ -1465,10 +1482,11 @@ export type OperationMeta<K extends ApiOperationId> = OperationResponse[K] exten
  * the replay, `ResponseMeta` elsewhere) plus this client's lifted `etag` and
  * `sandbox`.
  */
-export type OperationEnvelope<K extends EnvelopeOperationId> = Omit<
-  OperationResponse[K],
-  "meta"
-> & { meta: ClientMeta<OperationMeta<K>> };
+type ClientEnvelope<T> = T extends { meta: infer M }
+  ? Omit<T, "meta"> & { meta: ClientMeta<M> }
+  : never;
+/** Distribute over response variants so view-specific pagination and evidence stay typed. */
+export type OperationEnvelope<K extends EnvelopeOperationId> = ClientEnvelope<OperationResponse[K]>;
 
 /** A `call()` result: the envelope, or the typed 304 when `If-None-Match` matched. */
 export type OperationResult<K extends EnvelopeOperationId> =
@@ -1540,6 +1558,10 @@ export type OperationOptionsArgs<K extends ApiOperationId, O> =
  */
 export type RuntimeOperationId<I extends ApiOperationId> = I &
   (ApiOperationId extends I ? unknown : OptionalInputOperationId);
+
+/** A literal Edge Hunter list call must select an advanced view; runtime-chosen ids stay available. */
+export type RuntimeListOperationId<I extends ApiOperationId> = RuntimeOperationId<I> &
+  ("getEdgeHunter" extends I ? ApiOperationId extends I ? unknown : never : unknown);
 
 /** The transport options a convenience method forwards: everything but the parts it fills itself. */
 export type ConvenienceOptions = Omit<ApiRequestOptions, "path" | "query" | "body">;
@@ -1851,11 +1873,56 @@ export class OxinsiderApiClient {
   private readonly timeoutMs: number | null;
   private readonly maxRetries: number;
 
-  /** Full experimental Edge Hunter board. Requires a Max credential. */
+  /** Max-only Edge Hunter board and full ranked/observation collection views. */
   readonly edgeHunter = {
-    get: (params: EdgeHunterParams = {}, options: ConvenienceOptions = {}) =>
-      this.call("getEdgeHunter", { ...options, query: params }),
+    get: this.getEdgeHunter.bind(this),
+    /** Conditional reads are supported only by the advanced snapshot views. */
+    getConditional: this.getAdvancedEdgeHunter.bind(this),
+    signals: (params: Omit<EdgeHunterSignalsParams, "view"> = {}, options: ConvenienceOptions = {}) =>
+      this.getEdgeHunter({ ...params, view: "signals" }, options),
+    observations: (params: Omit<EdgeHunterObservationsParams, "view">, options: ConvenienceOptions = {}) =>
+      this.getEdgeHunter({ ...params, view: "observations" }, options),
   };
+
+  private getEdgeHunter(params?: EdgeHunterBoardParams, options?: ConvenienceOptions): Promise<EdgeHunterBoardResult>;
+  private getEdgeHunter(params: EdgeHunterSignalsParams, options?: ConvenienceOptions): Promise<EdgeHunterSignalsResult>;
+  private getEdgeHunter(params: EdgeHunterObservationsParams, options?: ConvenienceOptions): Promise<EdgeHunterObservationsResult>;
+  private getEdgeHunter(params: EdgeHunterParams, options?: ConvenienceOptions): Promise<OperationResult<"getEdgeHunter">>;
+  private async getEdgeHunter(params: EdgeHunterParams = {}, options: ConvenienceOptions = {}): Promise<OperationResult<"getEdgeHunter">> {
+    const request: OperationRequestOptions<"getEdgeHunter"> = { ...options, query: params };
+    const response: OperationResult<"getEdgeHunter"> = await this.call("getEdgeHunter", request);
+    if (isNotModified(response)) return response;
+    const view = params.view ?? "board";
+    const meta = response.meta;
+    const validMeta = typeof meta === "object" && meta !== null && !Array.isArray(meta) &&
+      typeof meta.request_id === "string" && typeof meta.cached === "boolean" &&
+      typeof meta.cost === "number" && Number.isInteger(meta.cost);
+    if (validMeta && view === "board") {
+      if (response.object === "edge_hunter") return response;
+    } else if (validMeta && response.object === "list" && response.view === view &&
+      Array.isArray(response.data) && typeof response.has_more === "boolean") {
+      if (response.view === "signals" && (response.next_cursor === undefined ||
+        typeof response.next_cursor === "string")) return response;
+      if (response.view === "observations" && (response.next_cursor === null ||
+        typeof response.next_cursor === "string") && typeof response.snapshot_as_of === "string" &&
+        typeof response.degraded === "boolean" && typeof response.funnel === "object" &&
+        response.funnel !== null && !Array.isArray(response.funnel) &&
+        Array.isArray(response.funnel.sports)) return response;
+    }
+    throw new InvalidResponseError(200, `Edge Hunter ${view} response does not match its documented envelope`, response);
+  }
+
+  private getAdvancedEdgeHunter(params: EdgeHunterSignalsParams, options?: ConvenienceOptions): Promise<EdgeHunterSignalsResult>;
+  private getAdvancedEdgeHunter(params: EdgeHunterObservationsParams, options?: ConvenienceOptions): Promise<EdgeHunterObservationsResult>;
+  private getAdvancedEdgeHunter(params: EdgeHunterAdvancedParams, options?: ConvenienceOptions): Promise<EdgeHunterAdvancedResult>;
+  private async getAdvancedEdgeHunter(params: EdgeHunterAdvancedParams, options: ConvenienceOptions = {}): Promise<EdgeHunterAdvancedResult> {
+    if (params.view !== "signals" && params.view !== "observations") {
+      throw new TypeError("Edge Hunter conditional reads require view signals or observations");
+    }
+    const response = await this.getEdgeHunter(params, options);
+    if (isNotModified(response) || response.object === "list") return response;
+    throw new InvalidResponseError(200, "Edge Hunter advanced response must be a list envelope", response);
+  }
 
   /** Polymarket combo fills, live count, and one combo's observed details. */
   readonly combos = {
@@ -2455,19 +2522,27 @@ export class OxinsiderApiClient {
    * `facets` or `totals`). Use `paginate()` (in `pagination.ts`) to
    * auto-follow `next_cursor`.
    */
+  list<P extends EdgeHunterAdvancedParams>(
+    operationId: "getEdgeHunter",
+    options: ConvenienceOptions & { query: P },
+  ): Promise<EdgeHunterCollection<P>>;
   list<K extends ListOperationId>(
     operationId: K,
     ...options: OperationOptionsArgs<K, OperationRequestOptions<K>>
   ): Promise<OperationEnvelope<K>>;
   /** The untyped form; see the second `call` signature. */
   list<T = unknown, I extends ApiOperationId = ApiOperationId>(
-    operationId: RuntimeOperationId<I>,
+    operationId: RuntimeListOperationId<I>,
     options?: ApiRequestOptions,
   ): Promise<ApiListEnvelope<T>>;
   async list(
     operationId: ApiOperationId,
     options: ApiRequestOptions = {},
   ): Promise<unknown> {
+    if (operationId === "getEdgeHunter" && options.query?.["view"] !== "signals" &&
+      options.query?.["view"] !== "observations") {
+      throw new TypeError("Edge Hunter list reads require view signals or observations");
+    }
     const result = await this.call<unknown>(operationId, options);
     if (isNotModified(result)) {
       throw new OxinsiderApiError(
@@ -2478,7 +2553,7 @@ export class OxinsiderApiClient {
     if (!isListEnvelope<unknown>(result)) {
       throw new InvalidResponseError(
         200,
-        `Operation ${operationId} did not return a list envelope: expected object "list", an array data, a boolean has_more and a string or absent next_cursor`,
+        `Operation ${operationId} did not return a list envelope: expected object "list", an array data, a boolean has_more and a string, null or absent next_cursor`,
         result,
       );
     }

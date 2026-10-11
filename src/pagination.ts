@@ -3,7 +3,8 @@
  *
  * Every list endpoint returns `{ object: "list", data, has_more, next_cursor }`
  * (`backend/src/api_v1/types.rs` `ApiList`: `has_more` is always a boolean,
- * `next_cursor` is a string or omitted). `paginate()` yields each `data[]`
+ * `next_cursor` is a string, null or omitted; observations always send it,
+ * with null on the last page). `paginate()` yields each `data[]`
  * item across pages, following `next_cursor` while `has_more` is true.
  * `paginatePages()` yields whole pages when you need the envelope (e.g. to
  * read `meta.cost` or `total`).
@@ -43,7 +44,9 @@ import type {
   OperationItem,
   OperationOptionsArgs,
   OxinsiderApiClient,
-  RuntimeOperationId,
+  RuntimeListOperationId,
+  EdgeHunterAdvancedParams,
+  EdgeHunterCollection,
 } from "./client.js";
 import type { OperationPath, OperationQuery } from "./schema.js";
 
@@ -122,6 +125,9 @@ export type OperationPaginateOptions<K extends ListOperationId> = Omit<
   (OperationPath[K] extends Record<string, never>
     ? { path?: OperationPath[K] }
     : { path: OperationPath[K] }) & { query?: OperationQuery[K] };
+
+/** Advanced Edge Hunter pagination preserves the selected collection's full type. */
+export type EdgeHunterPaginateOptions<P extends EdgeHunterAdvancedParams> = Omit<PaginateOptions, "path" | "query"> & { query: P; path?: never };
 
 /** Where an interrupted walk can pick up again; see `paginationResumePoint`. */
 export interface PaginationResumePoint {
@@ -236,6 +242,11 @@ function usableCursor(value: string | null | undefined): value is string {
  * returns the cursor to continue from. A page that breaks the protocol
  * throws `PaginationError` before it is yielded (#16246).
  */
+export function paginatePages<P extends EdgeHunterAdvancedParams>(
+  client: OxinsiderApiClient,
+  operationId: "getEdgeHunter",
+  options: EdgeHunterPaginateOptions<P>,
+): AsyncGenerator<EdgeHunterCollection<P>, void, undefined>;
 export function paginatePages<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
@@ -244,7 +255,7 @@ export function paginatePages<K extends ListOperationId>(
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
 export function paginatePages<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: RuntimeOperationId<I>,
+  operationId: RuntimeListOperationId<I>,
   options?: PaginateOptions,
 ): AsyncGenerator<ApiListEnvelope<T>, void, undefined>;
 export async function* paginatePages(
@@ -346,6 +357,11 @@ export async function* paginatePages(
  *   handle(trade); // typed as the route's whale trade (#16136)
  * }
  */
+export function paginate<P extends EdgeHunterAdvancedParams>(
+  client: OxinsiderApiClient,
+  operationId: "getEdgeHunter",
+  options: EdgeHunterPaginateOptions<P>,
+): AsyncGenerator<EdgeHunterCollection<P>["data"][number], void, undefined>;
 export function paginate<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
@@ -354,7 +370,7 @@ export function paginate<K extends ListOperationId>(
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
 export function paginate<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: RuntimeOperationId<I>,
+  operationId: RuntimeListOperationId<I>,
   options?: PaginateOptions,
 ): AsyncGenerator<T, void, undefined>;
 export async function* paginate(
@@ -373,6 +389,11 @@ export async function* paginate(
  * Collect every item across all pages into one array. Convenience over
  * `paginate()` for small result sets; prefer the iterator for large ones.
  */
+export function collect<P extends EdgeHunterAdvancedParams>(
+  client: OxinsiderApiClient,
+  operationId: "getEdgeHunter",
+  options: EdgeHunterPaginateOptions<P>,
+): Promise<EdgeHunterCollection<P>["data"][number][]>;
 export function collect<K extends ListOperationId>(
   client: OxinsiderApiClient,
   operationId: K,
@@ -381,7 +402,7 @@ export function collect<K extends ListOperationId>(
 /** The untyped form: a runtime-chosen operation, or a caller-asserted `T`. */
 export function collect<T = unknown, I extends ApiOperationId = ApiOperationId>(
   client: OxinsiderApiClient,
-  operationId: RuntimeOperationId<I>,
+  operationId: RuntimeListOperationId<I>,
   options?: PaginateOptions,
 ): Promise<T[]>;
 export async function collect(

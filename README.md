@@ -236,8 +236,7 @@ if (board.object === "edge_hunter") {
 
 The board covers all sports and esports, uses a fixed B grade floor, and returns
 at most 30 ranked rows. `total` counts rows before that cap. `horizon_hours`
-defaults to 48 and is clamped to 1..48. There is no category, cohort, cursor,
-limit, or minimum-grade option, and this endpoint does not provide an ETag.
+defaults to 48 and is clamped to 1..48. The default board accepts only `view` and `horizon_hours` and has no ETag or pagination.
 
 Every row includes provider participants, both outcome quotes, and backed-side
 analytics. Current prices are decimal strings with their own `basis`, `ts`,
@@ -251,7 +250,52 @@ A Pro credential throws `MaxPlanRequiredError` (403 `forbidden`,
 same key. All four previous sports-edge and pre-game-side paths are retired
 and return 410 `endpoint_retired`. Their list and conditional-read methods
 were removed in SDK 0.20.0. Migrate to `client.edgeHunter.get()`.
-SDK 0.20.1 adds `endpoint_retired` to the shared error types and corrects the board provenance documentation; runtime helper behavior is unchanged.
+SDK 0.21.0 preserves the default board and adds the complete advanced contracts:
+
+```ts
+const signals = await client.edgeHunter.get({ view: "signals", category: "Soccer", min_grade: "A", limit: 20 });
+if (signals.object === "list") console.log(signals.view, signals.data, signals.next_cursor);
+
+const observations = await client.edgeHunter.observations({ cohort: "in_play", limit: 20 });
+if (observations.object === "list") console.log(observations.snapshot_as_of, observations.degraded, observations.funnel);
+
+const unchanged = await client.edgeHunter.getConditional(
+  { view: "observations", cohort: "in_play" },
+  { headers: { "If-None-Match": observations.meta.etag ?? "" } },
+);
+if (unchanged.object === "not_modified") console.log("Unchanged snapshot");
+```
+
+`view: "signals"` returns full ranked records, nullable `token_id`, snapshot clocks,
+holder/directional analytics, category evidence and provenance. It accepts `category`,
+`min_grade` (S/A/B, default B), `horizon_hours` (default 12, clamp 1..48), `limit`
+(default 20, clamp 1..100) and `cursor`. Grade floor requires a holder at that grade or better;
+it does not remove other holders. `signals()` is a convenience for the same mode.
+
+`view: "observations"` requires `cohort` (`wider_holder`, `in_play`, `emerging_pile`)
+and accepts `category`, `limit` and `cursor`. Records preserve verified token IDs,
+midpoint `backed_price` marks, observation/holder clocks, provider/directional status,
+and completeness. The envelope retains `snapshot_as_of`, `degraded` and all per-sport
+funnel diagnostics. Price marks are not wallet entry costs; volume is shares.
+In-play reuse is capped at 30 seconds and fails closed without fresh source evidence.
+
+Literal view queries have distinct result types, including on empty pages. Advanced
+responses add `view: "signals" | "observations"` beside `object: "list"`. Both advanced
+views support ETag/304 and private revalidation. They read warmed generations only;
+missing/stale readiness returns 503 `read_model_warming` with `Retry-After: 5`
+without running holder/provider computation in the request. `getConditional()`
+accepts advanced views only. Parameters for another view return 400, and a refreshed
+snapshot expires its cursors. Start a new cursor walk when migrating from retired URLs.
+The shared `list()`, `paginate()`, `paginatePages()` and `collect()` helpers accept
+Edge Hunter only with an explicit advanced view and preserve the corresponding record
+and envelope types:
+
+```ts
+for await (const page of paginatePages(client, "getEdgeHunter", {
+  query: { view: "observations", cohort: "wider_holder", limit: 100 },
+  maxPages: 2,
+})) console.log(page.view, page.funnel, page.data);
+```
 
 ### Beyond the JSON envelope
 
@@ -351,7 +395,7 @@ for await (const trade of paginate(client, "listWhaleTrades", {
 }
 ```
 
-The loop ends when a page says `has_more: false`, whatever its `next_cursor` says. A page that says `has_more: true` with no usable `next_cursor`, or one whose `next_cursor` repeats a cursor the walk already requested, is a broken response rather than the end of the collection: the walk throws `PaginationError` (`reason` `missing_cursor` or `repeated_cursor`) before yielding that page and before any duplicate request, with the received `page` on the error so its data is not lost. The last 1,024 cursors are remembered for the repeat check (`CURSOR_HISTORY_LIMIT`), which keeps a long walk's memory flat. A list response whose `has_more` is not a boolean or whose `next_cursor` is not a string throws `InvalidResponseError`.
+The loop ends when a page says `has_more: false`, whatever its `next_cursor` says. A page that says `has_more: true` with no usable `next_cursor`, or one whose `next_cursor` repeats a cursor the walk already requested, is a broken response rather than the end of the collection: the walk throws `PaginationError` (`reason` `missing_cursor` or `repeated_cursor`) before yielding that page and before any duplicate request, with the received `page` on the error so its data is not lost. The last 1,024 cursors are remembered for the repeat check (`CURSOR_HISTORY_LIMIT`), which keeps a long walk's memory flat. A list response whose `has_more` is not a boolean or whose `next_cursor` is neither a string, null nor omitted throws `InvalidResponseError`. A null terminal cursor is preserved for Edge Hunter observations.
 
 `maxPages` caps fetches and is checked before any request: a positive integer or `Infinity`; `0`, a negative, fractional or `NaN` value throws `RangeError`. Reaching it is your choice, not exhaustion. Pass a `progress` object to tell the two apart and keep the continuation:
 
