@@ -685,12 +685,14 @@ export type EdgeHunterObservationsResponse = {
 /** Closed 25-value terminal-reason vocabulary for the accountable Edge Hunter observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
 export type EdgeHunterObservationTerminalReason = "outside_horizon" | "resolved" | "provider_closed" | "provider_excluded" | "invalid_market" | "missing_token" | "missing_stored_market" | "not_provider_live" | "board_source_unavailable" | "board_deadline_unavailable" | "primary_slate_candidate" | "zero_indexed_holder_research" | "capacity_limited" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "holder_scan_incomplete" | "no_current_graded_holder" | "split_holder_pile" | "price_unavailable" | "wider_holder_emitted" | "in_play_emitted" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified";
 
-/** One provider outcome in YES/NO order. Null current_price means no verified current quote is available. */
+/** One provider outcome in fixed YES/NO order, including its frozen token identity and independently observed quote. Null current_price means no verified current quote is available. */
 export type EdgeHunterOutcome = {
   index: 0 | 1;
   label: string | null;
   provider_id: number | null;
-  current_price: EdgeHunterPrice;
+  /** Frozen provider CLOB token ID for this exact outcome in YES/NO order. Null when unavailable; not a participant identity. */
+  token_id: string | null;
+  current_price: EdgeHunterPrice | null;
 };
 
 export type EdgeHunterParticipant = {
@@ -809,7 +811,7 @@ export type EdgeHunterRow = {
   participants: EdgeHunterParticipant[];
   image: string | null;
   outcomes: EdgeHunterOutcome[];
-  signal: EdgeHunterSignal;
+  signal: EdgeHunterSignal | null;
   /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
   market_context: EdgeHunterMarketContext | null;
 };
@@ -833,7 +835,7 @@ export type EdgeHunterSelection = {
   series_slugs?: string[];
 };
 
-/** Backed-side analytics from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions. */
+/** Backed-side analytics, token identity, frozen ranked_at and aggregate category evidence from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions. */
 export type EdgeHunterSignal = {
   piled_side: string | null;
   piled_outcome_index: 0 | 1;
@@ -853,7 +855,13 @@ export type EdgeHunterSignal = {
   one_way_graded_usd: number | null;
   directional_confidence: number | null;
   directional_rank_score: number;
-  current_price: EdgeHunterPrice;
+  current_price: EdgeHunterPrice | null;
+  /** Frozen provider CLOB token ID for the backed outcome. Null when unavailable; matches outcomes[piled_outcome_index].token_id when the shared provider context is available. */
+  token_id: string | null;
+  /** UTC computation time copied from this ranked row's frozen signal_created_at. It dates the ranking, not the separately observed quote, metadata writer, or wallet entry. */
+  ranked_at: string;
+  /** Existing aggregate category evidence copied from the same ranked snapshot. Read its status, coverage and own clocks; it never changes admission or ordering and is not a predicted return. */
+  category_skill: EdgeHunterCategorySkill;
 };
 
 /** Full Edge Hunter signals list envelope. The view literal distinguishes advanced collections, including empty pages. */

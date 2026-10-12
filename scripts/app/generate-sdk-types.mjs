@@ -76,7 +76,10 @@ function typeOf(schema, depth, path) {
   if (!schema || typeof schema !== "object") {
     throw new Error(`${path}: not a schema object`);
   }
-  if (schema.$ref) return refName(schema.$ref);
+  if (schema.$ref) {
+    const type = refName(schema.$ref);
+    return schema.nullable === true ? `${type} | null` : type;
+  }
 
   // `const` is how the document spells a discriminant ("object": "trader").
   if (schema.const !== undefined) return quote(schema.const);
