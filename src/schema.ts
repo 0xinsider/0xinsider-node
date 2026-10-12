@@ -646,7 +646,7 @@ export type EdgeHunterObservation = {
   conviction_score: number;
   /** Whether the provider holder page came from the shared cache or a live provider read. */
   provider_read_source: "cached" | "live";
-  /** True only when neither provider outcome holder page hit the top-100 scan bound. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
+  /** True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
   holder_scan_complete: boolean;
   /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
   holder_snapshot_at: string | null;
@@ -664,7 +664,31 @@ export type EdgeHunterObservation = {
   market_context: EdgeHunterMarketContext | null;
 };
 
-/** Full Edge Hunter observations list envelope. The view literal distinguishes advanced collections, including empty pages. */
+/** Measured coverage of the frozen canonical observation generation and this requested page. For sports and esports reads, the first four counts remain global through category, cohort and all selectors. They are neither a census of all provider markets nor a count of successfully evaluated holders. Selected and returned counts describe the requested projection. An unmappable legacy category synthesizes a zero-work empty generation with all six counts zero and no degradation reasons; it does not read the all-sports cache. */
+export type EdgeHunterObservationCoverage = {
+  /** Sum of canonical source-generation funnel input across all sports, before category, cohort or selector projection. */
+  input_markets: number;
+  /** Canonical source-generation input assigned capacity_limited. These markets were intentionally outside the bounded holder-work admission and are not missing emitted rows. */
+  capacity_limited_markets: number;
+  /** All wider_holder and in_play observations emitted in the canonical source generation, before cohort, category or selector projection. Emerging pile is an overlapping projection and does not add source emissions. */
+  emitted_observations: number;
+  /** Canonical source-generation markets whose attempted holder scan did not establish complete coverage, including incomplete scans that did not emit an observation. */
+  incomplete_holder_markets: number;
+  /** Observations matching the requested cohort, category, selectors and applicable pinned projection cutoff before pagination. */
+  selected_observations: number;
+  /** Observation rows on this page; equals data.length. */
+  returned_observations: number;
+};
+
+/** One observed cause of operational degradation in the canonical all-sports observation generation. Reasons are independent of the one-terminal-per-input funnel and remain unchanged through category, cohort and selector projection. Intentional capacity limits and an unconfigured upcoming source are not degradation reasons. */
+export type EdgeHunterObservationDegradationReason = {
+  /** Recorded producer cause. holder_scan_incomplete means at least one attempted holder scan did not establish complete coverage; directional_unavailable can accompany an emitted wider_holder row; live_source_stale means provider live evidence exceeded its freshness bound. Other values identify reconciliation, applicable board-source or terminal failure evidence. */
+  reason: "holder_scan_incomplete" | "live_source_stale" | "directional_unavailable" | "funnel_unreconciled" | "board_live_unavailable" | "board_upcoming_unavailable" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "missing_stored_market" | "price_unavailable" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified" | "board_source_unavailable" | "board_deadline_unavailable";
+  /** Canonical sport for the recorded cause; null only for generation-wide evidence without a sport attribution. */
+  sport: string | null;
+};
+
+/** Full Edge Hunter observations list envelope. Required degradation_reasons explains the source-generation verdict; required coverage distinguishes source input, intentional capacity exclusions, source emissions, incomplete holder scans, selection and the returned page. The view literal distinguishes advanced collections, including empty pages. */
 export type EdgeHunterObservationsResponse = {
   object: "list";
   view: "observations";
@@ -674,8 +698,11 @@ export type EdgeHunterObservationsResponse = {
   next_cursor: string | null;
   /** Completion time of the shared observation snapshot pinned by the cursor. */
   snapshot_as_of: string;
-  /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field. */
+  /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field; board_upcoming_status=not_configured is not a failure. */
   degraded: boolean;
+  /** Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input and board_upcoming_status=not_configured do not by themselves add a reason. */
+  degradation_reasons: EdgeHunterObservationDegradationReason[];
+  coverage: EdgeHunterObservationCoverage;
   funnel: EdgeHunterFunnelReport;
   meta: ResponseMeta;
   /** Normalized axes requested with a selector or category; omitted on an unselected default read. */

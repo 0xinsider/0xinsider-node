@@ -266,7 +266,7 @@ const signals = await client.edgeHunter.get({ view: "signals", category: "Soccer
 if (signals.object === "list") console.log(signals.view, signals.data, signals.next_cursor);
 
 const observations = await client.edgeHunter.observations({ cohort: "in_play", limit: 20 });
-if (observations.object === "list") console.log(observations.snapshot_as_of, observations.degraded, observations.funnel);
+if (observations.object === "list") console.log(observations.snapshot_as_of, observations.degradation_reasons, observations.coverage);
 
 const unchanged = await client.edgeHunter.getConditional(
   { view: "observations", cohort: "in_play" },
@@ -284,8 +284,22 @@ it does not remove other holders. `signals()` is a convenience for the same mode
 `view: "observations"` requires `cohort` (`wider_holder`, `in_play`, `emerging_pile`)
 and accepts `category`, `limit` and `cursor`. Records preserve verified token IDs,
 midpoint `backed_price` marks, observation/holder clocks, provider/directional status,
-and completeness. The envelope retains `snapshot_as_of`, `degraded` and all per-sport
-funnel diagnostics. Price marks are not wallet entry costs; volume is shares.
+and completeness. The envelope retains `snapshot_as_of`, `degraded` and per-sport
+funnel diagnostics. It adds required `degradation_reasons` and `coverage`.
+Each reason names its cause and canonical `sport`, or `null` for a cause affecting the whole generation.
+`degraded` describes the shared all-sports snapshot, even when you select a category or league.
+An empty reason list means the snapshot is not degraded; a clean selected funnel alone does not prove that.
+
+`coverage.input_markets`, `capacity_limited_markets`, `emitted_observations`, and
+`incomplete_holder_markets` describe that whole snapshot before selection.
+`selected_observations` counts your matching cohort and selectors before pagination;
+`returned_observations` counts only the current page. These are measured counts, not a complete provider census.
+A legacy `category` value that cannot resolve to a sport returns an empty result without reading a sports snapshot;
+its counts are zero and its empty reasons do not establish the all-sports snapshot's health.
+`capacity_limited` is intentional admission and does not itself set `degraded`.
+Pagination cannot recover markets excluded by that admission. `board_upcoming_status: "not_configured"`
+means no upcoming source applies to the sport, not a provider failure.
+Price marks are not wallet entry costs; volume is shares.
 In-play reuse is capped at 30 seconds and fails closed without fresh source evidence.
 
 Literal view queries have distinct result types, including on empty pages. Advanced

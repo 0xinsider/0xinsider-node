@@ -1392,6 +1392,40 @@ function requireEdgeHunterSelectionEcho(envelope: object, axes: ReturnType<typeo
     throw new InvalidResponseError(200, "Selected Edge Hunter response is missing its normalized selection echo", envelope);
   }
 }
+
+const EDGE_HUNTER_DEGRADATION_REASONS = new Set<string>([
+  "holder_scan_incomplete", "live_source_stale", "directional_unavailable",
+  "funnel_unreconciled", "board_live_unavailable", "board_upcoming_unavailable",
+  "provider_unavailable", "holder_deadline_unavailable", "holder_computation_unavailable",
+  "missing_stored_market", "price_unavailable", "in_play_stale_observed",
+  "in_play_directional_unavailable", "internal_unclassified", "board_source_unavailable",
+  "board_deadline_unavailable",
+]);
+
+function hasEdgeHunterObservationQuality(response: object): boolean {
+  const reasons: unknown = Reflect.get(response, "degradation_reasons");
+  const coverage: unknown = Reflect.get(response, "coverage");
+  const data: unknown = Reflect.get(response, "data");
+  const degraded: unknown = Reflect.get(response, "degraded");
+  if (!Array.isArray(reasons) || typeof coverage !== "object" || coverage === null ||
+    Array.isArray(coverage) || !Array.isArray(data) || degraded !== (reasons.length > 0)) return false;
+  if (reasons.some(entry => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return true;
+    const reason: unknown = Reflect.get(entry, "reason");
+    const sport: unknown = Reflect.get(entry, "sport");
+    return typeof reason !== "string" || !EDGE_HUNTER_DEGRADATION_REASONS.has(reason) ||
+      !(sport === null || typeof sport === "string");
+  })) return false;
+  for (const field of ["input_markets", "capacity_limited_markets", "emitted_observations",
+    "incomplete_holder_markets", "selected_observations", "returned_observations"] as const) {
+    const count: unknown = Reflect.get(coverage, field);
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) return false;
+  }
+  const selected: unknown = Reflect.get(coverage, "selected_observations");
+  const returned: unknown = Reflect.get(coverage, "returned_observations");
+  return typeof selected === "number" && typeof returned === "number" &&
+    returned === data.length && selected >= returned;
+}
 export type EdgeHunterBoardResult = ClientEnvelope<EdgeHunterBoardResponse> | ApiNotModifiedResponse;
 export type EdgeHunterSignalsResult = ClientEnvelope<EdgeHunterSignalsResponse> | ApiNotModifiedResponse;
 export type EdgeHunterObservationsResult = ClientEnvelope<EdgeHunterObservationsResponse> | ApiNotModifiedResponse;
@@ -1930,7 +1964,7 @@ export class OxinsiderApiClient {
         typeof response.next_cursor === "string") && typeof response.snapshot_as_of === "string" &&
         typeof response.degraded === "boolean" && typeof response.funnel === "object" &&
         response.funnel !== null && !Array.isArray(response.funnel) &&
-        Array.isArray(response.funnel.sports)) return response;
+        Array.isArray(response.funnel.sports) && hasEdgeHunterObservationQuality(response)) return response;
     }
     throw new InvalidResponseError(200, `Edge Hunter ${view} response does not match its documented envelope`, response);
   }
@@ -2048,6 +2082,10 @@ export class OxinsiderApiClient {
       if (isApiEnvelope<unknown>(envelope)) {
         if (operationId === "getEdgeHunter") {
           requireEdgeHunterSelectionEcho(envelope, requestedEdgeHunterAxes(options.query));
+          if (options.query?.["view"] === "observations" && !hasEdgeHunterObservationQuality(envelope)) {
+            throw new InvalidResponseError(response.status,
+              "Edge Hunter observations response is missing valid snapshot quality evidence", envelope);
+          }
         }
         const etag = response.headers.get("etag");
         const sandbox = response.headers.get("x-oxi-sandbox") === "true";

@@ -342,6 +342,8 @@ export type {
   EdgeHunterFunnelReport,
   EdgeHunterMarketContext,
   EdgeHunterObservation,
+  EdgeHunterObservationCoverage,
+  EdgeHunterObservationDegradationReason,
   EdgeHunterObservationTerminalReason,
   EdgeHunterObservationsResponse,
   EdgeHunterOutcome,
