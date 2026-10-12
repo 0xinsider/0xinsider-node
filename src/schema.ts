@@ -646,7 +646,7 @@ export type EdgeHunterObservation = {
   conviction_score: number;
   /** Whether the provider holder page came from the shared cache or a live provider read. */
   provider_read_source: "cached" | "live";
-  /** True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate. */
+  /** True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate. */
   holder_scan_complete: boolean;
   /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
   holder_snapshot_at: string | null;

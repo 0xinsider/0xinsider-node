@@ -43784,7 +43784,7 @@
           },
           "holder_scan_complete": {
             "type": "boolean",
-            "description": "True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means the pile is a positive lower bound and cannot satisfy a future capital-promotion gate."
+            "description": "True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate."
           },
           "holder_snapshot_at": {
             "type": "string",
