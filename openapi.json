@@ -32158,7 +32158,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded and source-generation/category funnel evidence. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded and source-generation/category funnel evidence. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -42914,7 +42914,7 @@
       },
       "EdgeHunterOutcome": {
         "type": "object",
-        "required": ["index", "label", "provider_id", "current_price"],
+        "required": ["index", "label", "provider_id", "token_id", "current_price"],
         "properties": {
           "index": {
             "type": "integer",
@@ -42929,12 +42929,18 @@
             "nullable": true,
             "format": "int64"
           },
+          "token_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Frozen provider CLOB token ID for this exact outcome in YES/NO order. Null when unavailable; not a participant identity.",
+            "example": "5100000000000000000000000000000000000000000000000000000000000000001"
+          },
           "current_price": {
             "$ref": "#/components/schemas/EdgeHunterPrice",
             "nullable": true
           }
         },
-        "description": "One provider outcome in YES/NO order. Null current_price means no verified current quote is available."
+        "description": "One provider outcome in fixed YES/NO order, including its frozen token identity and independently observed quote. Null current_price means no verified current quote is available."
       },
       "EdgeHunterSignal": {
         "type": "object",
@@ -42956,7 +42962,10 @@
           "one_way_graded_usd",
           "directional_confidence",
           "directional_rank_score",
-          "current_price"
+          "current_price",
+          "token_id",
+          "ranked_at",
+          "category_skill"
         ],
         "properties": {
           "piled_side": {
@@ -43027,9 +43036,25 @@
           "current_price": {
             "$ref": "#/components/schemas/EdgeHunterPrice",
             "nullable": true
+          },
+          "token_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Frozen provider CLOB token ID for the backed outcome. Null when unavailable; matches outcomes[piled_outcome_index].token_id when the shared provider context is available.",
+            "example": "5100000000000000000000000000000000000000000000000000000000000000001"
+          },
+          "ranked_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC computation time copied from this ranked row's frozen signal_created_at. It dates the ranking, not the separately observed quote, metadata writer, or wallet entry.",
+            "example": "2026-10-11T18:00:00Z"
+          },
+          "category_skill": {
+            "$ref": "#/components/schemas/EdgeHunterCategorySkill",
+            "description": "Existing aggregate category evidence copied from the same ranked snapshot. Read its status, coverage and own clocks; it never changes admission or ordering and is not a predicted return."
           }
         },
-        "description": "Backed-side analytics from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions."
+        "description": "Backed-side analytics, token identity, frozen ranked_at and aggregate category evidence from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions."
       },
       "EdgeHunterRow": {
         "type": "object",

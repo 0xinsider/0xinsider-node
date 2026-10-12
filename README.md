@@ -242,7 +242,15 @@ and `limit` defaults to 30 and clamps to 1..30. The board has no ETag or paginat
 Every row includes provider participants, both outcome quotes, and backed-side
 analytics. Current prices are decimal strings with their own `basis`, `ts`,
 and optional `validated_at`; compare those clocks independently from `as_of`.
-Null means unavailable. `ranking_source: "db_only"` and
+Null means unavailable. SDK 0.23.0 adds nullable `outcomes[].token_id` and
+`signal.token_id`, frozen `signal.ranked_at`, and the existing aggregate
+`signal.category_skill` evidence to the board. `ranked_at` copies the same
+snapshot computation time as the ranked feed's `signal_created_at`; category
+evidence retains its own status, coverage and clocks. These additions do not
+change admission, ordering or quotes, and no price is a wallet entry cost.
+The generator now models both `current_price` properties and `row.signal` as
+nullable references; guard `row.signal` and an unavailable quote before reading
+their fields. `ranking_source: "db_only"` and
 `directional_source: "degraded"` identify weaker evidence. This board is
 analytics, not an instruction to place an order.
 
