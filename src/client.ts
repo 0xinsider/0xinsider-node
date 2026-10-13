@@ -1305,7 +1305,13 @@ function isKeylessMcpMethod(method: string): boolean {
   );
 }
 
-function isTimeoutAbort(error: unknown): boolean {
+/**
+ * Whether an abort reason is a deadline: the `TimeoutError` that
+ * `AbortSignal.timeout` aborts with. The REST loop reads it to stop retrying,
+ * and the stdio MCP server reads it to report `request_timeout` rather than a
+ * transport failure.
+ */
+export function isTimeoutAbort(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
