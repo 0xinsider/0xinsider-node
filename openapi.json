@@ -32158,7 +32158,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. When one scheduled observation refresh misses its deadline, observations keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -34276,6 +34276,10 @@
           "net_total_pnl": {
             "$ref": "#/components/schemas/TrustMetadata"
           },
+          "pnl_correction": {
+            "$ref": "#/components/schemas/TrustMetadata",
+            "description": "Present only with pnl.correction: a computed value owned by trader_pnl_corrections, dated by the newest measurement behind it."
+          },
           "unrealized_pnl": {
             "$ref": "#/components/schemas/TrustMetadata"
           },
@@ -34489,6 +34493,50 @@
           }
         }
       },
+        "PnlCorrection": {
+          "type": "object",
+          "required": [
+            "basis",
+            "amount",
+            "as_of",
+            "markets_measured"
+          ],
+          "description": "A derived 0xinsider correction to Polymarket's P&L, never a Polymarket value. Polymarket misbooks neg-risk conversions, in both directions: it puts cost on placeholder YES outcomes minted by a conversion and never books it as a loss (negative amount), and its position records leave out shares the wallet really got, such as YES minted by a conversion, so it books no P&L on them (positive amount). Per neg-risk market the wallet converted in, 0xinsider measures Polymarket's own activity cash against the sum of its position P&L, and sums the difference over every measured market whose shares did not move by direct transfer: transferred shares have no activity row, so such a market keeps Polymarket's figure and is counted in markets_excluded. It is published once every neg-risk market the wallet converted in is measured and checked for transfers, and stays as last published until then (on the trader body, pnl.correction_pending says so); a sum under $1 either way publishes nothing. The body's own P&L fields keep Polymarket's figures; this object adds the amount and the corrected figures. Money is truncated toward zero to cents.",
+          "properties": {
+            "basis": {
+              "type": "string",
+              "enum": [
+                "neg_risk_conversion_v1"
+              ],
+              "description": "The correction method."
+            },
+            "amount": {
+              "type": "number",
+              "description": "The correction in USD. Negative when Polymarket overstates the wallet."
+            },
+            "realized": {
+              "type": "number",
+              "description": "Polymarket's net realized P&L plus amount: the figure 0xinsider grades on. Omitted when Polymarket's figure is."
+            },
+            "net_total": {
+              "type": "number",
+              "description": "Polymarket's net total P&L plus amount: the 0xinsider profile's Total P&L. Omitted when Polymarket's figure is, and on leaderboard entries."
+            },
+            "as_of": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The newest measurement among the measured markets."
+            },
+            "markets_measured": {
+              "type": "integer",
+              "description": "Neg-risk markets whose measurement amount sums."
+            },
+            "markets_excluded": {
+              "type": "integer",
+              "description": "Measured neg-risk markets left out because shares moved in or out of the wallet by direct transfer; they keep Polymarket's figure. Omitted when none."
+            }
+          }
+        },
       "TraderPnlExact": {
         "type": "object",
         "required": ["realized"],
@@ -34588,7 +34636,15 @@
               },
               "net_total": {
                 "type": "number",
-                "description": "The profile's Total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The same figure the 0xinsider profile, search, live feed, portfolio and watchlist show. Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted."
+                "description": "Polymarket's net total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted. The 0xinsider profile's Total P&L is this figure unless pnl.correction is present, then pnl.correction.net_total."
+              },
+              "correction": {
+                "$ref": "#/components/schemas/PnlCorrection",
+                "description": "The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; pnl.net_total and pnl.realized keep Polymarket's own figures, and correction.net_total and correction.realized add the amount to them."
+              },
+              "correction_pending": {
+                "type": "boolean",
+                "description": "true while 0xinsider is still checking some of the wallet's converted neg-risk markets (not yet measured, measured and not yet checked for transfers, or its latest reads keep failing), so the correction may change, or arrive where none is published yet. Omitted otherwise."
               },
               "realized": {
                 "type": "number",
@@ -34945,17 +35001,18 @@
               },
               "pnl": {
                 "type": "number",
-                "description": "The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted."
+                "description": "Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The 0xinsider profile's Total P&L is this figure unless the wallet has a published correction for neg-risk conversions, which GET /api/v1/trader/{address} serves as pnl.correction; the profile then shows pnl.correction.net_total. Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted."
               },
               "markets": {
                 "type": "integer"
               },
               "wallet_age_days": {
-                "type": "number"
+                "type": "number",
+                "description": "Days since the wallet's first-seen time. For a wallet 0xinsider first recorded on or after March 21, 2026, that is when 0xinsider recorded it. For a wallet recorded earlier, it is usually the wallet's first Polymarket activity, so the age can run to years. It is not the wallet's on-chain age or the time of its first trade. Absent when the first-seen time is unknown."
               },
               "is_new_wallet": {
                 "type": "boolean",
-                "description": "True when 0xinsider first recorded the wallet within the new-wallet threshold (30 days). This public V1 field is first-seen recency, not the wallet's on-chain age."
+                "description": "True when wallet_age_days is under the new-wallet threshold (30 days), which means 0xinsider first recorded the wallet in the last 30 days. False when wallet_age_days is absent. This public V1 field is first-seen recency, not the wallet's on-chain age."
               }
             }
           },
@@ -35485,10 +35542,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           }
         }
       },
@@ -35846,10 +35904,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           },
           "lead_backer": {
             "$ref": "#/components/schemas/PickLeadBacker",
@@ -36257,10 +36316,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           }
         }
       },
@@ -36562,10 +36622,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           },
           "commitment_version": {
             "type": "integer",
@@ -36676,10 +36737,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           },
           "commitment_version": {
             "type": "integer",
@@ -36774,10 +36836,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           }
         }
       },
@@ -36875,6 +36938,10 @@
           "realized_pnl": {
             "type": "number",
             "description": "Native realized P&L plus credited maker and taker rebates in USD, with fees already included. The exact numeric value is truncated toward zero to cents before JSON conversion. Omitted when the wallet has no native snapshot or the snapshot has no net realized value; never filled from another P&L basis."
+          },
+          "pnl_correction": {
+            "$ref": "#/components/schemas/PnlCorrection",
+            "description": "The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; realized_pnl keeps Polymarket's own figure and pnl_correction.realized adds the amount to it. The grade and the ranking use the corrected figure. net_total is omitted here."
           },
           "volume": {
             "type": "number",
@@ -38172,12 +38239,16 @@
                 "description": "Polymarket series slug from the canonical identity row, null when unavailable. A sports series identifies a league and must not be used as a per-matchup grouping key."
               },
               "market_type": {
+                "deprecated": true,
                 "type": "string",
-                "nullable": true
+                "nullable": true,
+                "description": "Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire so existing clients keep parsing; do not read it."
               },
               "market_result": {
+                "deprecated": true,
                 "type": "string",
-                "nullable": true
+                "nullable": true,
+                "description": "Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire so existing clients keep parsing; do not read it. market.status and market.resolved_at say whether the market has closed or resolved."
               },
               "created_at": {
                 "type": "string",
@@ -39993,7 +40064,7 @@
               },
               "pnl": {
                 "type": "number",
-                "description": "The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot."
+                "description": "Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. The 0xinsider profile's Total P&L is this figure unless the wallet has a published correction for neg-risk conversions, which GET /api/v1/trader/{address} serves as pnl.correction; the profile then shows pnl.correction.net_total. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot."
               },
               "markets_traded": {
                 "type": "integer"
@@ -40094,7 +40165,11 @@
           },
           "all_time_pnl_usd": {
             "type": "number",
-            "description": "The wallet's all-time Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted."
+            "description": "Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The 0xinsider profile's Total P&L is this figure unless pnl_correction is present, then pnl_correction.net_total. Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted."
+          },
+          "pnl_correction": {
+            "$ref": "#/components/schemas/PnlCorrection",
+            "description": "The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; all_time_pnl_usd keeps Polymarket's own figure and pnl_correction.net_total is the profile's Total P&L."
           },
           "all_time_score": {
             "type": "number"
@@ -40810,10 +40885,11 @@
             "description": "Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot."
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": "string",
             "nullable": true,
             "pattern": "^[1-9][0-9]*$",
-            "description": "Replacement predecessor stable id; null when no lineage is recorded."
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           }
         }
       },
@@ -42061,9 +42137,10 @@
             }
           },
           "supersedes_pick_id": {
+            "deprecated": true,
             "type": ["null"],
             "enum": [null],
-            "description": "Null: the empty entitlement envelope has no selection lineage."
+            "description": "Deprecated (#24157): always null, as on every Pick of the Day shape."
           }
         }
       },
