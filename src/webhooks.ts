@@ -185,7 +185,7 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
  * name the contract does not have, and `WebhookEventType` refuses a contract
  * name this list lacks. A new event type therefore fails the SDK build until
  * it is listed here and typed below. Before that check, the list missed
- * `large_trade_inserted_v2` for three weeks after the API began delivering it.
+ * `large_trade_inserted_v2` for three weeks after the API began offering it.
  *
  * A new name goes at the end, so the index of every earlier name is unchanged.
  */
@@ -210,7 +210,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "export_job_expired",
   "export_job_cancelled",
   // Pro and Max. One large trade per delivery, with the trade in `data`
-  // (#16149); the two count events above announce a trade and carry no fields.
+  // (#16149); `large_trades_inserted` and its twin carry only a count.
   "large_trade_inserted_v2",
 ] as const satisfies readonly WebhookEvent["type"][];
 
