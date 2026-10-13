@@ -1467,7 +1467,7 @@ export type LargePosition = {
     username?: string;
     grade?: "S" | "A" | "B" | "C" | "D" | "F";
     win_rate?: number;
-    /** The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot. */
+    /** Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates. The 0xinsider profile's Total P&L is this figure unless the wallet has a published correction for neg-risk conversions, which GET /api/v1/trader/{address} serves as pnl.correction; the profile then shows pnl.correction.net_total. Distinct from this position's position_unrealized_pnl. Omitted when the wallet has no native accounting snapshot. */
     pnl?: number;
     markets_traded?: number;
   };
@@ -1580,6 +1580,8 @@ export type LeaderboardEntry = {
   pnl?: number;
   /** Native realized P&L plus credited maker and taker rebates in USD, with fees already included. The exact numeric value is truncated toward zero to cents before JSON conversion. Omitted when the wallet has no native snapshot or the snapshot has no net realized value; never filled from another P&L basis. */
   realized_pnl?: number;
+  /** The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; realized_pnl keeps Polymarket's own figure and pnl_correction.realized adds the amount to it. The grade and the ranking use the corrected figure. net_total is omitted here. */
+  pnl_correction?: PnlCorrection;
   /** Full-history both-sides USD cash volume from a verified Polymarket user-volume observation. Omitted without coverage. */
   volume?: number;
   markets_traded?: number;
@@ -1794,7 +1796,15 @@ export type MarketSnapshot = {
     image: string | null;
     /** Polymarket series slug from the canonical identity row, null when unavailable. A sports series identifies a league and must not be used as a per-matchup grouping key. */
     series_slug: string | null;
+    /**
+     * Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire so existing clients keep parsing; do not read it.
+     * @deprecated
+     */
     market_type: string | null;
+    /**
+     * Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire so existing clients keep parsing; do not read it. market.status and market.resolved_at say whether the market has closed or resolved.
+     * @deprecated
+     */
     market_result: string | null;
     created_at: string | null;
     end_date: string | null;
@@ -2112,7 +2122,10 @@ export type PickOfTheDay = {
   publication_order?: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection?: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
   /** Optional full-only lead wallet publication facts. Omitted on legacy picks or when the recorded evidence is unavailable. */
   lead_backer?: PickLeadBacker;
@@ -2215,7 +2228,10 @@ export type PickOfTheDayArchiveEntry = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
 };
 
@@ -2393,7 +2409,10 @@ export type PickOfTheDayLedgerOpenedEntry = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
@@ -2423,7 +2442,10 @@ export type PickOfTheDayLedgerSealedEntry = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
@@ -2459,7 +2481,10 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
 };
 
@@ -2484,7 +2509,10 @@ export type PickOfTheDayNoEntitledPicks = {
   scheduled_picks?: ScheduledPickSlot[];
   /** Entitled published picks whose holder proof is unreadable, ordered by rank. Unauthorized ranks appear only in locked_picks and cannot trigger proof warming. Read retry_at for the next read. */
   proof_pending_picks?: ProofPendingPickSlot[];
-  /** Null: the empty entitlement envelope has no selection lineage. */
+  /**
+   * Deprecated (#24157): always null, as on every Pick of the Day shape.
+   * @deprecated
+   */
   supersedes_pick_id: null;
 };
 
@@ -2587,6 +2615,24 @@ export type Platforms = {
   };
 };
 
+/** A derived 0xinsider correction to Polymarket's P&L, never a Polymarket value. Polymarket misbooks neg-risk conversions, in both directions: it puts cost on placeholder YES outcomes minted by a conversion and never books it as a loss (negative amount), and its position records leave out shares the wallet really got, such as YES minted by a conversion, so it books no P&L on them (positive amount). Per neg-risk market the wallet converted in, 0xinsider measures Polymarket's own activity cash against the sum of its position P&L, and sums the difference over every measured market whose shares did not move by direct transfer: transferred shares have no activity row, so such a market keeps Polymarket's figure and is counted in markets_excluded. It is published once every neg-risk market the wallet converted in is measured and checked for transfers, and stays as last published until then (on the trader body, pnl.correction_pending says so); a sum under $1 either way publishes nothing. The body's own P&L fields keep Polymarket's figures; this object adds the amount and the corrected figures. Money is truncated toward zero to cents. */
+export type PnlCorrection = {
+  /** The correction method. */
+  basis: "neg_risk_conversion_v1";
+  /** The correction in USD. Negative when Polymarket overstates the wallet. */
+  amount: number;
+  /** Polymarket's net realized P&L plus amount: the figure 0xinsider grades on. Omitted when Polymarket's figure is. */
+  realized?: number;
+  /** Polymarket's net total P&L plus amount: the 0xinsider profile's Total P&L. Omitted when Polymarket's figure is, and on leaderboard entries. */
+  net_total?: number;
+  /** The newest measurement among the measured markets. */
+  as_of: string;
+  /** Neg-risk markets whose measurement amount sums. */
+  markets_measured: number;
+  /** Measured neg-risk markets left out because shares moved in or out of the wallet by direct transfer; they keep Polymarket's figure. Omitted when none. */
+  markets_excluded?: number;
+};
+
 export type Position = {
   /** Composite prefixed ID `pos_<wallet>:<condition_id>:<outcome_index>`. */
   id: string;
@@ -2623,11 +2669,12 @@ export type Position = {
     grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Win rate as a ratio from 0 to 1 (0.62 means 62%), the same scale as stats.win_rate on GET /api/v1/trader/{address}. Absent when unknown. */
     win_rate?: number;
-    /** The wallet's Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted. */
+    /** Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The 0xinsider profile's Total P&L is this figure unless the wallet has a published correction for neg-risk conversions, which GET /api/v1/trader/{address} serves as pnl.correction; the profile then shows pnl.correction.net_total. Not the Polymarket leaderboard figure, which GET /api/v1/trader/{address} still serves as pnl.total. Omitted when the wallet has no native accounting snapshot; the leaderboard figure is never substituted. */
     pnl?: number;
     markets?: number;
+    /** Days since the wallet's first-seen time. For a wallet 0xinsider first recorded on or after March 21, 2026, that is when 0xinsider recorded it. For a wallet recorded earlier, it is usually the wallet's first Polymarket activity, so the age can run to years. It is not the wallet's on-chain age or the time of its first trade. Absent when the first-seen time is unknown. */
     wallet_age_days?: number;
-    /** True when 0xinsider first recorded the wallet within the new-wallet threshold (30 days). This public V1 field is first-seen recency, not the wallet's on-chain age. */
+    /** True when wallet_age_days is under the new-wallet threshold (30 days), which means 0xinsider first recorded the wallet in the last 30 days. False when wallet_age_days is absent. This public V1 field is first-seen recency, not the wallet's on-chain age. */
     is_new_wallet: boolean;
   };
   market: {
@@ -2724,7 +2771,10 @@ export type ProofPendingPickSlot = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
 };
 
@@ -2878,7 +2928,10 @@ export type ScheduledPickSlot = {
   publication_order: number;
   /** Viewer-independent free selection designation. New rows store it explicitly; historic null storage uses the original free slot. */
   is_free_selection: boolean;
-  /** Replacement predecessor stable id; null when no lineage is recorded. */
+  /**
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
+   * @deprecated
+   */
   supersedes_pick_id: string | null;
 };
 
@@ -3049,8 +3102,12 @@ export type Trader = {
   pnl: {
     /** Polymarket's all-time leaderboard P&L in USD, from Polymarket's latest observation of this wallet on its all-time leaderboard (dated by the leaderboard_pnl data_quality group). Omitted when that leaderboard has no current observation ranking the wallet; 0xinsider requests one, and never serves an older stored figure in its place. Kept for provider parity and back-compat. Not the profile's Total P&L and not realized plus unrealized: it can differ from net_total by a wide margin. Read net_total for the figure the 0xinsider profile shows. */
     total?: number;
-    /** The profile's Total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The same figure the 0xinsider profile, search, live feed, portfolio and watchlist show. Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted. */
+    /** Polymarket's net total P&L in USD: native Polymarket position P&L, with fees already included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Truncated toward zero to cents before conversion to a JSON number. Omitted when the wallet has no native accounting snapshot; pnl.total is never substituted. The 0xinsider profile's Total P&L is this figure unless pnl.correction is present, then pnl.correction.net_total. */
     net_total?: number;
+    /** The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; pnl.net_total and pnl.realized keep Polymarket's own figures, and correction.net_total and correction.realized add the amount to them. */
+    correction?: PnlCorrection;
+    /** true while 0xinsider is still checking some of the wallet's converted neg-risk markets (not yet measured, measured and not yet checked for transfers, or its latest reads keep failing), so the correction may change, or arrive where none is published yet. Omitted otherwise. */
+    correction_pending?: boolean;
     /** For pnl.realized, expand=trust marks a matching native accounting snapshot as computed: native Polymarket realized P&L plus credited maker and taker rebates, with fees already included. The exact numeric value is truncated toward zero to cents before conversion to a JSON number. Without a matching native accounting snapshot, pnl.realized is omitted and its trust metadata is unavailable. Raw total P&L is never substituted for realized P&L. */
     realized?: number;
     unrealized?: number;
@@ -3486,6 +3543,8 @@ export type TraderTrust = {
   total_pnl: TrustMetadata;
   realized_pnl: TrustMetadata;
   net_total_pnl: TrustMetadata;
+  /** Present only with pnl.correction: a computed value owned by trader_pnl_corrections, dated by the newest measurement behind it. */
+  pnl_correction?: TrustMetadata;
   unrealized_pnl: TrustMetadata;
   markets_traded: TrustMetadata;
   win_rate: TrustMetadata;
@@ -3531,8 +3590,10 @@ export type TrendingWallet = {
   grade?: "S" | "A" | "B" | "C" | "D" | "F";
   /** Hot-streak tier (trailing-7d cross-sectional percentile). Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
-  /** The wallet's all-time Total P&L in USD, the figure its 0xinsider profile shows: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted. */
+  /** Polymarket's net total P&L for the wallet in USD: native Polymarket position P&L across all markets, fees included, plus credited maker and taker rebates (trader_trading_pnl.net_total_pnl). The 0xinsider profile's Total P&L is this figure unless pnl_correction is present, then pnl_correction.net_total. Context only: it does not affect the ranking, which follows trending_pnl_usd. Omitted when the wallet is not in the 0xinsider database or has no native accounting snapshot; the Polymarket leaderboard all-time figure is never substituted. */
   all_time_pnl_usd?: number;
+  /** The 0xinsider correction to Polymarket's P&L for neg-risk conversions. Present only when one is published; all_time_pnl_usd keeps Polymarket's own figure and pnl_correction.net_total is the profile's Total P&L. */
+  pnl_correction?: PnlCorrection;
   all_time_score?: number;
   last_synced?: string;
   /** Shape-only daily P&L sparkline across the window, derived from Polymarket's documented user-pnl cumulative curve (GET /v2/user-pnl) converted to per-day deltas. It conveys the trend of the curve only and is NOT guaranteed to sum to trending_pnl_usd, which is the canonical leaderboard total. */

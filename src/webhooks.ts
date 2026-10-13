@@ -44,6 +44,9 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import type { Grade } from "./client.js";
+import type { WebhookEventType as ContractWebhookEventType } from "./schema.js";
+
 /** Default replay tolerance; the published contract is 300 seconds. */
 export const SIGNATURE_TOLERANCE_SECONDS = 300;
 
@@ -157,12 +160,14 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
 // --- Typed webhook payloads ---
 
 /**
- * Webhook event types. Source of truth:
- * `web/public/api/v1/openapi.json` -> components.schemas.WebhookEventType.enum.
- * `large_trades_inserted`, `whale_trades_inserted`, `wallet_grade_changed`,
- * `suspicious_trade_flagged`, `insider_radar_flag_raised`,
- * `sharp_money_flow_detected`, and `smart_money_flow_detected` are Pro and Max:
- * they deliver only to API keys on an active Pro or Max subscription.
+ * Webhook event types, as a runtime list. Source of truth:
+ * `web/public/api/v1/openapi.json` -> components.schemas.WebhookEventType.enum,
+ * which `schema.ts` carries as the generated `WebhookEventType` union.
+ * `large_trade_inserted_v2`, `large_trades_inserted`, `whale_trades_inserted`,
+ * `wallet_grade_changed`, `suspicious_trade_flagged`,
+ * `insider_radar_flag_raised`, `sharp_money_flow_detected`, and
+ * `smart_money_flow_detected` are Pro and Max: they deliver only to API keys
+ * on an active Pro or Max subscription.
  *
  * Some entries are two spellings of ONE event, not two events: either one
  * subscribes, and an endpoint receives its deliveries under the spelling it
@@ -172,6 +177,17 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
  * `insider_radar_flag_raised` (#16301), and `sharp_money_flow_detected` over
  * `smart_money_flow_detected` (#16308). No deprecated spelling is ever
  * removed.
+ *
+ * This list, the generated union and the typed envelopes in `WebhookEvent`
+ * are one set, and the compiler holds them equal (#24603). Each is checked as
+ * a subset of the next: `satisfies` below refuses a name with no typed
+ * envelope, the `WebhookEventEnvelope` constraint refuses an envelope for a
+ * name the contract does not have, and `WebhookEventType` refuses a contract
+ * name this list lacks. A new event type therefore fails the SDK build until
+ * it is listed here and typed below. Before that check, the list missed
+ * `large_trade_inserted_v2` for three weeks after the API began delivering it.
+ *
+ * A new name goes at the end, so the index of every earlier name is unchanged.
  */
 export const WEBHOOK_EVENT_TYPES = [
   "large_trades_inserted",
@@ -193,9 +209,26 @@ export const WEBHOOK_EVENT_TYPES = [
   "export_job_failed",
   "export_job_expired",
   "export_job_cancelled",
-] as const;
+  // Pro and Max. One large trade per delivery, with the trade in `data`
+  // (#16149); the two count events above announce a trade and carry no fields.
+  "large_trade_inserted_v2",
+] as const satisfies readonly WebhookEvent["type"][];
 
-export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
+/**
+ * `T`, unchanged, when `Missing` is `never`. Any other `Missing` fails its
+ * constraint, so the compile error names what is missing.
+ */
+type Complete<T, Missing extends never> = T | Missing;
+
+/**
+ * Every webhook event type: the generated contract union. It compiles only
+ * while `WEBHOOK_EVENT_TYPES` lists every name in the contract, and the error
+ * names the one the list lacks.
+ */
+export type WebhookEventType = Complete<
+  ContractWebhookEventType,
+  Exclude<ContractWebhookEventType, (typeof WEBHOOK_EVENT_TYPES)[number]>
+>;
 
 /**
  * Common delivery envelope every webhook POST body carries. Source of truth:
@@ -214,10 +247,63 @@ export interface WebhookEventEnvelope<
   data: TData;
 }
 
-/** `whale_trades_inserted` data (Pro and Max): a batch of new whale trades was ingested. */
-export interface WhaleTradesInsertedData {
+/**
+ * `large_trade_inserted_v2` data (Pro and Max): one large trade, with the
+ * trade itself. Source: `LargeTradeInsertedV2` in
+ * `backend/crates/core/src/feed_event.rs`.
+ *
+ * The three amounts are decimal strings that keep the stored precision. Parse
+ * them with a decimal library when the exact value matters; `Number` rounds.
+ * The endpoint's `trade_filters` decide which trades it receives.
+ */
+export interface LargeTradeInsertedV2Data {
+  /**
+   * Stable identity of this trade's event. It equals the envelope `id`, and
+   * the `id` of the same event on `GET /api/v1/events/feed/since`.
+   */
+  event_id: string;
+  /** Numeric id of the trade. `GET /api/v1/large-trades/{id}` accepts it. */
+  whale_alert_id: number;
+  /** Polymarket condition id of the market. */
+  condition_id: string;
+  /** 0xinsider's numeric id for the wallet. */
+  trader_id: number;
+  /** Address of the wallet that made the trade. */
+  wallet: string;
+  /** The wallet's grade when the event was published; `null` when it has none. */
+  grade: Grade | null;
+  /** USD notional of the trade; decimal string. */
+  size_usd: string;
+  /** Shares traded; decimal string. */
+  shares: string;
+  /** Price paid per share; decimal string. */
+  price: string;
+  side: "BUY" | "SELL";
+  /** Polymarket's index of the outcome traded. */
+  outcome_index: number;
+  /** When the trade filled on Polymarket (ISO 8601). */
+  traded_at: string;
+  platform: "polymarket";
+}
+
+/**
+ * `large_trades_inserted` data (Pro and Max): new large trades were ingested.
+ * It carries a count and no trade; subscribe to `large_trade_inserted_v2` for
+ * the trade itself.
+ *
+ * Delivered identically under the deprecated spelling `whale_trades_inserted`
+ * (#16304) to an endpoint that registered that spelling; the payload is the
+ * same.
+ */
+export interface LargeTradesInsertedData {
   count: number;
 }
+
+/**
+ * @deprecated Use `LargeTradesInsertedData`; renamed in #16304. The two event
+ * spellings are one event with one payload, so this is an alias.
+ */
+export type WhaleTradesInsertedData = LargeTradesInsertedData;
 
 /** One side's score line inside a `live_sports_updated` pulse. */
 export interface LiveSportsScoreEntry {
@@ -269,11 +355,23 @@ export interface LiveSportsUpdatedData {
   snapshot_url: string;
 }
 
-/** `whale_trader_synced` data: a tracked trader finished a sync pass. */
-export interface WhaleTraderSyncedData {
+/**
+ * `trader_synced` data: a tracked trader finished a sync pass.
+ *
+ * Delivered identically under the deprecated spelling `whale_trader_synced`
+ * (#16304) to an endpoint that registered that spelling; the payload is the
+ * same.
+ */
+export interface TraderSyncedData {
   trader_id: number;
   wallet: string;
 }
+
+/**
+ * @deprecated Use `TraderSyncedData`; renamed in #16304. The two event
+ * spellings are one event with one payload, so this is an alias.
+ */
+export type WhaleTraderSyncedData = TraderSyncedData;
 
 /** `large_positions_updated` data. */
 export interface LargePositionsUpdatedData {
@@ -381,17 +479,45 @@ export interface ExportJobCancelledData {
   next_action: "resubmit";
 }
 
+/**
+ * One large trade per delivery (Pro and Max, #16149). The envelope `id` equals
+ * `data.event_id`, and `created_at` is the trade's fill time
+ * (`data.traded_at`), not the time the delivery was queued.
+ */
+export type LargeTradeInsertedV2Event = WebhookEventEnvelope<
+  "large_trade_inserted_v2",
+  LargeTradeInsertedV2Data
+>;
+export type LargeTradesInsertedEvent = WebhookEventEnvelope<
+  "large_trades_inserted",
+  LargeTradesInsertedData
+>;
+/**
+ * @deprecated Use `LargeTradesInsertedEvent`; renamed in #16304. This stays a
+ * distinct envelope rather than an alias of it because the delivered `type`
+ * discriminant is the spelling the endpoint registered: an endpoint subscribed
+ * to `whale_trades_inserted` keeps receiving that literal, so narrowing on it
+ * keeps working.
+ */
 export type WhaleTradesInsertedEvent = WebhookEventEnvelope<
   "whale_trades_inserted",
-  WhaleTradesInsertedData
+  LargeTradesInsertedData
 >;
 export type LiveSportsUpdatedEvent = WebhookEventEnvelope<
   "live_sports_updated",
   LiveSportsUpdatedData
 >;
+export type TraderSyncedEvent = WebhookEventEnvelope<"trader_synced", TraderSyncedData>;
+/**
+ * @deprecated Use `TraderSyncedEvent`; renamed in #16304. This stays a
+ * distinct envelope rather than an alias of it because the delivered `type`
+ * discriminant is the spelling the endpoint registered: an endpoint subscribed
+ * to `whale_trader_synced` keeps receiving that literal, so narrowing on it
+ * keeps working.
+ */
 export type WhaleTraderSyncedEvent = WebhookEventEnvelope<
   "whale_trader_synced",
-  WhaleTraderSyncedData
+  TraderSyncedData
 >;
 export type LargePositionsUpdatedEvent = WebhookEventEnvelope<
   "large_positions_updated",
@@ -451,11 +577,19 @@ export type ExportJobCancelledEvent = WebhookEventEnvelope<
  * `SuspiciousTradeFlaggedEvent` and `InsiderRadarFlagRaisedEvent` are both
  * members because the same event is delivered under whichever spelling the
  * endpoint registered (#16301); the `data` shape is identical. So are
- * `SharpMoneyFlowDetectedEvent` and `SmartMoneyFlowDetectedEvent` (#16308).
+ * `SharpMoneyFlowDetectedEvent` and `SmartMoneyFlowDetectedEvent` (#16308),
+ * `LargeTradesInsertedEvent` and `WhaleTradesInsertedEvent`, and
+ * `TraderSyncedEvent` and `WhaleTraderSyncedEvent` (#16304).
+ *
+ * One member for every name in `WEBHOOK_EVENT_TYPES`; the `satisfies` on that
+ * list fails to compile when a name has none.
  */
 export type WebhookEvent =
+  | LargeTradeInsertedV2Event
+  | LargeTradesInsertedEvent
   | WhaleTradesInsertedEvent
   | LiveSportsUpdatedEvent
+  | TraderSyncedEvent
   | WhaleTraderSyncedEvent
   | LargePositionsUpdatedEvent
   | WalletGradeChangedEvent

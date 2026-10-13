@@ -32,7 +32,11 @@
               "InsiderRadarFlagRaisedData",
               "InsiderRadarFlagRaisedEvent",
               "SmartMoneyFlowDetectedData",
-              "SmartMoneyFlowDetectedEvent"
+              "SmartMoneyFlowDetectedEvent",
+              "WhaleTradesInsertedData",
+              "WhaleTradesInsertedEvent",
+              "WhaleTraderSyncedData",
+              "WhaleTraderSyncedEvent"
             ],
             "path": "./src/webhooks.ts"
           }

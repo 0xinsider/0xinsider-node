@@ -91,6 +91,13 @@ for the caller that asserts the shape itself.
 push, so a contract change that nobody regenerated fails CI rather than
 shipping as a stale type.
 
+SDK 0.25.0 adds `PnlCorrection`: `pnl.correction` on a `Trader`, and `pnl_correction` on a `LeaderboardEntry` and a `TrendingWallet`. It is present only when 0xinsider corrects Polymarket's P&L for neg-risk conversions Polymarket misbooks, in either direction: cost charged to inactive placeholder outcomes and never booked as a loss, or shares a conversion minted that Polymarket's records leave out. `markets_measured` says how many of the wallet's converted markets the amount sums; `markets_excluded`, when present, counts markets left at Polymarket's figure because shares moved in or out by direct transfer. A correction is published only once every converted market of the wallet is checked; until then `pnl.correction_pending` is `true` on a `Trader`. The body's own P&L fields keep Polymarket's figures; `correction.net_total` is the total the 0xinsider profile shows and `correction.realized` is what the grade uses.
+
+```ts
+const trader = await client.getTrader("swisstony");
+const total = trader.data.pnl.correction?.net_total ?? trader.data.pnl.net_total;
+```
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
@@ -695,20 +702,26 @@ if (!ok) return res.status(400).end();
 
 const event = parseWebhookEvent(rawBody);
 switch (event.type) {
-  case "wallet_grade_changed": // Pro-only
+  case "large_trade_inserted_v2": // Pro and Max; one trade per delivery
+    console.log(event.data.wallet, event.data.side, event.data.size_usd);
+    break;
+  case "wallet_grade_changed": // Pro and Max
     console.log(event.data.new_grade);
     break;
-  case "suspicious_trade_flagged": // Pro-only; `insider_radar_flag_raised` is
+  case "suspicious_trade_flagged": // Pro and Max; `insider_radar_flag_raised` is
                                   // the same event under its old spelling
     console.log(event.data.suspicion_score);
     break;
-  case "whale_trades_inserted": // Pro-only
+  case "large_trades_inserted": // Pro and Max; a count, no trade.
+                               // `whale_trades_inserted` is its old spelling
     console.log(event.data.count);
     break;
 }
 ```
 
-`verifySignature` enforces a 300-second replay tolerance (`toleranceSeconds` overrides it: a payload exactly that many seconds from `nowSeconds` still passes, one second further fails, and `0` accepts only the current second) and uses a constant-time compare, mirroring the backend exactly. It returns `false` on a bad signature or a malformed timestamp (never throws for those); it throws only on receiver misconfiguration: an empty secret, or a `toleranceSeconds` that is `NaN`, infinite or negative, each of which would otherwise silently turn the replay window off. Treat a `false` as the sender's problem (answer 4xx) and a throw as your own bug (log it). Typed payloads are exported for every event type, including the four Pro-only events (`whale_trades_inserted`, `wallet_grade_changed`, `suspicious_trade_flagged`, `smart_money_flow_detected`), which deliver only to API keys on an active Pro subscription. `suspicious_trade_flagged` and the deprecated `insider_radar_flag_raised` are two spellings of one event: either one subscribes, and an endpoint receives its deliveries under the spelling it registered, so switch on the spelling you used.
+`verifySignature` enforces a 300-second replay tolerance (`toleranceSeconds` overrides it: a payload exactly that many seconds from `nowSeconds` still passes, one second further fails, and `0` accepts only the current second) and uses a constant-time compare, mirroring the backend exactly. It returns `false` on a bad signature or a malformed timestamp (never throws for those); it throws only on receiver misconfiguration: an empty secret, or a `toleranceSeconds` that is `NaN`, infinite or negative, each of which would otherwise silently turn the replay window off. Treat a `false` as the sender's problem (answer 4xx) and a throw as your own bug (log it). Typed payloads are exported for all 16 event types in `WEBHOOK_EVENT_TYPES`. The SDK compiles only while that list, the typed payloads and the OpenAPI `WebhookEventType` enum name the same events, so a `case` on any delivered `type` narrows `event.data`. Five events deliver only to API keys on an active Pro or Max subscription: `large_trade_inserted_v2`, `large_trades_inserted`, `wallet_grade_changed`, `suspicious_trade_flagged`, and `sharp_money_flow_detected`. Four events keep a deprecated second spelling: `whale_trades_inserted`, `whale_trader_synced`, `insider_radar_flag_raised`, and `smart_money_flow_detected`. Either spelling subscribes, and an endpoint receives its deliveries under the spelling it registered, so switch on the spelling you used.
+
+SDK 0.25.0 types `large_trade_inserted_v2` (`LargeTradeInsertedV2Event`), which the API has delivered since September 23, 2026 and the list did not name. Its `data` is the trade: `event_id`, `whale_alert_id`, `condition_id`, `trader_id`, `wallet`, `grade` (`null` for an ungraded wallet), `size_usd`, `shares`, `price`, `side`, `outcome_index`, `traded_at`, and `platform`. `size_usd`, `shares` and `price` are decimal strings, and the envelope's `created_at` is the trade's fill time. `large_trades_inserted` carries a count and no trade. The same release adds `LargeTradesInsertedEvent` and `TraderSyncedEvent` for the two canonical spellings a `case` could not name before, and exports `ClientResponseMeta`, the type of `meta` on `ApiEnvelope` and `ApiListEnvelope`.
 
 ### Staged webhook secret rotation
 
