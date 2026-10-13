@@ -79,6 +79,130 @@ export function retryAfterSeconds(response: Response): number | null {
 }
 
 /**
+ * Parse a `Retry-After` header value by the RFC 9110 grammar alone into whole
+ * seconds, or `null` when it does not match.
+ *
+ * `parseRetryAfter` drives this module's own waits and keeps its documented
+ * extensions (a fractional delay, any date `Date.parse` reads). This one is
+ * for a caller that hands the seconds on as a validated fact rather than
+ * waiting on them: the stdio MCP server's `retry_after_seconds` field and its
+ * "Retry after Ns." text (#19729), which must agree and must never present a
+ * malformed header as an instruction.
+ *
+ * - delay-seconds: digits only (`"60"`). A sign, fraction, exponent, trailing
+ *   text, or a value past `Number.MAX_SAFE_INTEGER` is `null`.
+ * - HTTP-date: IMF-fixdate, the obsolete RFC 850 form and asctime, with the
+ *   calendar date and the weekday checked. The delay counts from `nowMs` and
+ *   rounds up to a whole second; a date already past is `0`.
+ * - Anything else, an empty value included, is `null`.
+ */
+export function parseRetryAfterStrict(
+  header: string | null | undefined,
+  nowMs: number = Date.now(),
+): number | null {
+  if (header === null || header === undefined) return null;
+  const value = header.trim();
+  if (/^\d+$/.test(value)) {
+    const seconds = Number(value);
+    return Number.isSafeInteger(seconds) ? seconds : null;
+  }
+  const dateMs = httpDateMs(value, nowMs);
+  if (dateMs === null) return null;
+  const seconds = Math.max(0, Math.ceil((dateMs - nowMs) / 1000));
+  return Number.isSafeInteger(seconds) ? seconds : null;
+}
+
+/** RFC 9110 section 5.6.7: all three HTTP-date forms, with UTC calendar validation. */
+function httpDateMs(value: string, nowMs: number): number | null {
+  const shortDay = "(Mon|Tue|Wed|Thu|Fri|Sat|Sun)";
+  const month = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
+  const clock = "(\\d{2}):(\\d{2}):(\\d{2})";
+  let match: string[] | null = new RegExp(
+    `^${shortDay}, (\\d{2}) ${month} (\\d{4}) ${clock} GMT$`,
+  ).exec(value);
+  let obsoleteYear = false;
+  if (!match) {
+    match = new RegExp(
+      `^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (\\d{2})-${month}-(\\d{2}) ${clock} GMT$`,
+    ).exec(value);
+    obsoleteYear = match !== null;
+  }
+  let captures: readonly (string | undefined)[];
+  if (!match) {
+    const asctime = new RegExp(
+      `^${shortDay} ${month} (\\d{2}| \\d) ${clock} (\\d{4})$`,
+    ).exec(value);
+    if (!asctime) return null;
+    captures = [
+      asctime[1],
+      asctime[3],
+      asctime[2],
+      asctime[7],
+      asctime[4],
+      asctime[5],
+      asctime[6],
+    ];
+  } else {
+    captures = match.slice(1);
+  }
+  const [weekday, dayText, monthText, yearText, hourText, minuteText, secondText] =
+    captures;
+  if (
+    weekday === undefined ||
+    dayText === undefined ||
+    monthText === undefined ||
+    yearText === undefined ||
+    hourText === undefined ||
+    minuteText === undefined ||
+    secondText === undefined
+  )
+    return null;
+  const day = Number(dayText);
+  const monthIndex = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ].indexOf(monthText);
+  let year = Number(yearText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  if (hour > 23 || minute > 59 || second > 60) return null;
+
+  const date = new Date(0);
+  const future = new Date(nowMs);
+  future.setUTCFullYear(future.getUTCFullYear() + 50);
+  if (obsoleteYear) year += Math.floor(future.getUTCFullYear() / 100) * 100;
+  date.setUTCFullYear(year, monthIndex, day);
+  date.setUTCHours(hour, minute, Math.min(second, 59), 0);
+  if (obsoleteYear && date.getTime() > future.getTime()) {
+    year -= 100;
+    date.setUTCFullYear(year, monthIndex, day);
+  }
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== monthIndex ||
+    date.getUTCDate() !== day
+  )
+    return null;
+  if (
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()] !==
+    weekday.slice(0, 3)
+  )
+    return null;
+  return date.getTime() + (second === 60 ? 1000 : 0);
+}
+
+/**
  * Resolve after `ms`, or reject with the signal's reason the moment it
  * aborts. A wait longer than `MAX_TIMER_DELAY_MS` runs as consecutive timers
  * of at most that size, so it is never handed to `setTimeout` as one value

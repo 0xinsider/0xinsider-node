@@ -39,6 +39,7 @@ export {
   assertTrustedBaseUrl,
   resolveApiUrl,
   composeSignals,
+  isTimeoutAbort,
   GRADES,
   LEADERBOARD_STRATEGIES,
   OxinsiderApiClient,
@@ -191,11 +192,13 @@ export type {
   PaginationStop,
 } from "./pagination.js";
 
-// Retry-After parsing and bounded waits, shared by REST and SSE (#16249)
+// Retry-After parsing and bounded waits, shared by REST and SSE (#16249);
+// the strict whole-second parser serves the stdio MCP server (#19729, #24848)
 export {
   MAX_TIMER_DELAY_MS,
   RETRY_AFTER_CEILING_MS,
   parseRetryAfter,
+  parseRetryAfterStrict,
 } from "./retry.js";
 
 // SSE stream
