@@ -385,10 +385,11 @@ export interface LargePositionsUpdatedData {
 export interface WalletGradeChangedData {
   wallet: string;
   trader_id: number;
-  old_grade: string;
-  new_grade: string;
-  /** Direction of the grade move, e.g. "up" / "down". */
-  direction: string;
+  /** The grade before the move. Never equal to `new_grade`. */
+  old_grade: Grade;
+  new_grade: Grade;
+  /** `"upgrade"` when `new_grade` is better than `old_grade`, else `"downgrade"`. */
+  direction: "upgrade" | "downgrade";
   skill_index: number;
   final_score: number;
   date: string;
@@ -396,21 +397,28 @@ export interface WalletGradeChangedData {
 
 /**
  * `suspicious_trade_flagged` data (Pro and Max): a suspicion threshold was
- * crossed on a fresh fill. Source: `backend/src/polymarket_rtds_ingest/flushing.rs`.
+ * crossed on a fresh fill. Source: `insider_radar_flag_webhook_payload` in
+ * `backend/crates/core/src/trade_flagging/mod.rs`.
  *
  * Delivered identically under the deprecated spelling
  * `insider_radar_flag_raised` (#16301) to an endpoint that registered that
  * spelling; the payload is the same.
  */
 export interface SuspiciousTradeFlaggedData {
-  trade_id: string;
+  /**
+   * Numeric id of the flagged trade, a JSON number (SDK 0.25.0 and earlier
+   * typed it as a string, which the API never sent). It is the `id` that
+   * `GET /api/v1/large-trades/{id}` accepts.
+   */
+  trade_id: number;
   wallet: string;
   trader_id: number;
   condition_id: string;
   suspicion_score: number;
-  track: string;
+  /** The scoring track that raised the flag. */
+  track: "whale" | "fresh_conviction" | "sliced_position";
   /** Outcome side the flagged fill took. */
-  side: string;
+  side: "yes" | "no";
   size: number;
   price: number;
 }
@@ -433,10 +441,10 @@ export interface SharpMoneyFlowDetectedData {
   /** Signed net YES/NO exposure from ranked traders. */
   net_flow_usd: number;
   abs_net_flow_usd: number;
-  /** Side the net flow leans: "yes" or "no". */
-  dominant_side: string;
-  /** Minimum trader grade included: "S", "A", "B", "C", "D", or "F". */
-  grade_floor: string;
+  /** Side the net flow leans: `"yes"` when `net_flow_usd >= 0`, else `"no"`. */
+  dominant_side: "yes" | "no";
+  /** Minimum trader grade included in the flow. */
+  grade_floor: Grade;
   whale_trade_count: number;
   /** Detection window, e.g. "24h". */
   window: string;

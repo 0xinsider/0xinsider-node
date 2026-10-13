@@ -723,6 +723,8 @@ switch (event.type) {
 
 SDK 0.25.0 types `large_trade_inserted_v2` (`LargeTradeInsertedV2Event`), which the API has offered since September 23, 2026 and the list did not name. Its `data` is the trade: `event_id`, `whale_alert_id`, `condition_id`, `trader_id`, `wallet`, `grade` (`null` for an ungraded wallet), `size_usd`, `shares`, `price`, `side`, `outcome_index`, `traded_at`, and `platform`. `size_usd`, `shares` and `price` are decimal strings, and the envelope's `created_at` is the trade's fill time. `large_trades_inserted` carries a count and no trade. The same release adds `LargeTradesInsertedEvent` and `TraderSyncedEvent` for the two canonical spellings a `case` could not name before, and exports `ClientResponseMeta`, the type of `meta` on `ApiEnvelope` and `ApiListEnvelope`.
 
+SDK 0.26.0 corrects the webhook payload types to match what the API sends. `trade_id` on `suspicious_trade_flagged` (and `insider_radar_flag_raised`) is a `number`: the API has always sent a JSON number, and earlier releases typed it as a `string`, so a comparison with a string id compiled and never matched. Fields the backend fills from a fixed set are now literal unions: `track` is `"whale" | "fresh_conviction" | "sliced_position"`, `side` and `dominant_side` are `"yes" | "no"`, `direction` is `"upgrade" | "downgrade"`, and `old_grade`, `new_grade` and `grade_floor` are `Grade`. Code that assigned these fields to `string` keeps compiling; code that compared them with a value outside the set, or treated `trade_id` as a string, now fails to compile.
+
 ### Staged webhook secret rotation
 
 Use the staged operations when the receiver needs time to deploy a new secret:
