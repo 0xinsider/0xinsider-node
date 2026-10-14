@@ -1117,7 +1117,7 @@ export type ExploreMarket = {
   no_change_pct_24h: number | null;
   /** Backend-owned deterministic market discovery score used by the hot sort. */
   discover_score: number | null;
-  score_components?: {
+  score_components: {
     volume_signal: number | null;
     /** Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value. */
     large_trade_signal: number | null;
@@ -1134,7 +1134,7 @@ export type ExploreMarket = {
     price_move_signal: number | null;
     missing_price_penalty: number;
   };
-  freshness?: {
+  freshness: {
     enrichment_status: "available" | "unavailable";
     price_status: "available" | "unavailable";
   };
@@ -1391,19 +1391,19 @@ export type LargeExportPolicy = {
   /** Programmatic API-key-gated export routes (submit/status/download/cancel) and supported formats (json, ndjson, csv). */
   v1_async: {
     /** POST route template to submit an export job. fresh=true asks for a snapshot read after the submit instead of reusing a finished one. */
-    submit_route?: string;
+    submit_route: string;
     /** GET route template to poll job status. */
-    status_route?: string;
+    status_route: string;
     /** GET route template that 302-redirects to the file. */
-    download_route?: string;
+    download_route: string;
     /** POST route template to cancel a queued or running job. */
-    cancel_route?: string;
+    cancel_route: string;
     /** Supported ?format= values. */
-    formats?: ("json" | "ndjson" | "csv")[];
+    formats: ("json" | "ndjson" | "csv")[];
     /** Possible job status values. */
-    status_values?: ("queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled")[];
+    status_values: ("queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled")[];
     /** How long a finished export is retained before expiry. */
-    retention?: string;
+    retention: string;
   };
   direct_streaming: Record<string, unknown>;
   async_job: Record<string, unknown>;
@@ -1621,7 +1621,7 @@ export type MarketFlow = {
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
     /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
-    large_trade_count?: number;
+    large_trade_count: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1648,7 +1648,7 @@ export type MarketFlow = {
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
     /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
-    large_trade_count?: number;
+    large_trade_count: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1814,6 +1814,7 @@ export type MarketSnapshot = {
     side: "yes" | "no";
     label: string;
     token_id?: string;
+    /** The outcome's display price, the probability Polymarket shows for it: the midpoint of the cached top of book when the spread is at most 0.10, otherwise the token's last trade price. Omitted when neither is known, including a book wider than 0.10 with no last trade on record; top_of_book still carries that book's best_bid and best_ask. expand=trust explains a missing value in trust.current_price. */
     current_price?: number;
     top_of_book: MarketSnapshotTopOfBook;
   })[];
@@ -1878,7 +1879,7 @@ export type MarketSnapshotTrust = {
 
 export type McpJsonRpcError = {
   jsonrpc: "2.0";
-  id?: string | number | null;
+  id: string | number | null;
   error: {
     code: number;
     message: string;
@@ -2167,7 +2168,7 @@ export type PickOfTheDayArchiveEntry = {
    * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
    * @deprecated
    */
-  pick_rank?: number;
+  pick_rank: number;
   /** When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic picks publish from 03:00 America/New_York on pick_date. Absent only for historical rows whose publication instant is unknown. */
   published_at?: string;
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
@@ -2293,7 +2294,7 @@ export type PickOfTheDayHitRate = {
   /** Number of picks still pending resolution (excluded from the hit rate). */
   pending: number;
   /** The flat stake every money figure here assumes, in USD: 1000 since 2026-09-22 (100 before). Always present. */
-  stake_usd?: number;
+  stake_usd: number;
   /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued decided picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a void pays 0. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
   net_profit_usd: number;
   /** Total staked (USD) = stake_usd * count of visible valued decided picks: every visible loss plus every priced win. Void, unpriced wins, and current non-Insider rows whose price is gated are excluded. */
@@ -2345,7 +2346,7 @@ export type PickOfTheDayHitRate = {
   /** Measured public rows where close exactly equals entry. */
   clv_ties: number;
   /** Cumulative track-record series, one point per decided (win/loss) pick in ascending pick_date order (void and pending add no point). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
-  series?: {
+  series: {
     /** The decided pick's publish date (YYYY-MM-DD). */
     date: string;
     /** Running cumulative stake_usd-per-pick profit (USD) through this pick; valued losses and priced wins are booked, while a non-valued decided row carries profit forward unchanged. */
@@ -2963,7 +2964,7 @@ export type SmartMoneyFlowMarket = {
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
     /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
-    large_trade_count?: number;
+    large_trade_count: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -2978,7 +2979,7 @@ export type SmartMoneyFlowMarket = {
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
     /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
-    large_trade_count?: number;
+    large_trade_count: number;
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -2992,7 +2993,7 @@ export type SnapshotCompleteness = {
   reason: string;
   expected_days: number;
   /** Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value. */
-  covered_days_with_large_trade_activity?: number;
+  covered_days_with_large_trade_activity: number;
   covered_days_with_whale_activity: number;
 };
 
@@ -3129,7 +3130,7 @@ export type Trader = {
   };
   strategy?: {
     /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
-    strategy_type?: string;
+    strategy_type: string;
     description?: string;
     confidence?: number;
   };
@@ -3683,8 +3684,6 @@ export type Usage = {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
-      /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
-      unavailable_reason?: "usage_price_reconciliation_required" | null;
     } | null;
   };
   meta: ResponseMeta;
@@ -4052,6 +4051,8 @@ export interface OperationData {
     error?: {
       code: number;
       message: string;
+      /** Optional JSON-serializable error data. */
+      data?: Record<string, unknown> | unknown[] | string | number | boolean | null;
     };
   };
   createWebhook: WebhookEndpoint;
@@ -4081,10 +4082,10 @@ export interface OperationData {
   getEventReplaySince: EventReplayEvent[];
   getGame: Game;
   getHealth: {
-    status?: "ok" | "degraded" | "down" | "maintenance";
-    db?: boolean;
-    cache?: boolean;
-    subsystems?: {
+    status: "ok" | "degraded" | "down" | "maintenance";
+    db: boolean;
+    cache: boolean;
+    subsystems: {
       /** Whether the webhook outbox schema validated on this probe. false lowers status to degraded. true during a maintenance window, when nothing is probed. */
       webhook_compatibility: boolean;
       /** Public-safe aggregate status for expected background job successful-completion heartbeats. Does not expose Redis keys, job names, raw errors, provider payloads, wallet addresses, or condition IDs. */
@@ -4210,8 +4211,6 @@ export interface OperationData {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
-      /** A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation. */
-      unavailable_reason?: "usage_price_reconciliation_required" | null;
     } | null;
   };
   getWebhook: WebhookEndpoint;
@@ -5321,6 +5320,8 @@ export interface OperationResponse {
     error?: {
       code: number;
       message: string;
+      /** Optional JSON-serializable error data. */
+      data?: Record<string, unknown> | unknown[] | string | number | boolean | null;
     };
   };
   createWebhook: {
