@@ -324,8 +324,9 @@ function streamConnectionSignal(
     established();
     controller.abort(caller?.reason);
   };
-  // Manual forwarding supports every Node >=18, including versions without
-  // AbortSignal.any, and allows both sources to be disposed explicitly.
+  // Manual forwarding rather than AbortSignal.any: the deadline bounds only the
+  // opening, so `established` must be able to cancel it, and `dispose` detaches
+  // the caller listener once the stream ends.
   if (caller?.aborted) onCallerAbort();
   else caller?.addEventListener("abort", onCallerAbort, { once: true });
   if (!controller.signal.aborted && timeoutMs !== null) {
