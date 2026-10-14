@@ -9947,6 +9947,7 @@
                         "picks": [
                           {
                             "pick_date": "2026-06-23",
+                            "pick_rank": 1,
                             "published_at": "2026-06-23T15:30:00Z",
                             "matchup": "Portugal vs. Uzbekistan",
                             "category": "Soccer",
@@ -9962,6 +9963,7 @@
                           },
                           {
                             "pick_date": "2026-06-22",
+                            "pick_rank": 2,
                             "published_at": "2026-06-22T15:30:00Z",
                             "matchup": "Spain vs. France",
                             "category": "Soccer",
@@ -15071,6 +15073,7 @@
                           "net_flow_usd": 0,
                           "direction": "YES",
                           "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
                           "sell_volume_usd": 0,
@@ -15081,6 +15084,7 @@
                           "net_flow_usd": 0,
                           "direction": "YES",
                           "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
                           "sell_volume_usd": 0,
@@ -15965,6 +15969,7 @@
                               "net_flow_usd": 0,
                               "direction": "YES",
                               "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
                               "sell_volume_usd": 0,
@@ -15975,6 +15980,7 @@
                               "net_flow_usd": 0,
                               "direction": "YES",
                               "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
                               "sell_volume_usd": 0,
@@ -24286,6 +24292,7 @@
                     },
                     "data": {
                       "type": "object",
+                      "required": ["status", "db", "cache", "subsystems"],
                       "properties": {
                         "status": {
                           "type": "string",
@@ -24373,7 +24380,23 @@
                     "value": {
                       "object": "health",
                       "data": {
-                        "status": "ok"
+                        "status": "ok",
+                        "db": true,
+                        "cache": true,
+                        "subsystems": {
+                          "background_jobs": {
+                            "status": "ok",
+                            "checked": true,
+                            "total": 33,
+                            "healthy": 33,
+                            "stale": 0,
+                            "missing": 0,
+                            "invalid": 0,
+                            "unconfigured": 0,
+                            "paused": 0
+                          },
+                          "webhook_compatibility": true
+                        }
                       },
                       "meta": {
                         "request_id": "req_example",
@@ -24645,6 +24668,29 @@
                         },
                         "message": {
                           "type": "string"
+                        },
+                        "data": {
+                          "description": "Optional JSON-serializable error data.",
+                          "oneOf": [
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "array"
+                            },
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       }
                     }
@@ -25211,6 +25257,7 @@
                           "status": "complete",
                           "reason": "the requested source range is closed and this body was read after the whale-trade ingestion budget elapsed; zero-activity dates are represented by absence of whale rows",
                           "expected_days": 1,
+                          "covered_days_with_large_trade_activity": 1,
                           "covered_days_with_whale_activity": 1
                         },
                         "reconciliation": {
@@ -25596,6 +25643,7 @@
                           "status": "complete",
                           "reason": "the requested source range is closed and this body was read after the whale-trade ingestion budget elapsed; zero-activity dates are represented by absence of whale rows",
                           "expected_days": 1,
+                          "covered_days_with_large_trade_activity": 1,
                           "covered_days_with_whale_activity": 1
                         },
                         "reconciliation": {
@@ -26000,6 +26048,7 @@
                           "status": "complete",
                           "reason": "the requested source range is closed and this body was read after the whale-trade ingestion budget elapsed; zero-activity dates are represented by absence of whale rows",
                           "expected_days": 7,
+                          "covered_days_with_large_trade_activity": 7,
                           "covered_days_with_whale_activity": 7
                         },
                         "reconciliation": {
@@ -26384,6 +26433,7 @@
                           "status": "complete",
                           "reason": "the requested source range is closed and this body was read after the whale-trade ingestion budget elapsed; zero-activity dates are represented by absence of whale rows",
                           "expected_days": 31,
+                          "covered_days_with_large_trade_activity": 31,
                           "covered_days_with_whale_activity": 31
                         },
                         "reconciliation": {
@@ -34691,6 +34741,7 @@
           },
           "strategy": {
             "type": "object",
+            "required": ["strategy_type"],
             "properties": {
               "strategy_type": {
                 "type": "string",
@@ -36170,6 +36221,7 @@
         "type": "object",
         "required": [
           "pick_date",
+          "pick_rank",
           "outcome",
           "pick_id",
           "publication_order",
@@ -36333,22 +36385,24 @@
           "pct",
           "void",
           "pending",
+          "stake_usd",
           "net_profit_usd",
           "staked_usd",
           "roi_pct",
           "net_profit_display",
           "roi_display",
           "win_rate_display",
+          "clv_pending",
+          "clv_unavailable",
+          "clv_state",
           "clv_eligible",
           "clv_total",
           "clv_measured",
           "clv_applicable",
           "clv_not_applicable",
-          "clv_pending",
-          "clv_unavailable",
-          "clv_state",
           "clv_beats_close",
-          "clv_ties"
+          "clv_ties",
+          "series"
         ],
         "properties": {
           "wins": {
@@ -37078,7 +37132,9 @@
           "no_last_price",
           "change_pct_24h",
           "no_change_pct_24h",
-          "discover_score"
+          "discover_score",
+          "score_components",
+          "freshness"
         ],
         "properties": {
           "id": {
@@ -37801,6 +37857,7 @@
               "net_flow_usd",
               "direction",
               "token_id",
+              "large_trade_count",
               "whale_trade_count",
               "buy_volume_usd",
               "sell_volume_usd",
@@ -37892,6 +37949,7 @@
               "net_flow_usd",
               "direction",
               "token_id",
+              "large_trade_count",
               "whale_trade_count",
               "buy_volume_usd",
               "sell_volume_usd",
@@ -38020,6 +38078,7 @@
               "net_flow_usd",
               "direction",
               "token_id",
+              "large_trade_count",
               "whale_trade_count",
               "buy_volume_usd",
               "sell_volume_usd"
@@ -38060,6 +38119,7 @@
               "net_flow_usd",
               "direction",
               "token_id",
+              "large_trade_count",
               "whale_trade_count",
               "buy_volume_usd",
               "sell_volume_usd"
@@ -38284,7 +38344,10 @@
                   "type": "string"
                 },
                 "current_price": {
-                  "type": "number"
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "The outcome's display price, the probability Polymarket shows for it: the midpoint of the cached top of book when the spread is at most 0.10, otherwise the token's last trade price. Omitted when neither is known, including a book wider than 0.10 with no last trade on record; top_of_book still carries that book's best_bid and best_ask. expand=trust explains a missing value in trust.current_price."
                 },
                 "top_of_book": {
                   "$ref": "#/components/schemas/MarketSnapshotTopOfBook"
@@ -38896,7 +38959,13 @@
       },
       "SnapshotCompleteness": {
         "type": "object",
-        "required": ["status", "reason", "expected_days", "covered_days_with_whale_activity"],
+        "required": [
+          "status",
+          "reason",
+          "expected_days",
+          "covered_days_with_large_trade_activity",
+          "covered_days_with_whale_activity"
+        ],
         "properties": {
           "status": {
             "type": "string",
@@ -39725,6 +39794,15 @@
           "v1_async": {
             "type": "object",
             "description": "Programmatic API-key-gated export routes (submit/status/download/cancel) and supported formats (json, ndjson, csv).",
+            "required": [
+              "submit_route",
+              "status_route",
+              "download_route",
+              "cancel_route",
+              "formats",
+              "status_values",
+              "retention"
+            ],
             "properties": {
               "submit_route": {
                 "type": "string",
@@ -39900,11 +39978,6 @@
                     "type": ["integer", "null"],
                     "example": 500000,
                     "description": "The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22."
-                  },
-                  "unavailable_reason": {
-                    "type": ["string", "null"],
-                    "enum": ["usage_price_reconciliation_required", null],
-                    "description": "A historical usage price has not been reconciled to this plan allowance. Pay as you go remains unavailable until billing reconciliation."
                   }
                 },
                 "description": "The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response."
@@ -40780,7 +40853,7 @@
       },
       "McpJsonRpcError": {
         "type": "object",
-        "required": ["jsonrpc", "error"],
+        "required": ["jsonrpc", "id", "error"],
         "properties": {
           "jsonrpc": {
             "type": "string",
@@ -44437,12 +44510,10 @@
                   "type": "boolean"
                 },
                 "next_cursor": {
-                  "type": "string",
-                  "nullable": true
+                  "type": "string"
                 },
                 "total": {
-                  "type": "integer",
-                  "nullable": true
+                  "type": "integer"
                 },
                 "meta": {
                   "$ref": "#/components/schemas/ResponseMeta"
