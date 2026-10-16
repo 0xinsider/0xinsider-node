@@ -12,7 +12,7 @@ The types are generated from the [published OpenAPI document](https://0xinsider.
 
 ## Requirements
 
-- Node.js 18+ (uses native `fetch`, `ReadableStream`, and `node:crypto`). Zero runtime dependencies.
+- Node.js 22+ (uses native `fetch`, `ReadableStream`, and `node:crypto`). Zero runtime dependencies.
 - Every API call has a 15 s SDK deadline (`DEFAULT_TIMEOUT_MS`). Set `timeoutMs` on the client or per call; `null` disables it. Only the SDK's deadline rejects with `RequestTimeoutError` (no status, body, or request id). An API call cancelled by the caller's `signal` rejects with its exact abort reason, including a caller-owned `TimeoutError`. `streamFeed` has no deadline; signed object downloads use their separate `downloadTimeoutMs` option.
 - API call cancellation stays active while the response body is read and during retry backoff. The first signal to abort determines the rejection; no further attempt starts after cancellation. On runtimes without `AbortSignal.any`, request-owned listeners are removed when the call finishes, including failures; one cancellation signal can be reused across pages without accumulating listeners.
 - `baseUrl` is the server URL, `https://api.0xinsider.com` by default or `https://0xinsider.com/sandbox`; a path on it is kept and the `/api/v1/...` operation paths are appended after it. It must be `https:`; `http:` is accepted only for a loopback host (`localhost`, `127.0.0.1`, `[::1]`). The constructor throws otherwise, so the API key is never sent to an untrusted origin.
@@ -45,6 +45,13 @@ npm ci && npm run build && node examples/sandbox.mjs
 ```
 
 ## Types
+
+SDK 0.28.0 requires Node.js 22 or newer: `engines.node` is `>=22`, and the
+package type-checks against Node 22's types. Node 18 reached end of life on
+2025-04-30 and Node 20 on 2026-04-30. Request deadlines and caller signals now
+combine through `AbortSignal.any`, which every supported Node version has.
+Method names, request options and response types are unchanged; two scheduled
+Pick of the Day doc comments are refreshed.
 
 SDK 0.27.1 refreshes Pick of the Day field guidance and synchronizes the current
 canonical response declarations. `getMarketHolders.total` is required in the

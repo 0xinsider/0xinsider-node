@@ -1065,9 +1065,8 @@ export function resolveApiUrl(baseUrl: string, path: string): URL {
 }
 
 /**
- * One signal that aborts on the deadline OR when the caller's signal aborts.
- * Uses native composition where available. The manual fallback removes both
- * source listeners when either source aborts.
+ * One signal that aborts on the deadline OR when the caller's signal aborts,
+ * composed with `AbortSignal.any`, which every supported Node release has.
  */
 export function composeSignals(
   timeoutMs: number | null,
@@ -1079,10 +1078,12 @@ export function composeSignals(
 interface RequestSignal {
   signal: AbortSignal | undefined;
   timeout?: AbortSignal;
-  dispose?: () => void;
 }
 
-/** Keep cancellation live through body consumption, then release its listeners. */
+/**
+ * Keep cancellation live through body consumption. `timeout` is returned so a
+ * catch can tell the deadline from a caller abort by reason identity (#19749).
+ */
 function composeRequestSignal(
   timeoutMs: number | null,
   caller?: AbortSignal,
@@ -1091,31 +1092,7 @@ function composeRequestSignal(
     timeoutMs === null ? undefined : AbortSignal.timeout(timeoutMs);
   if (!timeout) return { signal: caller };
   if (!caller) return { signal: timeout, timeout };
-  if (typeof AbortSignal.any === "function") {
-    return { signal: AbortSignal.any([caller, timeout]), timeout };
-  }
-  const controller = new AbortController();
-  const dispose = () => {
-    caller.removeEventListener("abort", onCallerAbort);
-    timeout.removeEventListener("abort", onTimeoutAbort);
-  };
-  const onCallerAbort = () => {
-    dispose();
-    controller.abort(caller.reason);
-  };
-  const onTimeoutAbort = () => {
-    dispose();
-    controller.abort(timeout.reason);
-  };
-  if (caller.aborted) {
-    onCallerAbort();
-  } else if (timeout.aborted) {
-    onTimeoutAbort();
-  } else {
-    caller.addEventListener("abort", onCallerAbort, { once: true });
-    timeout.addEventListener("abort", onTimeoutAbort, { once: true });
-  }
-  return { signal: controller.signal, timeout, dispose };
+  return { signal: AbortSignal.any([caller, timeout]), timeout };
 }
 
 interface ExportVerification {
@@ -1184,20 +1161,18 @@ class ExportBodyOwner {
     this.cancel = (reason) => response.body?.cancel(reason) ?? Promise.resolve();
   }
 
-  reader(reader: ReadableStreamDefaultReader<Uint8Array>, dispose: () => void) {
+  reader(reader: ReadableStreamDefaultReader<Uint8Array>) {
     let finished = false;
     let cancellation: Promise<void> | undefined;
     const finish = () => {
       if (finished) return;
       finished = true;
-      dispose();
       reader.releaseLock();
     };
     const cancel = (reason: unknown): Promise<void> => {
       if (cancellation) return cancellation;
       if (finished) return Promise.resolve();
       finished = true;
-      dispose();
       cancellation = Promise.resolve().then(() => reader.cancel(reason)).finally(() => reader.releaseLock());
       return cancellation;
     };
@@ -1217,31 +1192,30 @@ class ExportBodyOwner {
   }
 }
 
-/** Hash decoded bytes with backpressure and finish the reader/listener owner. */
+/**
+ * Hash decoded bytes with backpressure and finish the reader owner. Without a
+ * verification the response passes through untouched: the request signal is
+ * an `AbortSignal.any` composition, so no listener waits on the body's end.
+ */
 function managedExportBody(
   response: Response,
   owner: ExportBodyOwner,
-  dispose: () => void,
-  needsDisposal: boolean,
   verification?: ExportVerification,
 ): Response {
-  if (!verification && !needsDisposal) return response;
+  if (!verification) return response;
   if (!response.body) {
-    if (verification) throw new ExportIntegrityError(
+    throw new ExportIntegrityError(
       verification.jobId, verification.expectedSha256, null, verification.expectedSizeBytes, 0,
     );
-    dispose();
-    return response;
   }
-  const lease = owner.reader(response.body.getReader(), dispose);
-  const hasher = verification ? createHash("sha256") : undefined;
+  const lease = owner.reader(response.body.getReader());
+  const hasher = createHash("sha256");
   let actualSizeBytes = 0;
   let consumerCancelled = false;
-  const integrityFailure = (cause: unknown): unknown => verification
-    ? new ExportIntegrityError(
-      verification.jobId, verification.expectedSha256, null,
-      verification.expectedSizeBytes, actualSizeBytes, cause,
-    ) : cause;
+  const integrityFailure = (cause: unknown): unknown => new ExportIntegrityError(
+    verification.jobId, verification.expectedSha256, null,
+    verification.expectedSizeBytes, actualSizeBytes, cause,
+  );
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {
       let chunk: ReadableStreamReadResult<Uint8Array>;
@@ -1259,13 +1233,13 @@ function managedExportBody(
       try {
         if (chunk.done) {
           lease.finish();
-          const actualSha256 = hasher?.digest("hex");
-          if (verification && (
+          const actualSha256 = hasher.digest("hex");
+          if (
             actualSizeBytes !== verification.expectedSizeBytes ||
             actualSha256 !== verification.expectedSha256
-          )) {
+          ) {
             controller.error(new ExportIntegrityError(
-              verification.jobId, verification.expectedSha256, actualSha256 ?? null,
+              verification.jobId, verification.expectedSha256, actualSha256,
               verification.expectedSizeBytes, actualSizeBytes,
             ));
           } else {
@@ -1273,7 +1247,7 @@ function managedExportBody(
           }
           return;
         }
-        hasher?.update(chunk.value);
+        hasher.update(chunk.value);
         actualSizeBytes += chunk.value.byteLength;
         controller.enqueue(chunk.value);
       } catch (error: unknown) {
@@ -2039,7 +2013,7 @@ export class OxinsiderApiClient {
     const fetchImpl = options.fetch ?? globalThis.fetch;
     if (typeof fetchImpl !== "function") {
       throw new Error(
-        "No fetch implementation available. Pass `fetch` in OxinsiderApiClient options or run on Node 18+ / a fetch-capable runtime.",
+        "No fetch implementation available. Pass `fetch` in OxinsiderApiClient options or run on Node 22+ / a fetch-capable runtime.",
       );
     }
     // Bind so a passed-through `globalThis.fetch` keeps its receiver.
@@ -2314,7 +2288,7 @@ export class OxinsiderApiClient {
         if (response.type === "opaqueredirect" || response.status === 0) {
           throw new InvalidResponseError(
             302,
-            "This runtime hides redirect targets: fetch with redirect: \"manual\" returned an opaque redirect, so the presigned download URL cannot be read. Run the export download from a server runtime (Node 18+, Deno, Bun, a Worker).",
+            "This runtime hides redirect targets: fetch with redirect: \"manual\" returned an opaque redirect, so the presigned download URL cannot be read. Run the export download from a server runtime (Node 22+, Deno, Bun, a Worker).",
             null,
           );
         }
@@ -2412,12 +2386,6 @@ export class OxinsiderApiClient {
     statusError: (status: number) => InvalidResponseError,
   ): Promise<TraderExportDownload> {
     const signal = composeRequestSignal(options.downloadTimeoutMs ?? null, options.signal);
-    let disposed = false;
-    const dispose = () => {
-      if (disposed) return;
-      disposed = true;
-      signal.dispose?.();
-    };
     const owner = new ExportBodyOwner();
     try {
       // A signed object URL authorizes itself; never forward API headers.
@@ -2427,7 +2395,7 @@ export class OxinsiderApiClient {
       });
       owner.response(response);
       if (!response.ok) throw statusError(response.status);
-      response = managedExportBody(response, owner, dispose, signal.dispose !== undefined, verification);
+      response = managedExportBody(response, owner, verification);
       const contentLength = response.headers.get("content-length");
       const result: TraderExportDownload = {
         ...target,
@@ -2443,11 +2411,7 @@ export class OxinsiderApiClient {
       owner.transfer();
       return result;
     } catch (error: unknown) {
-      try {
-        throw await owner.release(error);
-      } finally {
-        dispose();
-      }
+      throw await owner.release(error);
     }
   }
 
@@ -2581,8 +2545,6 @@ export class OxinsiderApiClient {
         throw requestSignal.signal.reason;
       }
       throw error;
-    } finally {
-      requestSignal.dispose?.();
     }
   }
 

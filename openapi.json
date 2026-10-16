@@ -37325,7 +37325,7 @@
       },
       "ScheduledPickSlot": {
         "type": "object",
-        "description": "An entitled same-day pick selected but not yet released: stable rank and backend-owned release/kickoff instants. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks.",
+        "description": "An entitled same-day slot with a future scheduled release: stable identity and backend-owned release/kickoff instants. It leaves this list at its release instant; an unpublished slot is never a delayed recommendation. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks.",
         "required": [
           "pick_rank",
           "release_at",
@@ -37346,7 +37346,7 @@
           "release_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The slot's stored release instant. Use the returned timestamp; actual publication may occur later."
+            "description": "The slot's future release instant. Remove this preview at that instant and read again for published picks; a scheduled slot does not guarantee publication."
           },
           "kickoff": {
             "type": "string",
