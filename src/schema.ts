@@ -97,7 +97,7 @@ export type ApiErrorBody = {
   message: string;
   doc_url?: string;
   param?: string;
-  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 03:00 America/New_York operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew. */
+  /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released, the recommendation is advisory and can change before a pick becomes available. Schedule the next request from the returned value instead of inferring a release schedule or polling. Prefer Retry-After for the duration because it is immune to client clock skew. */
   retry_at?: string;
   freshness?: FreshnessFailure;
   /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed. */
@@ -1158,6 +1158,44 @@ export type ExportCounts = {
   estimated_size_mb: number;
 };
 
+/** `export_job_cancelled` data: the owner's export stopped because its owner cancelled it. */
+export type ExportJobCancelledData = {
+  job_id: number;
+  status: "cancelled";
+  format: string;
+  next_action: "resubmit";
+};
+
+/** `export_job_expired` data: the owner's ready export passed retention. */
+export type ExportJobExpiredData = {
+  job_id: number;
+  status: "expired";
+  format: string;
+  next_action: "resubmit";
+};
+
+/** `export_job_failed` data: the owner's asynchronous export reached a terminal failure. */
+export type ExportJobFailedData = {
+  job_id: number;
+  status: "failed";
+  format: string;
+  next_action: "resubmit";
+  failure_reason: string;
+};
+
+/** `export_job_ready` data: the owner's asynchronous export can be downloaded. Download authorization stays on the status and download routes. */
+export type ExportJobReadyData = {
+  job_id: number;
+  status: "ready";
+  format: string;
+  next_action: "download";
+  total_trades: number | null;
+  processed_trades: number | null;
+  /** Artifact size in bytes. */
+  file_size: number | null;
+  data_as_of: string | null;
+};
+
 export type ExportSourceRange = {
   first_pnl_date: string | null;
   last_pnl_date: string | null;
@@ -1482,6 +1520,12 @@ export type LargePosition = {
   };
 };
 
+/** `large_positions_updated` data: one large-positions refresh finished. */
+export type LargePositionsUpdatedData = {
+  /** Positions the refresh published. */
+  count: number;
+};
+
 export type LargeTrade = {
   /** Prefixed ID (wt_...). */
   id: string;
@@ -1556,6 +1600,40 @@ export type LargeTradeHistoryMeta = {
   };
 };
 
+/** `large_trade_inserted_v2` data (Pro and Max): one large trade, with the trade itself. The three amounts are decimal strings that keep the stored precision: parse them with a decimal library when the exact value matters. The endpoint's `trade_filters` decide which trades it receives. */
+export type LargeTradeInsertedV2Data = {
+  /** Stable identity of this trade's event. It equals the envelope `id`, and the `id` of the same event on `GET /api/v1/events/feed/since`. */
+  event_id: string;
+  /** Numeric id of the trade. `GET /api/v1/large-trades/{id}` accepts it. */
+  whale_alert_id: number;
+  /** Polymarket condition id of the market. */
+  condition_id: string;
+  /** 0xinsider's numeric id for the wallet. */
+  trader_id: number;
+  /** Address of the wallet that made the trade. */
+  wallet: string;
+  /** The wallet's grade when the event was published; `null` when it has none. */
+  grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** USD notional of the trade; decimal string. */
+  size_usd: string;
+  /** Shares traded; decimal string. */
+  shares: string;
+  /** Price paid per share; decimal string. */
+  price: string;
+  side: "BUY" | "SELL";
+  /** Polymarket's index of the outcome traded. */
+  outcome_index: number;
+  /** When the trade filled on Polymarket. The envelope's `created_at` is this instant. */
+  traded_at: string;
+  platform: "polymarket";
+};
+
+/** `large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object. */
+export type LargeTradesInsertedData = {
+  /** Large trades the producing batch admitted. */
+  count: number;
+};
+
 /** All present fields narrow large_trade_inserted_v2 delivery. Grade is observed at publication; ungraded trades do not match min_grade. An empty object matches every large trade. */
 export type LargeTradeSubscriptionFilters = {
   /** Raw provider condition ID or mkt_-prefixed market ID. */
@@ -1592,6 +1670,50 @@ export type LeaderboardEntry = {
   /** Provider platform. Always polymarket. */
   platform: "polymarket";
   last_active?: string;
+};
+
+/** One side's score line inside a `live_sports_updated` pulse. */
+export type LiveSportsScoreEntry = {
+  /** Team name, ordered for the league (away first where the league reads that way). */
+  team: string;
+  /** This side's score as the provider sends it. */
+  score: string;
+  /** Esports series only: this side's current-map score. Absent on other sports. */
+  map_score?: string;
+};
+
+/** `live_sports_updated` data: one bounded pulse for one live game. A pulse fires when a material field moved since this game's previous delivered pulse (`scores`, `status`, `period`, `live`, `ended`), at most once per game per 20 seconds. A `live` or `ended` transition is exempt from that interval, and the game clock alone never fires a pulse. Suppressed frames are folded into the next pulse's `changed`, and its body carries the current state. */
+export type LiveSportsUpdatedData = {
+  /** The Polymarket event slug this game trades under. */
+  event_slug: string;
+  /** Provider game id, or `null` when the frame carried none. */
+  game_id: string | null;
+  /** League abbreviation, or `null`. */
+  league: string | null;
+  /** Durable per-game pulse ordinal, increasing by one per delivered pulse. Deliveries are not ordered, so drop a pulse whose version you already saw. */
+  version: number;
+  /** Material fields that moved since this game's previous delivered pulse. */
+  changed: ("scores" | "status" | "period" | "live" | "ended")[];
+  /** Provider frame time, or `null` when the frame carried none. Never replaced with a local clock. */
+  observed_at: string | null;
+  /** When the pulse was admitted. */
+  published_at: string;
+  /** Provider status text, or `null`. */
+  status: string | null;
+  /** Provider period text ("Q3", "Map 2/3"), or `null`. */
+  period: string | null;
+  /** Game clock, or `null`. Not a material field: it never fires a pulse on its own. */
+  clock: string | null;
+  /** Provider live flag, or `null` when the frame carried none. */
+  live: boolean | null;
+  /** Whether the provider has marked this game final. */
+  ended: boolean;
+  /** Per-side scores, one line per team. */
+  scores: LiveSportsScoreEntry[];
+  /** Esports `BoN` series token, or `null` on every other sport. */
+  series_format: string | null;
+  /** Public game page. Re-read it after a gap instead of replaying pulses. */
+  snapshot_url: string;
 };
 
 /** Provider-first bucketed OHLC price candles for a market's outcome tokens, derived from our stored copy of the Polymarket CLOB prices-history series (covers open and resolved markets). */
@@ -1935,7 +2057,7 @@ export type PickHolder = {
   x_username?: string | null;
 };
 
-/** Recorded lead wallet facts, available only on full newly certified picks. Position and category history are frozen at publication; they are not live balances or pick win probabilities. */
+/** Recorded lead wallet facts on a full response when available. Position and category history are frozen at publication; they are not live balances or pick win probabilities. */
 export type PickLeadBacker = {
   /** Lead trader wallet address. */
   address: string;
@@ -1991,7 +2113,7 @@ export type PickOfTheDay = {
   display_category?: string;
   /** Provider platform. Always polymarket. */
   platform?: "polymarket";
-  /** The pick's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. Final checks, worker or claim delay can make the actual publication later. */
+  /** The pick's stored release instant. Use the returned timestamp; published_at records when publication occurred. */
   release_at?: string;
   /** True only before the pick's stored release instant (a pre-release embargo flag); effectively always false on a served, already-published pick. To detect that the backed game has kicked off, use `game_started`. */
   is_locked?: boolean;
@@ -2061,7 +2183,7 @@ export type PickOfTheDay = {
   sharp_pct?: number;
   /** Recorded market-implied probability as a 0..1 fraction when available. */
   market_pct?: number;
-  /** Optional legacy recorded specialist facts. These describe the trader and do not disclose selection decisions. Present only on a full response when available; newly certified picks use lead_backer instead. */
+  /** Optional recorded specialist facts on a full response. These describe the trader, not the pick's win probability. Omitted when no recorded specialist is available. */
   qualifying_expert?: {
     /** Trader wallet address. */
     address: string;
@@ -2084,15 +2206,15 @@ export type PickOfTheDay = {
   };
   /** Public V1 S/A wallet count on the backed side, equal to sharp_wallet_count. */
   traders?: number;
-  /** Recorded backed-side position value in USD when available. Newly certified picks sum only publication-certified wallet positions; legacy rows retain their recorded value. */
+  /** Recorded aggregate backed-side position value in USD when available, not a live balance or entry cost. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster. */
   backed_sharp_usd?: number;
-  /** Bounded S/A holder display projection. Newly certified picks include only publication-certified wallets; historical rows retain their recorded display shape. */
+  /** Bounded S/A holder display projection from the recorded snapshot. Historical rows retain their recorded display shape. */
   holders?: PickHolder[];
-  /** Optional complete holder display roster. Newly certified picks list the recorded lead first, then any verified supporters, then the other graded wallets that held the backed side at publication, ordered by shares; only the lead and supporters are verified, the other rows are gross holdings that may also hold the other side and are not counted in the wallet counts, holder_count or backed_sharp_usd. Legacy rows retain their recorded display shape. */
+  /** Optional recorded holder roster in display order, with lead_backer first when present. Preserve the returned order. The roster can include wallets outside the recorded count and aggregate fields; do not derive holder_count, wallet counts or backed_sharp_usd from its length or a sum. Position values are gross holdings on the backed outcome and can coexist with holdings on the other outcome. Historical rows retain their recorded display shape. */
   display_holders?: PickHolder[];
   /** S/A holder count for the public V1 compatibility projection. display_holders can include additional grades. */
   holder_count?: number;
-  /** Required truthful thesis. With at least one profitable-wallet holder: Profitable wallets hold {pick_outcome_label}[, led by a grade-{top_grade} trader]. Without holder backing: 0xInsider's Pick of the Day is {pick_outcome_label}. Wallet counts are not appended. */
+  /** Display-ready explanation of the recorded pick. Render the returned text rather than reconstructing it from holder counts or grades. */
   thesis?: string;
   /** Canonical web market URL. */
   market_url?: string;
@@ -2169,11 +2291,11 @@ export type PickOfTheDayArchiveEntry = {
    * @deprecated
    */
   pick_rank: number;
-  /** When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic picks publish from 03:00 America/New_York on pick_date. Absent only for historical rows whose publication instant is unknown. */
+  /** When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Absent only for historical rows whose publication instant is unknown. */
   published_at?: string;
   /** Human-readable matchup (e.g. "Portugal vs. Uzbekistan"). */
   matchup?: string;
-  /** Frozen canonical calibration/report bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
+  /** Frozen canonical sport bucket (e.g. "Basketball", "MMA", or "Soccer"). Existing semantics are unchanged; presentation consumers should prefer display_category when present. */
   category?: string;
   /** Frozen public presentation category. Tennis uses the provider-verified ATP or WTA tour, including Wimbledon and doubles; unknown tours retain Tennis. Every men's and women's cricket competition uses Cricket. Other sports use the curated league, esports title or soccer competition label, then the provider series name without its season year, then category when no competition is known. The canonical category and measured cohort are unchanged: an esports title still uses the pooled Esports category. Optional for mixed-version client compatibility. */
   display_category?: string;
@@ -2181,7 +2303,7 @@ export type PickOfTheDayArchiveEntry = {
   image_url?: string;
   /** The backed side's outcome label. Omitted for a still-pending pick when the request is not from an authenticated Pro key. */
   pick_outcome_label?: string;
-  /** Best public V1-compatible S/A sharp-money grade on the backed side; a current B-only grade is omitted by the stable V1 adapter, while historical rows retain their frozen policy's grade. Omitted when no sharp-money wallet backs the pick, when a pending legacy proof has not yet upgraded, or when the stored holder policy is unknown-future or structurally invalid. Resolved legacy history remains supported. */
+  /** Recorded top grade on the backed side in the public V1 compatibility projection. Omitted when unavailable. Historical values remain recorded snapshots. */
   top_grade?: string;
   /** Settlement outcome of the backed side; 'pending' until the market resolves. */
   outcome: "pending" | "win" | "loss" | "void";
@@ -2400,7 +2522,7 @@ export type PickOfTheDayLedgerOpenedEntry = {
   outcome: "win" | "loss" | "void";
   /** Frozen matchup, for a reader. */
   matchup: string;
-  /** Frozen canonical sport bucket used for selection calibration (Basketball, MMA), not the exact public league identity; the archive owns that. */
+  /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
   category: string;
   /** The pick's public page. */
   permalink: string;
@@ -2468,7 +2590,7 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   outcome: "pending" | "win" | "loss" | "void";
   /** Frozen matchup, for a reader. */
   matchup?: string;
-  /** Frozen canonical sport bucket used for selection calibration (Basketball, MMA), not the exact public league identity; the archive owns that. */
+  /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
   category?: string;
   /** When outcome was LAST written to a settled value, or null when that instant is unknown. It moves with a corrected market re-mapping an already-settled pick, while commitment_hash stays untouched -- which is how a mirror that keeps history sees a correction. */
   resolved_at: string | null;
@@ -2729,11 +2851,11 @@ export type PositionTimelineEvent = {
   running_avg_price: number;
 };
 
-/** Returned entry permission bound to the named market, token and outcome. New policy-8 grants allow five cents above the first reference ask, capped at 85 cents and floored to the provider tick; policy-7 grants retain their original two-cent allowance. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value. */
+/** Returned entry permission bound to the named market, token and outcome. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the returned limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value. */
 export type PotdEntryAuthorization = {
   version: 1;
   authorization_id: string;
-  /** Entry allowance policy, independent of selection or feed policy. Policy 8 issues new grants at the first reference ask plus 0.05, capped at 0.85 and floored to the provider tick. Policy 7 retains its original plus-0.02 grant. Existing grants never rise or extend. */
+  /** Identifier for the policy recorded with this authorization. It does not replace the returned max_entry_price or expires_at. Existing grants retain their recorded values. */
   policy_version: 7 | 8;
   condition_id: string;
   token_id: string;
@@ -2744,12 +2866,12 @@ export type PotdEntryAuthorization = {
   canonical_event_id: string;
   /** Maximum authorized order price as an exact decimal string, excluding fees. Quote a current executable book for the actual stake and keep the submitted order price at or below this bound. Actual fills may be lower; this limit does not guarantee a fill or define fair probability. */
   max_entry_price: string;
-  /** Selected-token best ask at first issuance. The entry allowance uses this immutable reference, not the published pick price or a later quote. */
+  /** Selected-token best ask from the recorded reference book at issuance. This is a reference quote, not the authorized order-price limit; use max_entry_price for that limit. */
   reference_best_ask: string;
   reference_book_hash: string;
   reference_book_at: string;
   issued_at: string;
-  /** Original authorization expiry at the earlier requested or provider kickoff; never extended. An expired authorization cannot authorize a new automated entry. */
+  /** Authorization expiry timestamp. Existing grants do not extend; an expired authorization cannot authorize a new automated entry. */
   expires_at: string;
 };
 
@@ -2919,7 +3041,7 @@ export type ScheduledPickSlot = {
    * @deprecated
    */
   pick_rank: number;
-  /** The slot's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. The actual publication can follow final checks and worker delay. */
+  /** The slot's stored release instant. Use the returned timestamp; actual publication may occur later. */
   release_at: string;
   /** The backed game's current kickoff instant. */
   kickoff: string;
@@ -2946,6 +3068,24 @@ export type ScoreCell = {
 
 /** Shape the provider score string was parsed into. `two_side` is one aggregate per side (basketball `105-98`), `multi_set` is per-set columns (tennis `6-7(5-7), 6-0, 1-0`), `esports_series` is a maps/sets/format triplet (`000-000|2-0|Bo3`). Omitted when the score could not be parsed. */
 export type ScoreFormat = "two_side" | "multi_set" | "esports_series";
+
+/** `sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object. */
+export type SharpMoneyFlowDetectedData = {
+  /** Polymarket condition id of the market. */
+  condition_id: string;
+  /** Signed ranked-trader net flow in USD over `window`: positive is net into YES, negative net into NO. */
+  net_flow_usd: number;
+  /** Absolute value of `net_flow_usd`, the magnitude compared with the threshold. */
+  abs_net_flow_usd: number;
+  /** `yes` when `net_flow_usd` is 0 or more, else `no`. */
+  dominant_side: "yes" | "no";
+  /** Minimum trader grade included in the flow. */
+  grade_floor: "S" | "A" | "B" | "C" | "D" | "F";
+  /** Ranked-trader large fills that make up the flow. */
+  whale_trade_count: number;
+  /** Window the flow was aggregated over, for example `24h`. */
+  window: string;
+};
 
 export type SmartMoneyFlowMarket = {
   market: {
@@ -3047,6 +3187,28 @@ export type SuspiciousTrade = {
   evidence: unknown;
   /** Stored trade timestamp. */
   created_at: string;
+};
+
+/** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object. */
+export type SuspiciousTradeFlaggedData = {
+  /** Numeric id of the flagged trade, a JSON number. It is the `id` that `GET /api/v1/large-trades/{id}` accepts. */
+  trade_id: number;
+  /** Address of the wallet that made the trade. */
+  wallet: string;
+  /** 0xinsider's numeric id for the wallet. */
+  trader_id: number;
+  /** Polymarket condition id of the market. */
+  condition_id: string;
+  /** The suspicion score, 0 to 100, that crossed the threshold. */
+  suspicion_score: number;
+  /** The scoring track that raised the flag. */
+  track: "whale" | "fresh_conviction" | "sliced_position";
+  /** Outcome side the flagged fill took. */
+  side: "yes" | "no";
+  /** Share count of the flagged fill. */
+  size: number;
+  /** Fill price of the flagged trade. */
+  price: number;
 };
 
 /** Optional current-game tennis facts from API-Tennis, aligned with live_score.scores display order. These facts have their own revision and expiry; Polymarket remains the source of sets, match status, period, and the outer live-score revision. New observations require corroborated identity, current set/games, and live state. Cached responses and replayed frames may still carry expired facts, so clients must enforce expires_at. */
@@ -3539,6 +3701,14 @@ export type TraderStatsExact = {
   total_volume: ExactDecimal;
 };
 
+/** `trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object. */
+export type TraderSyncedData = {
+  /** 0xinsider's numeric id for the wallet. */
+  trader_id: number;
+  /** Proxy wallet address. */
+  wallet: string;
+};
+
 /** Field-level trust metadata returned only when GET /api/v1/trader/{address} includes expand=trust. */
 export type TraderTrust = {
   total_pnl: TrustMetadata;
@@ -3692,6 +3862,25 @@ export type Usage = {
 export type VerifyWebhookRequest = {
   /** The one-time token returned on create or on a url change. It is necessary but not sufficient: the destination must also answer the signed webhook.verification challenge with a 2xx. */
   verification_token: string;
+};
+
+/** `wallet_grade_changed` data (Pro and Max): a tracked wallet's grade moved on a re-grade. */
+export type WalletGradeChangedData = {
+  /** Lowercased proxy wallet address. */
+  wallet: string;
+  /** 0xinsider's numeric id for the wallet. */
+  trader_id: number;
+  /** The grade before the move. Never equal to `new_grade`. */
+  old_grade: "S" | "A" | "B" | "C" | "D" | "F";
+  new_grade: "S" | "A" | "B" | "C" | "D" | "F";
+  /** `upgrade` when `new_grade` is better than `old_grade`, else `downgrade`. */
+  direction: "upgrade" | "downgrade";
+  /** Cohort skill index that drove the grade, 0 to 1. */
+  skill_index: number;
+  /** Final 0 to 100 score banded into the new grade. */
+  final_score: number;
+  /** The ranking date of the re-grade. */
+  date: string;
 };
 
 /** Owner-scoped view of one webhook delivery attempt. Deliberately omits the request body and the endpoint signing secret: a delivery log never re-exposes the payload or any secret material. */
@@ -3934,6 +4123,29 @@ export type WhaleDatasetTrade = {
   trade_event_id: string;
   source_trade_ingested_at: string | null;
 };
+
+/**
+ * The `data` payload of each webhook event type, from the document's
+ * `webhooks` map. Two spellings of one event share one payload.
+ */
+export interface WebhookEventData {
+  export_job_cancelled: ExportJobCancelledData;
+  export_job_expired: ExportJobExpiredData;
+  export_job_failed: ExportJobFailedData;
+  export_job_ready: ExportJobReadyData;
+  insider_radar_flag_raised: SuspiciousTradeFlaggedData;
+  large_positions_updated: LargePositionsUpdatedData;
+  large_trade_inserted_v2: LargeTradeInsertedV2Data;
+  large_trades_inserted: LargeTradesInsertedData;
+  live_sports_updated: LiveSportsUpdatedData;
+  sharp_money_flow_detected: SharpMoneyFlowDetectedData;
+  smart_money_flow_detected: SharpMoneyFlowDetectedData;
+  suspicious_trade_flagged: SuspiciousTradeFlaggedData;
+  trader_synced: TraderSyncedData;
+  wallet_grade_changed: WalletGradeChangedData;
+  whale_trader_synced: TraderSyncedData;
+  whale_trades_inserted: LargeTradesInsertedData;
+}
 
 /**
  * The `data` payload each operation answers with: what
@@ -5419,7 +5631,7 @@ export interface OperationResponse {
     /** Absent on the last page. */
     next_cursor?: string;
     /** Holders matching the request's `outcome` and `min_grade` filters across every page. */
-    total?: number;
+    total: number;
     market: MarketHoldersMarket;
     scan: MarketHoldersScan;
     totals: MarketHoldersTotals;
