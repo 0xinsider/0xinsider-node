@@ -46,6 +46,13 @@ npm ci && npm run build && node examples/sandbox.mjs
 
 ## Types
 
+SDK 0.28.0 requires Node.js 22 or newer: `engines.node` is `>=22`, and the
+package type-checks against Node 22's types. Node 18 reached end of life on
+2025-04-30 and Node 20 on 2026-04-30. Request deadlines and caller signals now
+combine through `AbortSignal.any`, which every supported Node version has.
+Method names, request options and response types are unchanged; two scheduled
+Pick of the Day doc comments are refreshed.
+
 SDK 0.27.1 refreshes Pick of the Day field guidance and synchronizes the current
 canonical response declarations. `getMarketHolders.total` is required in the
 returned type, matching the existing API response; consumers constructing mock

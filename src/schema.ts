@@ -3034,14 +3034,14 @@ export type ResponseMeta = {
   category_skill_enriched_base_payload_hash?: string;
 };
 
-/** An entitled same-day pick selected but not yet released: stable rank and backend-owned release/kickoff instants. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks. */
+/** An entitled same-day slot with a future scheduled release: stable identity and backend-owned release/kickoff instants. It leaves this list at its release instant; an unpublished slot is never a delayed recommendation. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks. */
 export type ScheduledPickSlot = {
   /**
    * Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.
    * @deprecated
    */
   pick_rank: number;
-  /** The slot's stored release instant. Use the returned timestamp; actual publication may occur later. */
+  /** The slot's future release instant. Remove this preview at that instant and read again for published picks; a scheduled slot does not guarantee publication. */
   release_at: string;
   /** The backed game's current kickoff instant. */
   kickoff: string;
