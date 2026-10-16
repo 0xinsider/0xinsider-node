@@ -9337,7 +9337,7 @@
       "get": {
         "operationId": "getPickOfTheDay",
         "summary": "Get today's Pick of the Day",
-        "description": "Returns entitled published picks for the current product day. Pro includes five selections in total: the designated free selection and the first four non-free selections in publication order. Max opens every available selection, up to fifteen. A day may contain up to two verified compatible selections per game: a team's full-game moneyline and handicap. Each selection retains its individual requirements. Same-game picks share exposure and need not be independent; retain each `pick_id` instead of deduplicating by game. Both read resolved picks. Publication prices and backing are frozen; a prior day never appears here, so use the archive.\n\nStable `pick_id` values identify selections. `publication_order` describes presentation and `is_free_selection` describes access; neither is a quality rating. Standing selections retain their identity, slot, and release schedule. Later additions fill available slots. Historical IDs, order, and proof bytes remain unchanged.\n\nUnauthorized unresolved selections appear only as identity-free `locked_picks` containing `pick_rank` and `required_tier`. When only locked selections are published, HTTP 200 carries `state=none`, `picks=[]`, `pick_count=0`, and an Upgrade to Max message. Proof warming applies only to entitled picks.\n\n`scheduled_picks` contains only entitled slots and retains required `release_at` and `kickoff`. Unauthorized scheduled selections expose no game identity or release time.\n\nWhen no active pick is available, including after cancelled recommendations are withdrawn, HTTP 404 carries `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason and schedule one request using `Retry-After` or `error.retry_at` instead of polling. This advisory retry does not reveal an unauthorized game's release time.\n\nFinal sporting scores are retained for resolved picks after the event is confirmed ended and both sides have verified scores. A result without a verified final stays unavailable; a win/loss outcome alone does not establish a sporting score. Existing sports_context fields and return calculations are unchanged.\n\nWithdrawn picks are excluded from current and dated recommendations, the archive, and its statistics, even after market settlement. The public ledger retains every published commitment under its original identity and proof bytes. Provider settlement still determines the recorded result. Request and response fields are unchanged.",
+        "description": "Returns entitled published picks for the current product day. Pro includes five selections in total: the designated free selection and the first four non-free selections in publication order. Max opens every available selection, up to twenty. A day can include multiple selections from the same game. Same-game picks share exposure and need not be independent; retain each `pick_id` instead of deduplicating by game. Both read resolved picks. Publication prices and backing are frozen; a prior day never appears here, so use the archive.\n\nStable `pick_id` values identify selections. `publication_order` describes presentation and `is_free_selection` describes access; neither is a quality rating. Standing selections retain their identity, slot, and release schedule. Later additions fill available slots. Historical IDs, order, and proof bytes remain unchanged.\n\nUnauthorized unresolved selections appear only as identity-free `locked_picks` containing `pick_rank` and `required_tier`. When only locked selections are published, HTTP 200 carries `state=none`, `picks=[]`, `pick_count=0`, and an Upgrade to Max message. Proof warming applies only to entitled picks.\n\n`scheduled_picks` contains only entitled slots and retains required `release_at` and `kickoff`. Unauthorized scheduled selections expose no game identity or release time.\n\nWhen no active pick is available, including after cancelled recommendations are withdrawn, HTTP 404 carries `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason and schedule one request using `Retry-After` or `error.retry_at` instead of polling. This advisory retry does not reveal an unauthorized game's release time.\n\nFinal sporting scores are retained for resolved picks after the event is confirmed ended and both sides have verified scores. A result without a verified final stays unavailable; a win/loss outcome alone does not establish a sporting score. Existing sports_context fields and return calculations are unchanged.\n\nWithdrawn picks are excluded from current and dated recommendations, the archive, and its statistics, even after market settlement. The public ledger retains every published commitment under its original identity and proof bytes. Provider settlement still determines the recorded result. Request and response fields are unchanged.",
         "tags": ["Pick of the Day"],
         "parameters": [
           {
@@ -9618,10 +9618,10 @@
             }
           },
           "404": {
-            "description": "No Pick of the Day is published for the current product day. Qualified automatic signals are due immediately after qualification and publish after final checks. Explicitly scheduled selections retain their stored release time. The product day uses America/New_York; a skipped day publishes nothing. The body carries error.code=\"not_found\" with error.reason=\"pick_not_released\" (branch on the reason -- the code stays \"not_found\" because error.code is a frozen contract) plus error.retry_at (RFC3339, always in the future), and the response sets Retry-After. Schedule against those instead of polling -- polling this window is what makes a schedule look like an outage.",
+            "description": "No Pick of the Day is published for the current product day, which uses America/New_York. Explicitly scheduled selections retain their returned release time. The body carries error.code=\"not_found\", error.reason=\"pick_not_released\", and error.retry_at (RFC3339, always in the future); the response also sets Retry-After. Branch on the reason and schedule the next request from the returned retry guidance instead of polling.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until the recommended next retry. Before the operating-window start, before a selected pick's stored release, or after a skipped day it names the automatic system's next boundary. While no candidate exists it normally names the persisted next automatic selector attempt. New qualified signals or supported operator actions can make a pick available before any recommendation. An absent/due schedule or overdue pick degrades to ~60s. Always >= 1. Schedule one request (error.retry_at is its absolute RFC3339 twin); do not poll or block a worker thread.",
+                "description": "Seconds until the recommended next request, always at least 1. This names the same instant as error.retry_at. The recommendation is advisory and can change. Schedule one request using the returned guidance rather than inferring a release schedule; prefer this relative duration to avoid client clock skew.",
                 "schema": {
                   "type": "integer"
                 }
@@ -9853,7 +9853,7 @@
       "get": {
         "operationId": "getPickOfTheDayArchive",
         "summary": "Get the Pick of the Day track record",
-        "description": "Returns published picks that have not been withdrawn, with their outcome, modeled return, unit score, closing-line value, and cumulative record. Resolved game details and results are public. For unauthorized unresolved selections, game identity, category, image, publication time, and backed facts are omitted; `required_tier` and `backed_side_locked` provide an upgrade action. Pro includes the designated free selection and the first four non-free selections in publication order, five in total. Max opens every available selection, up to fifteen.\n\nStable `pick_id` values identify selections. Historical picks retain their original IDs, order, and proof bytes. `publication_order` describes presentation and `is_free_selection` records access designation; neither is a quality rating. New selections use a neutral presentation order, while standing selections retain their identity, slot, and release schedule.\n\nEach row carries measured CLV or the reason it was not measured. Coverage is the share of resolved picks published before kickoff that have measured CLV. A post-kickoff publication is `not_applicable`.\n\nWithdrawn recommendations are excluded from archive rows, daily counts, and all track-record statistics, including CLV, financial aggregates, and the cumulative series. Later market settlement does not restore them to the archive. The public ledger retains every published commitment under its original pick_id and proof bytes. Request and response fields are unchanged.",
+        "description": "Returns published picks that have not been withdrawn, with their outcome, modeled return, unit score, closing-line value, and cumulative record. Resolved game details and results are public. For unauthorized unresolved selections, game identity, category, image, publication time, and backed facts are omitted; `required_tier` and `backed_side_locked` provide an upgrade action. Pro includes the designated free selection and the first four non-free selections in publication order, five in total. Max opens every available selection, up to twenty.\n\nStable `pick_id` values identify selections. Historical picks retain their original IDs, order, and proof bytes. `publication_order` describes presentation and `is_free_selection` records access designation; neither is a quality rating. New selections use a neutral presentation order, while standing selections retain their identity, slot, and release schedule.\n\nEach row carries measured CLV or the reason it was not measured. Coverage is the share of resolved picks published before kickoff that have measured CLV. A post-kickoff publication is `not_applicable`.\n\nWithdrawn recommendations are excluded from archive rows, daily counts, and all track-record statistics, including CLV, financial aggregates, and the cumulative series. Later market settlement does not restore them to the archive. The public ledger retains every published commitment under its original pick_id and proof bytes. Request and response fields are unchanged.",
         "tags": ["Pick of the Day"],
         "parameters": [
           {
@@ -14353,7 +14353,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["object", "data", "has_more", "market", "scan", "totals", "meta"],
+                  "required": ["object", "data", "has_more", "total", "market", "scan", "totals", "meta"],
                   "properties": {
                     "object": {
                       "type": "string",
@@ -24547,7 +24547,7 @@
       "post": {
         "operationId": "createMcpJsonRpcResponse",
         "summary": "Remote MCP endpoint (JSON-RPC)",
-        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests receive one same-ID JSON-RPC response. ID-less ping, notifications/initialized, and notifications/cancelled receive HTTP 202 with no body; other ID-less methods and unsolicited response messages receive HTTP 400 with no body. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Remote MCP exposes 45 read-only tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_large_positions, get_trending_wallets, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. Mcp-Session-Id is minted on initialize and echoed on every response. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: a non-object, an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. The MCP-Protocol-Version request header is checked on every POST and GET: a value outside 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with JSON-RPC error -32600 before the body is read; an absent header is served as 2025-03-26, the transport specification's compatibility default. Browser preflight allows the header.",
+        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests receive one same-ID JSON-RPC response. ID-less ping, notifications/initialized, and notifications/cancelled receive HTTP 202 with no body; other ID-less methods and unsolicited response messages receive HTTP 400 with no body. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Remote MCP exposes 55 read-only tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_large_positions, get_trending_wallets, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_trader_context, get_trader_categories, get_trader_grade_at, get_market_holders, get_market_candles, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. Mcp-Session-Id is minted on initialize and echoed on every response. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: a non-object, an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. The MCP-Protocol-Version request header is checked on every POST and GET: a value outside 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with JSON-RPC error -32600 before the body is read; an absent header is served as 2025-03-26, the transport specification's compatibility default. Browser preflight allows the header.",
         "tags": ["MCP"],
         "parameters": [
           {
@@ -32208,7 +32208,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. When one scheduled observation refresh misses its deadline, observations keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. In-play additionally requires a coherent nonfuture original live-source clock no older than 30 seconds at publication and every served reuse; compute and missed-pass grace never renew that clock. Provider-confirmed live membership is observed independently of rendered scores, quotes and holder enrichment. UI refresh-marker expiry or score invalidation alone does not invalidate a separately observed provider membership. Explicit provider-source invalidation or an invalid, incomplete, future, expired or missing source remains unavailable. When one scheduled observation refresh misses its deadline, other cohorts may keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. An expired in-play source returns 503 read_model_warming even within generation grace. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -32698,6 +32698,1144 @@
       }
     }
   },
+  "webhooks": {
+    "large_trade_inserted_v2": {
+      "post": {
+        "summary": "large_trade_inserted_v2",
+        "description": "One durable Polymarket large trade with a stable event ID and event-time trade facts. Filtered subscriptions receive matching trades without a follow-up feed request; replay uses GET /api/v1/events/feed/since with its own cursor.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "large_trade_inserted_v2"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/LargeTradeInsertedV2Data"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "large_trades_inserted": {
+      "post": {
+        "summary": "large_trades_inserted",
+        "description": "Fires when new large trades are ingested. Successor spelling of whale_trades_inserted: the same event, delivered as `type: large_trades_inserted` to an endpoint that registered this name.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "large_trades_inserted"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/LargeTradesInsertedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "whale_trades_inserted": {
+      "post": {
+        "summary": "whale_trades_inserted",
+        "description": "Fires when new large trades are ingested. Deprecated spelling of large_trades_inserted, kept live: an endpoint registered under this name keeps receiving `type: whale_trades_inserted`.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "whale_trades_inserted"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/LargeTradesInsertedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "live_sports_updated": {
+      "post": {
+        "summary": "live_sports_updated",
+        "description": "Fires on a bounded per-game pulse when a live game's scores, status, period or live/ended state moves. At most one delivery per game per 20 seconds; a live or ended transition is never coalesced away; the game clock alone never fires one.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "live_sports_updated"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/LiveSportsUpdatedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "trader_synced": {
+      "post": {
+        "summary": "trader_synced",
+        "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Successor spelling of whale_trader_synced: the same event, delivered as `type: trader_synced` to an endpoint that registered this name.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "trader_synced"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/TraderSyncedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "whale_trader_synced": {
+      "post": {
+        "summary": "whale_trader_synced",
+        "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Deprecated spelling of trader_synced, kept live: an endpoint registered under this name keeps receiving `type: whale_trader_synced`.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "whale_trader_synced"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/TraderSyncedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "large_positions_updated": {
+      "post": {
+        "summary": "large_positions_updated",
+        "description": "Fires when new large positions are detected or refreshed.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "large_positions_updated"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/LargePositionsUpdatedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "wallet_grade_changed": {
+      "post": {
+        "summary": "wallet_grade_changed",
+        "description": "Fires when a wallet's grade transitions on a Pass-2 re-grade.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "wallet_grade_changed"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/WalletGradeChangedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "suspicious_trade_flagged": {
+      "post": {
+        "summary": "suspicious_trade_flagged",
+        "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Successor spelling of insider_radar_flag_raised: the same event, delivered as `type: suspicious_trade_flagged` to an endpoint that registered this name.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "suspicious_trade_flagged"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/SuspiciousTradeFlaggedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "insider_radar_flag_raised": {
+      "post": {
+        "summary": "insider_radar_flag_raised",
+        "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Deprecated spelling of suspicious_trade_flagged, kept live: an endpoint registered under this name keeps receiving `type: insider_radar_flag_raised`.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "insider_radar_flag_raised"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/SuspiciousTradeFlaggedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "sharp_money_flow_detected": {
+      "post": {
+        "summary": "sharp_money_flow_detected",
+        "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Successor spelling of smart_money_flow_detected: the same event, delivered as `type: sharp_money_flow_detected` to an endpoint that registered this name.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "sharp_money_flow_detected"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/SharpMoneyFlowDetectedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "smart_money_flow_detected": {
+      "post": {
+        "summary": "smart_money_flow_detected",
+        "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Deprecated spelling of sharp_money_flow_detected, kept live: an endpoint registered under this name keeps receiving `type: smart_money_flow_detected`.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "smart_money_flow_detected"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/SharpMoneyFlowDetectedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "export_job_ready": {
+      "post": {
+        "summary": "export_job_ready",
+        "description": "Fires when an owner's asynchronous trader export is ready to download.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "export_job_ready"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/ExportJobReadyData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "export_job_failed": {
+      "post": {
+        "summary": "export_job_failed",
+        "description": "Fires when an owner's asynchronous trader export reaches a terminal failed state.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "export_job_failed"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/ExportJobFailedData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "export_job_expired": {
+      "post": {
+        "summary": "export_job_expired",
+        "description": "Fires when an owner's completed trader export reaches its retention boundary.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "export_job_expired"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/ExportJobExpiredData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    },
+    "export_job_cancelled": {
+      "post": {
+        "summary": "export_job_cancelled",
+        "description": "Fires when an owner's asynchronous trader export stops because its owner cancelled it.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WebhookSignatureHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookTimestampHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookEventTypeHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookIdempotencyKeyHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WebhookDeliveryAttemptHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Stable event id, identical across retries of the same logical event."
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "export_job_cancelled"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the producer recorded the event; for a trade event, the fill time. Retries resend the same body, so it is not the time of the attempt."
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/ExportJobCancelledData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Return any 2xx status to acknowledge the delivery. Any other status, a redirect, a timeout or a connection error is retried on the published retry policy."
+          }
+        }
+      }
+    }
+  },
   "components": {
     "securitySchemes": {
       "bearerAuth": {
@@ -32724,6 +33862,69 @@
       }
     },
     "parameters": {
+      "WebhookEventIdHeader": {
+        "name": "x-0xinsider-event-id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The event id, equal to the body `id`."
+      },
+      "WebhookEventTypeHeader": {
+        "name": "x-0xinsider-event-type",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The event type the endpoint registered, equal to the body `type`."
+      },
+      "WebhookIdempotencyKeyHeader": {
+        "name": "idempotency-key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Stable key of this logical delivery (`whdel_...`). Every retry repeats it, so deduplicate on it."
+      },
+      "WebhookDeliveryIdHeader": {
+        "name": "x-0xinsider-delivery-id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Numeric id of this delivery, as a decimal string."
+      },
+      "WebhookDeliveryAttemptHeader": {
+        "name": "x-0xinsider-delivery-attempt",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The delivery attempt counter, as a decimal string."
+      },
+      "WebhookTimestampHeader": {
+        "name": "x-0xinsider-timestamp",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Unix seconds when this attempt was signed. Reject a delivery whose timestamp is more than 300 seconds from your clock."
+      },
+      "WebhookSignatureHeader": {
+        "name": "x-0xinsider-signature",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "`v1=` followed by the hex HMAC-SHA256 of `{timestamp}.{raw body}` under the endpoint signing secret. During a staged secret rotation it carries comma-separated `v1=` candidates: accept the delivery when any one verifies."
+      },
       "WebhookId": {
         "name": "id",
         "in": "path",
@@ -33850,6 +35051,579 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "LargeTradeInsertedV2Data": {
+        "type": "object",
+        "description": "`large_trade_inserted_v2` data (Pro and Max): one large trade, with the trade itself. The three amounts are decimal strings that keep the stored precision: parse them with a decimal library when the exact value matters. The endpoint's `trade_filters` decide which trades it receives.",
+        "required": [
+          "event_id",
+          "whale_alert_id",
+          "condition_id",
+          "trader_id",
+          "wallet",
+          "grade",
+          "size_usd",
+          "shares",
+          "price",
+          "side",
+          "outcome_index",
+          "traded_at",
+          "platform"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Stable identity of this trade's event. It equals the envelope `id`, and the `id` of the same event on `GET /api/v1/events/feed/since`."
+          },
+          "whale_alert_id": {
+            "type": "integer",
+            "description": "Numeric id of the trade. `GET /api/v1/large-trades/{id}` accepts it."
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "Polymarket condition id of the market."
+          },
+          "trader_id": {
+            "type": "integer",
+            "description": "0xinsider's numeric id for the wallet."
+          },
+          "wallet": {
+            "type": "string",
+            "description": "Address of the wallet that made the trade."
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "nullable": true,
+            "description": "The wallet's grade when the event was published; `null` when it has none."
+          },
+          "size_usd": {
+            "type": "string",
+            "description": "USD notional of the trade; decimal string."
+          },
+          "shares": {
+            "type": "string",
+            "description": "Shares traded; decimal string."
+          },
+          "price": {
+            "type": "string",
+            "description": "Price paid per share; decimal string."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL"
+            ]
+          },
+          "outcome_index": {
+            "type": "integer",
+            "description": "Polymarket's index of the outcome traded."
+          },
+          "traded_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the trade filled on Polymarket. The envelope's `created_at` is this instant."
+          },
+          "platform": {
+            "type": "string",
+            "const": "polymarket"
+          }
+        }
+      },
+      "LargeTradesInsertedData": {
+        "type": "object",
+        "description": "`large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object.",
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Large trades the producing batch admitted."
+          }
+        }
+      },
+      "LiveSportsScoreEntry": {
+        "type": "object",
+        "description": "One side's score line inside a `live_sports_updated` pulse.",
+        "required": [
+          "team",
+          "score"
+        ],
+        "properties": {
+          "team": {
+            "type": "string",
+            "description": "Team name, ordered for the league (away first where the league reads that way)."
+          },
+          "score": {
+            "type": "string",
+            "description": "This side's score as the provider sends it."
+          },
+          "map_score": {
+            "type": "string",
+            "description": "Esports series only: this side's current-map score. Absent on other sports."
+          }
+        }
+      },
+      "LiveSportsUpdatedData": {
+        "type": "object",
+        "description": "`live_sports_updated` data: one bounded pulse for one live game. A pulse fires when a material field moved since this game's previous delivered pulse (`scores`, `status`, `period`, `live`, `ended`), at most once per game per 20 seconds. A `live` or `ended` transition is exempt from that interval, and the game clock alone never fires a pulse. Suppressed frames are folded into the next pulse's `changed`, and its body carries the current state.",
+        "required": [
+          "event_slug",
+          "game_id",
+          "league",
+          "version",
+          "changed",
+          "observed_at",
+          "published_at",
+          "status",
+          "period",
+          "clock",
+          "live",
+          "ended",
+          "scores",
+          "series_format",
+          "snapshot_url"
+        ],
+        "properties": {
+          "event_slug": {
+            "type": "string",
+            "description": "The Polymarket event slug this game trades under."
+          },
+          "game_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Provider game id, or `null` when the frame carried none."
+          },
+          "league": {
+            "type": "string",
+            "nullable": true,
+            "description": "League abbreviation, or `null`."
+          },
+          "version": {
+            "type": "integer",
+            "description": "Durable per-game pulse ordinal, increasing by one per delivered pulse. Deliveries are not ordered, so drop a pulse whose version you already saw."
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "scores",
+                "status",
+                "period",
+                "live",
+                "ended"
+              ]
+            },
+            "description": "Material fields that moved since this game's previous delivered pulse."
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Provider frame time, or `null` when the frame carried none. Never replaced with a local clock."
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the pulse was admitted."
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Provider status text, or `null`."
+          },
+          "period": {
+            "type": "string",
+            "nullable": true,
+            "description": "Provider period text (\"Q3\", \"Map 2/3\"), or `null`."
+          },
+          "clock": {
+            "type": "string",
+            "nullable": true,
+            "description": "Game clock, or `null`. Not a material field: it never fires a pulse on its own."
+          },
+          "live": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Provider live flag, or `null` when the frame carried none."
+          },
+          "ended": {
+            "type": "boolean",
+            "description": "Whether the provider has marked this game final."
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiveSportsScoreEntry"
+            },
+            "description": "Per-side scores, one line per team."
+          },
+          "series_format": {
+            "type": "string",
+            "nullable": true,
+            "description": "Esports `BoN` series token, or `null` on every other sport."
+          },
+          "snapshot_url": {
+            "type": "string",
+            "description": "Public game page. Re-read it after a gap instead of replaying pulses."
+          }
+        }
+      },
+      "TraderSyncedData": {
+        "type": "object",
+        "description": "`trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object.",
+        "required": [
+          "trader_id",
+          "wallet"
+        ],
+        "properties": {
+          "trader_id": {
+            "type": "integer",
+            "description": "0xinsider's numeric id for the wallet."
+          },
+          "wallet": {
+            "type": "string",
+            "description": "Proxy wallet address."
+          }
+        }
+      },
+      "LargePositionsUpdatedData": {
+        "type": "object",
+        "description": "`large_positions_updated` data: one large-positions refresh finished.",
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Positions the refresh published."
+          }
+        }
+      },
+      "WalletGradeChangedData": {
+        "type": "object",
+        "description": "`wallet_grade_changed` data (Pro and Max): a tracked wallet's grade moved on a re-grade.",
+        "required": [
+          "wallet",
+          "trader_id",
+          "old_grade",
+          "new_grade",
+          "direction",
+          "skill_index",
+          "final_score",
+          "date"
+        ],
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Lowercased proxy wallet address."
+          },
+          "trader_id": {
+            "type": "integer",
+            "description": "0xinsider's numeric id for the wallet."
+          },
+          "old_grade": {
+            "type": "string",
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "description": "The grade before the move. Never equal to `new_grade`."
+          },
+          "new_grade": {
+            "type": "string",
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "upgrade",
+              "downgrade"
+            ],
+            "description": "`upgrade` when `new_grade` is better than `old_grade`, else `downgrade`."
+          },
+          "skill_index": {
+            "type": "number",
+            "description": "Cohort skill index that drove the grade, 0 to 1."
+          },
+          "final_score": {
+            "type": "number",
+            "description": "Final 0 to 100 score banded into the new grade."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The ranking date of the re-grade."
+          }
+        }
+      },
+      "SuspiciousTradeFlaggedData": {
+        "type": "object",
+        "description": "`suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object.",
+        "required": [
+          "trade_id",
+          "wallet",
+          "trader_id",
+          "condition_id",
+          "suspicion_score",
+          "track",
+          "side",
+          "size",
+          "price"
+        ],
+        "properties": {
+          "trade_id": {
+            "type": "integer",
+            "description": "Numeric id of the flagged trade, a JSON number. It is the `id` that `GET /api/v1/large-trades/{id}` accepts."
+          },
+          "wallet": {
+            "type": "string",
+            "description": "Address of the wallet that made the trade."
+          },
+          "trader_id": {
+            "type": "integer",
+            "description": "0xinsider's numeric id for the wallet."
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "Polymarket condition id of the market."
+          },
+          "suspicion_score": {
+            "type": "number",
+            "description": "The suspicion score, 0 to 100, that crossed the threshold."
+          },
+          "track": {
+            "type": "string",
+            "enum": [
+              "whale",
+              "fresh_conviction",
+              "sliced_position"
+            ],
+            "description": "The scoring track that raised the flag."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no"
+            ],
+            "description": "Outcome side the flagged fill took."
+          },
+          "size": {
+            "type": "number",
+            "description": "Share count of the flagged fill."
+          },
+          "price": {
+            "type": "number",
+            "description": "Fill price of the flagged trade."
+          }
+        }
+      },
+      "SharpMoneyFlowDetectedData": {
+        "type": "object",
+        "description": "`sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object.",
+        "required": [
+          "condition_id",
+          "net_flow_usd",
+          "abs_net_flow_usd",
+          "dominant_side",
+          "grade_floor",
+          "whale_trade_count",
+          "window"
+        ],
+        "properties": {
+          "condition_id": {
+            "type": "string",
+            "description": "Polymarket condition id of the market."
+          },
+          "net_flow_usd": {
+            "type": "number",
+            "description": "Signed ranked-trader net flow in USD over `window`: positive is net into YES, negative net into NO."
+          },
+          "abs_net_flow_usd": {
+            "type": "number",
+            "description": "Absolute value of `net_flow_usd`, the magnitude compared with the threshold."
+          },
+          "dominant_side": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no"
+            ],
+            "description": "`yes` when `net_flow_usd` is 0 or more, else `no`."
+          },
+          "grade_floor": {
+            "type": "string",
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "description": "Minimum trader grade included in the flow."
+          },
+          "whale_trade_count": {
+            "type": "integer",
+            "description": "Ranked-trader large fills that make up the flow."
+          },
+          "window": {
+            "type": "string",
+            "description": "Window the flow was aggregated over, for example `24h`."
+          }
+        }
+      },
+      "ExportJobReadyData": {
+        "type": "object",
+        "description": "`export_job_ready` data: the owner's asynchronous export can be downloaded. Download authorization stays on the status and download routes.",
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action",
+          "total_trades",
+          "processed_trades",
+          "file_size",
+          "data_as_of"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "const": "ready"
+          },
+          "format": {
+            "type": "string"
+          },
+          "next_action": {
+            "type": "string",
+            "const": "download"
+          },
+          "total_trades": {
+            "type": "integer",
+            "nullable": true
+          },
+          "processed_trades": {
+            "type": "integer",
+            "nullable": true
+          },
+          "file_size": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Artifact size in bytes."
+          },
+          "data_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ExportJobFailedData": {
+        "type": "object",
+        "description": "`export_job_failed` data: the owner's asynchronous export reached a terminal failure.",
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action",
+          "failure_reason"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "const": "failed"
+          },
+          "format": {
+            "type": "string"
+          },
+          "next_action": {
+            "type": "string",
+            "const": "resubmit"
+          },
+          "failure_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportJobExpiredData": {
+        "type": "object",
+        "description": "`export_job_expired` data: the owner's ready export passed retention.",
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "const": "expired"
+          },
+          "format": {
+            "type": "string"
+          },
+          "next_action": {
+            "type": "string",
+            "const": "resubmit"
+          }
+        }
+      },
+      "ExportJobCancelledData": {
+        "type": "object",
+        "description": "`export_job_cancelled` data: the owner's export stopped because its owner cancelled it.",
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "const": "cancelled"
+          },
+          "format": {
+            "type": "string"
+          },
+          "next_action": {
+            "type": "string",
+            "const": "resubmit"
           }
         }
       },
@@ -35565,14 +37339,14 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
+            "maximum": 25,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
           "release_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The slot's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. The actual publication can follow final checks and worker delay."
+            "description": "The slot's stored release instant. Use the returned timestamp; actual publication may occur later."
           },
           "kickoff": {
             "type": "string",
@@ -35618,7 +37392,7 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
+            "maximum": 25,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
@@ -35632,7 +37406,7 @@
           "pick_count": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 15,
+            "maximum": 20,
             "description": "Number of items in `picks`: the proof-readable picks. Picks held in `proof_pending_picks` are not counted."
           },
           "scheduled_picks": {
@@ -35662,7 +37436,7 @@
           "release_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The pick's stored release instant. Qualified automatic selections are due immediately; explicitly scheduled selections retain their stored time. Final checks, worker or claim delay can make the actual publication later."
+            "description": "The pick's stored release instant. Use the returned timestamp; published_at records when publication occurred."
           },
           "is_locked": {
             "type": "boolean",
@@ -35793,7 +37567,7 @@
           },
           "qualifying_expert": {
             "type": "object",
-            "description": "Optional legacy recorded specialist facts. These describe the trader and do not disclose selection decisions. Present only on a full response when available; newly certified picks use lead_backer instead.",
+            "description": "Optional recorded specialist facts on a full response. These describe the trader, not the pick's win probability. Omitted when no recorded specialist is available.",
             "properties": {
               "address": {
                 "type": "string",
@@ -35854,18 +37628,18 @@
           },
           "backed_sharp_usd": {
             "type": "number",
-            "description": "Recorded backed-side position value in USD when available. Newly certified picks sum only publication-certified wallet positions; legacy rows retain their recorded value."
+            "description": "Recorded aggregate backed-side position value in USD when available, not a live balance or entry cost. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster."
           },
           "holders": {
             "type": "array",
-            "description": "Bounded S/A holder display projection. Newly certified picks include only publication-certified wallets; historical rows retain their recorded display shape.",
+            "description": "Bounded S/A holder display projection from the recorded snapshot. Historical rows retain their recorded display shape.",
             "items": {
               "$ref": "#/components/schemas/PickHolder"
             }
           },
           "display_holders": {
             "type": "array",
-            "description": "Optional complete holder display roster. Newly certified picks list the recorded lead first, then any verified supporters, then the other graded wallets that held the backed side at publication, ordered by shares; only the lead and supporters are verified, the other rows are gross holdings that may also hold the other side and are not counted in the wallet counts, holder_count or backed_sharp_usd. Legacy rows retain their recorded display shape.",
+            "description": "Optional recorded holder roster in display order, with lead_backer first when present. Preserve the returned order. The roster can include wallets outside the recorded count and aggregate fields; do not derive holder_count, wallet counts or backed_sharp_usd from its length or a sum. Position values are gross holdings on the backed outcome and can coexist with holdings on the other outcome. Historical rows retain their recorded display shape.",
             "items": {
               "$ref": "#/components/schemas/PickHolder"
             }
@@ -35876,7 +37650,7 @@
           },
           "thesis": {
             "type": "string",
-            "description": "Required truthful thesis. With at least one profitable-wallet holder: Profitable wallets hold {pick_outcome_label}[, led by a grade-{top_grade} trader]. Without holder backing: 0xInsider's Pick of the Day is {pick_outcome_label}. Wallet counts are not appended."
+            "description": "Display-ready explanation of the recorded pick. Render the returned text rather than reconstructing it from holder counts or grades."
           },
           "market_url": {
             "type": "string",
@@ -35928,7 +37702,7 @@
                 "pick_rank": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 20
+                  "maximum": 25
                 },
                 "required_tier": {
                   "type": "string",
@@ -36237,14 +38011,14 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
+            "maximum": 25,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
           "published_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Automatic picks publish from 03:00 America/New_York on pick_date. Absent only for historical rows whose publication instant is unknown."
+            "description": "When this selection was published, as RFC3339 UTC. Use this instant for publication feeds and timelines; pick_date is the America/New_York product day, not a publication timestamp. Absent only for historical rows whose publication instant is unknown."
           },
           "matchup": {
             "type": "string",
@@ -36252,7 +38026,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Frozen canonical calibration/report bucket (e.g. \"Basketball\", \"MMA\", or \"Soccer\"). Existing semantics are unchanged; presentation consumers should prefer display_category when present."
+            "description": "Frozen canonical sport bucket (e.g. \"Basketball\", \"MMA\", or \"Soccer\"). Existing semantics are unchanged; presentation consumers should prefer display_category when present."
           },
           "display_category": {
             "type": "string",
@@ -36268,7 +38042,7 @@
           },
           "top_grade": {
             "type": "string",
-            "description": "Best public V1-compatible S/A sharp-money grade on the backed side; a current B-only grade is omitted by the stable V1 adapter, while historical rows retain their frozen policy's grade. Omitted when no sharp-money wallet backs the pick, when a pending legacy proof has not yet upgraded, or when the stored holder policy is unknown-future or structurally invalid. Resolved legacy history remains supported."
+            "description": "Recorded top grade on the backed side in the public V1 compatibility projection. Omitted when unavailable. Historical values remain recorded snapshots."
           },
           "outcome": {
             "type": "string",
@@ -36770,7 +38544,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Frozen canonical sport bucket used for selection calibration (Basketball, MMA), not the exact public league identity; the archive owns that."
+            "description": "Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that."
           },
           "permalink": {
             "type": "string",
@@ -36852,7 +38626,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Frozen canonical sport bucket used for selection calibration (Basketball, MMA), not the exact public league identity; the archive owns that."
+            "description": "Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that."
           },
           "resolved_at": {
             "type": ["string", "null"],
@@ -38587,7 +40361,7 @@
           "retry_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released: before the 03:00 America/New_York operating-window start, before a selected pick's stored release, or after a skipped day, it names the automatic system's next boundary. While no candidate exists in the live window it normally names the persisted next automatic selector attempt. Every value is advisory and can change before release. When the automatic schedule is absent/due or a pick is overdue it degrades to ~60s. Schedule one request and do not poll. Prefer Retry-After for the duration because it is immune to client clock skew."
+            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released, the recommendation is advisory and can change before a pick becomes available. Schedule the next request from the returned value instead of inferring a release schedule or polling. Prefer Retry-After for the duration because it is immune to client clock skew."
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessFailure"
@@ -40925,7 +42699,7 @@
           "pick_rank": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
+            "maximum": 25,
             "description": "Deprecated compatibility daily release slot; use pick_id for identity and publication_order for scheduling.",
             "deprecated": true
           },
@@ -40996,7 +42770,7 @@
           "policy_version": {
             "type": "integer",
             "enum": [7, 8],
-            "description": "Entry allowance policy, independent of selection or feed policy. Policy 8 issues new grants at the first reference ask plus 0.05, capped at 0.85 and floored to the provider tick. Policy 7 retains its original plus-0.02 grant. Existing grants never rise or extend."
+            "description": "Identifier for the policy recorded with this authorization. It does not replace the returned max_entry_price or expires_at. Existing grants retain their recorded values."
           },
           "condition_id": {
             "type": "string"
@@ -41022,7 +42796,7 @@
           },
           "reference_best_ask": {
             "type": "string",
-            "description": "Selected-token best ask at first issuance. The entry allowance uses this immutable reference, not the published pick price or a later quote."
+            "description": "Selected-token best ask from the recorded reference book at issuance. This is a reference quote, not the authorized order-price limit; use max_entry_price for that limit."
           },
           "reference_book_hash": {
             "type": "string"
@@ -41038,10 +42812,10 @@
           "expires_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Original authorization expiry at the earlier requested or provider kickoff; never extended. An expired authorization cannot authorize a new automated entry."
+            "description": "Authorization expiry timestamp. Existing grants do not extend; an expired authorization cannot authorize a new automated entry."
           }
         },
-        "description": "Returned entry permission bound to the named market, token and outcome. New policy-8 grants allow five cents above the first reference ask, capped at 85 cents and floored to the provider tick; policy-7 grants retain their original two-cent allowance. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value."
+        "description": "Returned entry permission bound to the named market, token and outcome. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the returned limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value."
       },
       "AgentRegistration": {
         "type": "object",
@@ -42181,7 +43955,7 @@
                 "pick_rank": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 20
+                  "maximum": 25
                 },
                 "required_tier": {
                   "type": "string",
@@ -42219,7 +43993,7 @@
       },
       "PickLeadBacker": {
         "type": "object",
-        "description": "Recorded lead wallet facts, available only on full newly certified picks. Position and category history are frozen at publication; they are not live balances or pick win probabilities.",
+        "description": "Recorded lead wallet facts on a full response when available. Position and category history are frozen at publication; they are not live balances or pick win probabilities.",
         "properties": {
           "address": {
             "type": "string",
@@ -44725,7 +46499,7 @@
         }
       },
       "PickNotReleased": {
-        "description": "No pick is published for the current product day. Automatic publication opens at 03:00 America/New_York and closes at 23:30. A qualified automatic signal is due at qualification, or at 03:00 when it qualifies earlier, and publishes after final checks. Explicitly scheduled selections retain their stored release time. The product day uses America/New_York. A skipped day publishes nothing.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both name the same instant, always in the future.\n\nThe instant is the earliest of:\n\n- the next scheduled release, when a slot is selected;\n- the next automatic selector attempt, about every 15 minutes from 03:00, while the selector still scans the day and can add an earlier slot;\n- the 03:00 publication opening, before it or after a skipped day;\n- about 60 seconds, when the schedule is absent, due, or a pick is overdue.\n\nThe value is advisory. A new qualified signal or operator action can publish a pick earlier. Schedule one request for the instant; do not poll.",
+        "description": "No pick is published for the current product day. Scheduled selections retain their returned release time. The product day uses America/New_York, and a day can have no published picks.\n\nThe body carries `error.code=\"not_found\"`, `error.reason=\"pick_not_released\"`, and `error.retry_at`. The response sets `Retry-After`. Both retry fields name the same recommended future instant.\n\nThe recommendation is advisory and can change. Schedule the next request from the returned retry guidance instead of calculating a release schedule or polling.",
         "headers": {
           "Retry-After": {
             "description": "Seconds until the recommended next request. Always at least 1. Names the same instant as `error.retry_at`. Prefer this header for the sleep duration; it is immune to clock skew.",

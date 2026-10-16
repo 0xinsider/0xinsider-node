@@ -492,6 +492,7 @@ export type {
   VerifyWebhookRequest,
   WebhookDelivery,
   WebhookEndpoint,
+  WebhookEventData,
   WebhookEventDescriptor,
   WebhookEventType,
   WebhookRetryPolicy,

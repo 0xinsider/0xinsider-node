@@ -212,6 +212,37 @@ function successStatus(operation) {
   return SUCCESS_STATUSES.find((status) => operation?.responses?.[status]);
 }
 
+/**
+ * The document's `webhooks` map as `[event, data type]` pairs, sorted by event
+ * (#24940). Every entry is one POST whose JSON body is the delivery envelope;
+ * its `type` must be the entry's own name, and the map must name exactly the
+ * `WebhookEventType` enum, so a subscribable event never lacks a documented
+ * payload and the SDK never pairs an event with a payload by hand.
+ */
+function webhookEvents() {
+  const found = [];
+  for (const [event, item] of Object.entries(spec.webhooks ?? {})) {
+    const body = item?.post?.requestBody?.content?.["application/json"]?.schema;
+    if (body?.properties?.data === undefined) {
+      throw new Error(`webhooks/${event}: post has no application/json body with a data property`);
+    }
+    if (body.properties.type?.const !== event) {
+      throw new Error(`webhooks/${event}: the body's type must be const ${quote(event)}`);
+    }
+    found.push([event, typeOf(body.properties.data, 1, `webhooks/${event}/data`)]);
+  }
+  const declared = schemas.WebhookEventType?.enum ?? [];
+  const documented = new Set(found.map(([event]) => event));
+  const missing = declared.filter((event) => !documented.has(event));
+  const extra = [...documented].filter((event) => !declared.includes(event));
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(
+      `webhooks must name exactly the WebhookEventType enum: missing [${missing.join(", ")}], extra [${extra.join(", ")}]`,
+    );
+  }
+  return found.sort(([a], [b]) => a.localeCompare(b));
+}
+
 /** Every operation with a documented 2xx, in document order. */
 function operations() {
   const found = [];
@@ -364,6 +395,17 @@ function render() {
     out.push("");
   }
 
+  out.push("/**");
+  out.push(" * The `data` payload of each webhook event type, from the document's");
+  out.push(" * `webhooks` map. Two spellings of one event share one payload.");
+  out.push(" */");
+  out.push("export interface WebhookEventData {");
+  for (const [event, data] of webhookEvents()) {
+    out.push(`  ${propertyKey(event)}: ${data};`);
+  }
+  out.push("}");
+  out.push("");
+
   const ops = operations();
 
   out.push("/**");
@@ -459,6 +501,7 @@ const schemaExports = [
   "OperationPath",
   "OperationQuery",
   "OperationResponse",
+  "WebhookEventData",
 ].filter((name) => !otherExports.has(name)).sort();
 const renderedExports = [
   EXPORTS_START,

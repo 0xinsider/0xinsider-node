@@ -44,8 +44,14 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import type { Grade } from "./client.js";
-import type { WebhookEventType as ContractWebhookEventType } from "./schema.js";
+import type {
+  LargeTradesInsertedData,
+  SharpMoneyFlowDetectedData,
+  SuspiciousTradeFlaggedData,
+  TraderSyncedData,
+  WebhookEventData,
+  WebhookEventType as ContractWebhookEventType,
+} from "./schema.js";
 
 /** Default replay tolerance; the published contract is 300 seconds. */
 export const SIGNATURE_TOLERANCE_SECONDS = 300;
@@ -232,8 +238,8 @@ export type WebhookEventType = Complete<
 
 /**
  * Common delivery envelope every webhook POST body carries. Source of truth:
- * the `enqueue_webhook_event` call sites in the backend
- * (`{ id, type, created_at, data }`).
+ * `WebhookEnvelope` in `backend/crates/core/src/webhook_payloads.rs`, which
+ * every entry of the OpenAPI document's `webhooks` map describes.
  */
 export interface WebhookEventEnvelope<
   TType extends WebhookEventType = WebhookEventType,
@@ -242,62 +248,35 @@ export interface WebhookEventEnvelope<
   /** Stable event id; identical across retries of the same logical event. */
   id: string;
   type: TType;
-  /** ISO-8601 timestamp of when the event was enqueued. */
+  /**
+   * When the producer recorded the event (ISO 8601); for a trade event, the
+   * fill time. Retries resend the same body, so it is not the time of the
+   * attempt.
+   */
   created_at: string;
   data: TData;
 }
 
-/**
- * `large_trade_inserted_v2` data (Pro and Max): one large trade, with the
- * trade itself. Source: `LargeTradeInsertedV2` in
- * `backend/crates/core/src/feed_event.rs`.
- *
- * The three amounts are decimal strings that keep the stored precision. Parse
- * them with a decimal library when the exact value matters; `Number` rounds.
- * The endpoint's `trade_filters` decide which trades it receives.
- */
-export interface LargeTradeInsertedV2Data {
-  /**
-   * Stable identity of this trade's event. It equals the envelope `id`, and
-   * the `id` of the same event on `GET /api/v1/events/feed/since`.
-   */
-  event_id: string;
-  /** Numeric id of the trade. `GET /api/v1/large-trades/{id}` accepts it. */
-  whale_alert_id: number;
-  /** Polymarket condition id of the market. */
-  condition_id: string;
-  /** 0xinsider's numeric id for the wallet. */
-  trader_id: number;
-  /** Address of the wallet that made the trade. */
-  wallet: string;
-  /** The wallet's grade when the event was published; `null` when it has none. */
-  grade: Grade | null;
-  /** USD notional of the trade; decimal string. */
-  size_usd: string;
-  /** Shares traded; decimal string. */
-  shares: string;
-  /** Price paid per share; decimal string. */
-  price: string;
-  side: "BUY" | "SELL";
-  /** Polymarket's index of the outcome traded. */
-  outcome_index: number;
-  /** When the trade filled on Polymarket (ISO 8601). */
-  traded_at: string;
-  platform: "polymarket";
-}
-
-/**
- * `large_trades_inserted` data (Pro and Max): new large trades were ingested.
- * It carries a count and no trade; subscribe to `large_trade_inserted_v2` for
- * the trade itself.
- *
- * Delivered identically under the deprecated spelling `whale_trades_inserted`
- * (#16304) to an endpoint that registered that spelling; the payload is the
- * same.
- */
-export interface LargeTradesInsertedData {
-  count: number;
-}
+// Every `data` payload is generated into `schema.ts` from the OpenAPI document
+// (#24940): the backend builds each payload from a typed struct,
+// `scripts/check-openapi-nullability.py` holds each struct to its schema, and
+// the generated `WebhookEventData` pairs each event type with its payload.
+// Change a payload in the document and regenerate; never declare one here.
+export type {
+  ExportJobCancelledData,
+  ExportJobExpiredData,
+  ExportJobFailedData,
+  ExportJobReadyData,
+  LargePositionsUpdatedData,
+  LargeTradeInsertedV2Data,
+  LargeTradesInsertedData,
+  LiveSportsScoreEntry,
+  LiveSportsUpdatedData,
+  SharpMoneyFlowDetectedData,
+  SuspiciousTradeFlaggedData,
+  TraderSyncedData,
+  WalletGradeChangedData,
+} from "./schema.js";
 
 /**
  * @deprecated Use `LargeTradesInsertedData`; renamed in #16304. The two event
@@ -305,123 +284,11 @@ export interface LargeTradesInsertedData {
  */
 export type WhaleTradesInsertedData = LargeTradesInsertedData;
 
-/** One side's score line inside a `live_sports_updated` pulse. */
-export interface LiveSportsScoreEntry {
-  team: string;
-  score: string;
-  /** Esports series only: this side's current-map score. Absent on other sports. */
-  map_score?: string;
-}
-
-/**
- * `live_sports_updated` data: one bounded pulse for one live game.
- *
- * A pulse fires when a material field moved since this game's previous
- * delivered pulse (`scores`, `status`, `period`, `live`, `ended`), at most once
- * per game per 20 seconds. A `live` or `ended` transition is exempt from that
- * interval, so a game going live or final is never coalesced away; the game
- * clock alone never fires a pulse. Suppressed frames are folded into the next
- * pulse's `changed` and its body carries the current state, so you see every
- * field that moved but not every intermediate value.
- */
-export interface LiveSportsUpdatedData {
-  /** The Polymarket event slug this game trades under. */
-  event_slug: string;
-  /** Provider game id, or `null` when the frame carried none. */
-  game_id: string | null;
-  /** League abbreviation, or `null`. */
-  league: string | null;
-  /**
-   * Durable per-game pulse ordinal, increasing by one per delivered pulse.
-   * Deliveries are not ordered, so drop a pulse whose version you already saw.
-   */
-  version: number;
-  /** Material fields that moved since this game's previous delivered pulse. */
-  changed: Array<"scores" | "status" | "period" | "live" | "ended">;
-  /** Provider frame time (ISO 8601), or `null` when the frame carried none. */
-  observed_at: string | null;
-  /** When the pulse was admitted (ISO 8601). */
-  published_at: string;
-  status: string | null;
-  period: string | null;
-  /** Game clock. Not a material field: it never fires a pulse on its own. */
-  clock: string | null;
-  live: boolean | null;
-  ended: boolean;
-  scores: LiveSportsScoreEntry[];
-  /** Esports `BoN` series token, or `null` on every other sport. */
-  series_format: string | null;
-  /** Public game page; re-read it after a gap instead of replaying pulses. */
-  snapshot_url: string;
-}
-
-/**
- * `trader_synced` data: a tracked trader finished a sync pass.
- *
- * Delivered identically under the deprecated spelling `whale_trader_synced`
- * (#16304) to an endpoint that registered that spelling; the payload is the
- * same.
- */
-export interface TraderSyncedData {
-  trader_id: number;
-  wallet: string;
-}
-
 /**
  * @deprecated Use `TraderSyncedData`; renamed in #16304. The two event
  * spellings are one event with one payload, so this is an alias.
  */
 export type WhaleTraderSyncedData = TraderSyncedData;
-
-/** `large_positions_updated` data. */
-export interface LargePositionsUpdatedData {
-  count: number;
-}
-
-/**
- * `wallet_grade_changed` data (Pro and Max): a tracked wallet's grade moved.
- * Source: `backend/crates/sync/src/periodic/heavy_pipeline.rs`.
- */
-export interface WalletGradeChangedData {
-  wallet: string;
-  trader_id: number;
-  /** The grade before the move. Never equal to `new_grade`. */
-  old_grade: Grade;
-  new_grade: Grade;
-  /** `"upgrade"` when `new_grade` is better than `old_grade`, else `"downgrade"`. */
-  direction: "upgrade" | "downgrade";
-  skill_index: number;
-  final_score: number;
-  date: string;
-}
-
-/**
- * `suspicious_trade_flagged` data (Pro and Max): a suspicion threshold was
- * crossed on a fresh fill. Source: `insider_radar_flag_webhook_payload` in
- * `backend/crates/core/src/trade_flagging/mod.rs`.
- *
- * Delivered identically under the deprecated spelling
- * `insider_radar_flag_raised` (#16301) to an endpoint that registered that
- * spelling; the payload is the same.
- */
-export interface SuspiciousTradeFlaggedData {
-  /**
-   * Numeric id of the flagged trade, a JSON number (SDK 0.25.0 and earlier
-   * typed it as a string, which the API never sent). It is the `id` that
-   * `GET /api/v1/large-trades/{id}` accepts.
-   */
-  trade_id: number;
-  wallet: string;
-  trader_id: number;
-  condition_id: string;
-  suspicion_score: number;
-  /** The scoring track that raised the flag. */
-  track: "whale" | "fresh_conviction" | "sliced_position";
-  /** Outcome side the flagged fill took. */
-  side: "yes" | "no";
-  size: number;
-  price: number;
-}
 
 /**
  * @deprecated Use `SuspiciousTradeFlaggedData`; renamed in #16301. The two
@@ -430,76 +297,24 @@ export interface SuspiciousTradeFlaggedData {
 export type InsiderRadarFlagRaisedData = SuspiciousTradeFlaggedData;
 
 /**
- * `sharp_money_flow_detected` payload (Pro and Max). Fires when a scheduled
- * scanner detects ranked-trader net flow crossing a threshold on a market.
- *
- * One payload for both spellings of the event: the deprecated
- * `smart_money_flow_detected` delivers the same object (#16308).
+ * @deprecated Use `SharpMoneyFlowDetectedData`; renamed in #16308. The two
+ * event spellings are one event with one payload, so this is an alias.
  */
-export interface SharpMoneyFlowDetectedData {
-  condition_id: string;
-  /** Signed net YES/NO exposure from ranked traders. */
-  net_flow_usd: number;
-  abs_net_flow_usd: number;
-  /** Side the net flow leans: `"yes"` when `net_flow_usd >= 0`, else `"no"`. */
-  dominant_side: "yes" | "no";
-  /** Minimum trader grade included in the flow. */
-  grade_floor: Grade;
-  whale_trade_count: number;
-  /** Detection window, e.g. "24h". */
-  window: string;
-}
+export type SmartMoneyFlowDetectedData = SharpMoneyFlowDetectedData;
 
-/** `export_job_ready` data: the owner's async export can be downloaded. */
-export interface ExportJobReadyData {
-  job_id: number;
-  status: "ready";
-  format: string;
-  next_action: "download";
-  total_trades: number | null;
-  processed_trades: number | null;
-  file_size: number | null;
-  data_as_of: string | null;
-}
-
-/** `export_job_failed` data: the owner's async export reached a terminal failure. */
-export interface ExportJobFailedData {
-  job_id: number;
-  status: "failed";
-  format: string;
-  next_action: "resubmit";
-  failure_reason: string;
-}
-
-/** `export_job_expired` data: the owner's ready export passed retention. */
-export interface ExportJobExpiredData {
-  job_id: number;
-  status: "expired";
-  format: string;
-  next_action: "resubmit";
-}
-
-/** `export_job_cancelled` data: the owner's export stopped because its owner cancelled it. */
-export interface ExportJobCancelledData {
-  job_id: number;
-  status: "cancelled";
-  format: string;
-  next_action: "resubmit";
-}
+/** One event type's delivery: the envelope around the payload the document declares for it. */
+type EventFor<TType extends WebhookEventType> = WebhookEventEnvelope<
+  TType,
+  WebhookEventData[TType]
+>;
 
 /**
  * One large trade per delivery (Pro and Max, #16149). The envelope `id` equals
  * `data.event_id`, and `created_at` is the trade's fill time
  * (`data.traded_at`), not the time the delivery was queued.
  */
-export type LargeTradeInsertedV2Event = WebhookEventEnvelope<
-  "large_trade_inserted_v2",
-  LargeTradeInsertedV2Data
->;
-export type LargeTradesInsertedEvent = WebhookEventEnvelope<
-  "large_trades_inserted",
-  LargeTradesInsertedData
->;
+export type LargeTradeInsertedV2Event = EventFor<"large_trade_inserted_v2">;
+export type LargeTradesInsertedEvent = EventFor<"large_trades_inserted">;
 /**
  * @deprecated Use `LargeTradesInsertedEvent`; renamed in #16304. This stays a
  * distinct envelope rather than an alias of it because the delivered `type`
@@ -507,15 +322,9 @@ export type LargeTradesInsertedEvent = WebhookEventEnvelope<
  * to `whale_trades_inserted` keeps receiving that literal, so narrowing on it
  * keeps working.
  */
-export type WhaleTradesInsertedEvent = WebhookEventEnvelope<
-  "whale_trades_inserted",
-  LargeTradesInsertedData
->;
-export type LiveSportsUpdatedEvent = WebhookEventEnvelope<
-  "live_sports_updated",
-  LiveSportsUpdatedData
->;
-export type TraderSyncedEvent = WebhookEventEnvelope<"trader_synced", TraderSyncedData>;
+export type WhaleTradesInsertedEvent = EventFor<"whale_trades_inserted">;
+export type LiveSportsUpdatedEvent = EventFor<"live_sports_updated">;
+export type TraderSyncedEvent = EventFor<"trader_synced">;
 /**
  * @deprecated Use `TraderSyncedEvent`; renamed in #16304. This stays a
  * distinct envelope rather than an alias of it because the delivered `type`
@@ -523,22 +332,10 @@ export type TraderSyncedEvent = WebhookEventEnvelope<"trader_synced", TraderSync
  * to `whale_trader_synced` keeps receiving that literal, so narrowing on it
  * keeps working.
  */
-export type WhaleTraderSyncedEvent = WebhookEventEnvelope<
-  "whale_trader_synced",
-  TraderSyncedData
->;
-export type LargePositionsUpdatedEvent = WebhookEventEnvelope<
-  "large_positions_updated",
-  LargePositionsUpdatedData
->;
-export type WalletGradeChangedEvent = WebhookEventEnvelope<
-  "wallet_grade_changed",
-  WalletGradeChangedData
->;
-export type SuspiciousTradeFlaggedEvent = WebhookEventEnvelope<
-  "suspicious_trade_flagged",
-  SuspiciousTradeFlaggedData
->;
+export type WhaleTraderSyncedEvent = EventFor<"whale_trader_synced">;
+export type LargePositionsUpdatedEvent = EventFor<"large_positions_updated">;
+export type WalletGradeChangedEvent = EventFor<"wallet_grade_changed">;
+export type SuspiciousTradeFlaggedEvent = EventFor<"suspicious_trade_flagged">;
 /**
  * @deprecated Use `SuspiciousTradeFlaggedEvent`; renamed in #16301. This stays
  * a distinct envelope rather than an alias of it because the delivered `type`
@@ -546,20 +343,8 @@ export type SuspiciousTradeFlaggedEvent = WebhookEventEnvelope<
  * to `insider_radar_flag_raised` keeps receiving that literal, so narrowing on
  * it keeps working.
  */
-export type InsiderRadarFlagRaisedEvent = WebhookEventEnvelope<
-  "insider_radar_flag_raised",
-  SuspiciousTradeFlaggedData
->;
-/**
- * @deprecated Use `SharpMoneyFlowDetectedData`; renamed in #16308. The two
- * event spellings are one event with one payload, so this is an alias.
- */
-export type SmartMoneyFlowDetectedData = SharpMoneyFlowDetectedData;
-
-export type SharpMoneyFlowDetectedEvent = WebhookEventEnvelope<
-  "sharp_money_flow_detected",
-  SharpMoneyFlowDetectedData
->;
+export type InsiderRadarFlagRaisedEvent = EventFor<"insider_radar_flag_raised">;
+export type SharpMoneyFlowDetectedEvent = EventFor<"sharp_money_flow_detected">;
 /**
  * @deprecated Use `SharpMoneyFlowDetectedEvent`; renamed in #16308. This stays
  * a distinct envelope rather than an alias of it because the delivered `type`
@@ -567,17 +352,11 @@ export type SharpMoneyFlowDetectedEvent = WebhookEventEnvelope<
  * to `smart_money_flow_detected` keeps receiving that literal, so narrowing on
  * it keeps working.
  */
-export type SmartMoneyFlowDetectedEvent = WebhookEventEnvelope<
-  "smart_money_flow_detected",
-  SharpMoneyFlowDetectedData
->;
-export type ExportJobReadyEvent = WebhookEventEnvelope<"export_job_ready", ExportJobReadyData>;
-export type ExportJobFailedEvent = WebhookEventEnvelope<"export_job_failed", ExportJobFailedData>;
-export type ExportJobExpiredEvent = WebhookEventEnvelope<"export_job_expired", ExportJobExpiredData>;
-export type ExportJobCancelledEvent = WebhookEventEnvelope<
-  "export_job_cancelled",
-  ExportJobCancelledData
->;
+export type SmartMoneyFlowDetectedEvent = EventFor<"smart_money_flow_detected">;
+export type ExportJobReadyEvent = EventFor<"export_job_ready">;
+export type ExportJobFailedEvent = EventFor<"export_job_failed">;
+export type ExportJobExpiredEvent = EventFor<"export_job_expired">;
+export type ExportJobCancelledEvent = EventFor<"export_job_cancelled">;
 
 /**
  * Discriminated union over every typed webhook delivery payload.
