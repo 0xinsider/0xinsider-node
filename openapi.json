@@ -10349,6 +10349,7 @@
                             "pick_rank": 1,
                             "pre_commitment": true,
                             "outcome": "win",
+                            "withdrawal_reason": null,
                             "matchup": "Spain vs. France",
                             "category": "Soccer",
                             "resolved_at": null,
@@ -10389,6 +10390,7 @@
                               "platform": "polymarket"
                             },
                             "outcome": "win",
+                            "withdrawal_reason": null,
                             "matchup": "Lakers vs. Warriors",
                             "category": "Basketball",
                             "permalink": "https://0xinsider.com/pick-of-the-day/2026-09-20/1",
@@ -11760,6 +11762,7 @@
                               "smart_score": -0.9999414953194173,
                               "smart_count": 14,
                               "smart_label": "Rams",
+                              "sharp_money_as_of": "2026-09-19T16:42:07Z",
                               "outcome_yes_label": "Giants",
                               "outcome_no_label": "Rams",
                               "outcome_yes_provider_id": null,
@@ -11828,6 +11831,7 @@
                               "smart_score": null,
                               "smart_count": null,
                               "smart_label": null,
+                              "sharp_money_as_of": null,
                               "outcome_yes_label": "Rams",
                               "outcome_no_label": "Giants",
                               "outcome_yes_provider_id": null,
@@ -11903,6 +11907,7 @@
                             "smart_score": null,
                             "smart_count": null,
                             "smart_label": null,
+                            "sharp_money_as_of": null,
                             "outcome_yes_label": "Dallas Wings",
                             "outcome_no_label": "Phoenix Mercury",
                             "outcome_yes_provider_id": null,
@@ -14175,7 +14180,7 @@
       "get": {
         "operationId": "getMarketHolders",
         "summary": "List a market's graded holders",
-        "description": "The graded holder roster of one market, the list a Pick of the Day shows for its market, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category, and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. This is current state and takes no as-of parameter: the roster is at most 60 s old over a provider walk at most 180 s old, and `scan.fetched_at` is the only timestamp on it. For a point-in-time roster, snapshot this route yourself on your own schedule; the one frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
+        "description": "The graded holder roster of one market, the list a Pick of the Day shows for its market, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category, and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. This is current state and takes no as-of parameter: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), and `scan.fetched_at` is the only timestamp on it. For a point-in-time roster, snapshot this route yourself on your own schedule; the one frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -28575,7 +28580,8 @@
                           "enforced_from": 1790812800,
                           "binding": false,
                           "pay_as_you_go": false,
-                          "ceiling": 500000
+                          "ceiling": 500000,
+                          "unavailable_reason": null
                         }
                       },
                       "meta": {
@@ -30225,6 +30231,7 @@
                         "pick_rank": 1,
                         "pre_commitment": true,
                         "outcome": "win",
+                        "withdrawal_reason": null,
                         "matchup": "Spain vs. France",
                         "category": "Soccer",
                         "resolved_at": null,
@@ -32208,7 +32215,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. In-play additionally requires a coherent nonfuture original live-source clock no older than 30 seconds at publication and every served reuse; compute and missed-pass grace never renew that clock. Provider-confirmed live membership is observed independently of rendered scores, quotes and holder enrichment. UI refresh-marker expiry or score invalidation alone does not invalidate a separately observed provider membership. Explicit provider-source invalidation or an invalid, incomplete, future, expired or missing source remains unavailable. When one scheduled observation refresh misses its deadline, other cohorts may keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. An expired in-play source returns 503 read_model_warming even within generation grace. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input, the one-page holder bound (holder_scan_complete=false, counted in coverage.incomplete_holder_markets) and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. In-play additionally requires a coherent nonfuture original live-source clock no older than 30 seconds at publication and every served reuse; compute and missed-pass grace never renew that clock. Provider-confirmed live membership is observed independently of rendered scores, quotes and holder enrichment. UI refresh-marker expiry or score invalidation alone does not invalidate a separately observed provider membership. Explicit provider-source invalidation or an invalid, incomplete, future, expired or missing source remains unavailable. When one scheduled observation refresh misses its deadline, other cohorts may keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. An expired in-play source returns 503 read_model_warming even within generation grace. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -32261,7 +32268,7 @@
             "name": "cohort",
             "in": "query",
             "required": false,
-            "description": "Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history.",
+            "description": "Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so an evaluated pregame market stays evaluated until its game starts; the rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history.",
             "schema": {
               "type": "string",
               "enum": ["wider_holder", "in_play", "emerging_pile"]
@@ -34521,7 +34528,7 @@
           },
           "live": {
             "type": "boolean",
-            "description": "The provider's own in-play flag. Omitted when no live-score frame exists, which is not the same as false."
+            "description": "Whether the game is in play. It is the provider's own in-play flag, except that a game the provider reports suspended (period SUS) or rescheduled to a later kickoff reads false. Omitted when no live-score frame exists, which is not the same as false."
           },
           "ended": {
             "type": "boolean",
@@ -36915,12 +36922,12 @@
           "outcome": {
             "type": "string",
             "nullable": true,
-            "description": "Traded outcome label (e.g. \"Yes\"/\"No\"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, whose stored outcome_index is not trusted (a defaulted 0 for about a third of those rows; the side is unknown, not defaulted)."
+            "description": "Traded outcome label (e.g. \"Yes\"/\"No\"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z unless its stored outcome_index was verified against the fill's own trade records (before that date the stored index was wrong for a large share of trades; an unverified side is unknown, not defaulted)."
           },
           "token_id": {
             "type": "string",
             "nullable": true,
-            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, where the traded side is unknown."
+            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z whose traded side is not verified (the same rule as outcome)."
           },
           "price": {
             "type": "number"
@@ -37968,7 +37975,7 @@
           "void": {
             "type": "integer",
             "minimum": 0,
-            "description": "Picks on the day that resolved void (stake refunded)."
+            "description": "Picks on the day that resolved void (a 50-50 split: each share pays half a dollar)."
           },
           "pending": {
             "type": "integer",
@@ -37978,7 +37985,7 @@
           "unit_score": {
             "type": "number",
             "format": "double",
-            "description": "Net units over the day's visible, valued, decided (win/loss) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick void, or a price-gated current row -- which is not the same as a real 0.0 day."
+            "description": "Net units over the day's visible, valued, staked (win, loss or priced void) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick an unpriced void, or a price-gated current row -- which is not the same as a real 0.0 day."
           },
           "unit_score_display": {
             "type": "string",
@@ -38064,11 +38071,11 @@
           },
           "return_usd": {
             "type": "number",
-            "description": "Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void refunds stake_usd. A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema."
+            "description": "Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void returns stake_usd * 0.5 / backed_price (a 50-50 split pays half a dollar a share). A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema."
           },
           "return_per_100": {
             "type": "number",
-            "description": "The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 100), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is."
+            "description": "The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 50 / backed_price), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is."
           },
           "payout_display": {
             "type": "string",
@@ -38209,11 +38216,11 @@
           },
           "net_profit_usd": {
             "type": "number",
-            "description": "Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued decided picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a void pays 0. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals."
+            "description": "Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a priced void pays stake_usd * 0.5 / backed_price - stake_usd. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals."
           },
           "staked_usd": {
             "type": "number",
-            "description": "Total staked (USD) = stake_usd * count of visible valued decided picks: every visible loss plus every priced win. Void, unpriced wins, and current non-Insider rows whose price is gated are excluded."
+            "description": "Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss, every priced win and every priced void. Unpriced wins and voids, and current non-Insider rows whose price is gated, are excluded."
           },
           "roi_pct": {
             "type": "number",
@@ -38310,7 +38317,7 @@
           },
           "series": {
             "type": "array",
-            "description": "Cumulative track-record series, one point per decided (win/loss) pick in ascending pick_date order (void and pending add no point). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided.",
+            "description": "Cumulative track-record series, one point per decided (win/loss) pick and per valued void in ascending pick_date order (pending adds no point; a void point moves profit, not hit rate). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided.",
             "items": {
               "type": "object",
               "required": ["date", "net_profit_usd", "hit_rate_pct"],
@@ -38478,6 +38485,7 @@
           "kickoff",
           "payload",
           "outcome",
+          "withdrawal_reason",
           "matchup",
           "category",
           "permalink",
@@ -38537,6 +38545,11 @@
             "type": "string",
             "enum": ["win", "loss", "void"],
             "description": "How the pick settled. Never pending: a pending pick is a sealed entry."
+          },
+          "withdrawal_reason": {
+            "type": ["string", "null"],
+            "enum": ["provider_game_cancelled", "published_after_kickoff", null],
+            "description": "Why the site withdrew this pick from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick keeps its commitment and its real outcome here, but the site's record leaves it out of every count and money figure. Not part of the hashed payload, so it never moves commitment_hash."
           },
           "matchup": {
             "type": "string",
@@ -38619,6 +38632,11 @@
             "type": "string",
             "enum": ["pending", "win", "loss", "void"],
             "description": "How the pick settled, or pending."
+          },
+          "withdrawal_reason": {
+            "type": ["string", "null"],
+            "enum": ["provider_game_cancelled", "published_after_kickoff", null],
+            "description": "Omitted while the pick is pending; once it settles, why the site withdrew it from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick stays here with its real outcome, but the site's record leaves it out of every count and money figure."
           },
           "matchup": {
             "type": "string",
@@ -38894,6 +38912,7 @@
           "smart_score",
           "smart_count",
           "smart_label",
+          "sharp_money_as_of",
           "outcome_yes_label",
           "outcome_no_label",
           "outcome_yes_provider_id",
@@ -39045,6 +39064,12 @@
             "type": "string",
             "nullable": true,
             "description": "The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side diverges from that side's price-implied share by at least 10 points, with at least $500 on the leaning side and outside the crowded-side guard. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page."
+          },
+          "sharp_money_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the oldest stored smart-money wallet behind this split (smart_score, smart_count and smart_label) last finished syncing. Graded wallets sync on different schedules, so this is often hours or days ago. Some holdings in the split can come from a Polymarket holder read cached for up to 3 minutes, which this time does not describe. Null when there is no split or a wallet's sync time is unknown."
           },
           "outcome_yes_label": {
             "type": "string",
@@ -41711,7 +41736,8 @@
                   "enforced_from",
                   "binding",
                   "pay_as_you_go",
-                  "ceiling"
+                  "ceiling",
+                  "unavailable_reason"
                 ],
                 "properties": {
                   "used": {
@@ -41752,6 +41778,12 @@
                     "type": ["integer", "null"],
                     "example": 500000,
                     "description": "The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22."
+                  },
+                  "unavailable_reason": {
+                    "type": ["string", "null"],
+                    "enum": ["usage_price_reconciliation_required", null],
+                    "example": null,
+                    "description": "Why pay as you go is unavailable, or null. usage_price_reconciliation_required: the account's usage subscription carries a historical price whose included requests differ from its plan's, so pay as you go stays off (pay_as_you_go false) until billing reconciles it. Always sent since 2026-10-17."
                   }
                 },
                 "description": "The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response."
@@ -45708,13 +45740,13 @@
           },
           "holder_scan_complete": {
             "type": "boolean",
-            "description": "True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate."
+            "description": "True only when the provider page read for each outcome token listed every holder of that token. Observation collection reads one 100-row page per token; a token with more holders stays incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate."
           },
           "holder_snapshot_at": {
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed."
+            "description": "Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes, with that page's original time here and provider_read_source cached; in_play rows never reuse one. Null, malformed, future, or stale holder time fails in-play closed."
           },
           "directional_status": {
             "type": "string",
@@ -45843,7 +45875,7 @@
               "cold_unavailable",
               "deadline_unavailable"
             ],
-            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to 3,000 rows or an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available."
+            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available."
           },
           "board_upcoming_unavailable_scopes": {
             "type": "array",
@@ -46013,7 +46045,7 @@
               "board_source_unavailable",
               "board_deadline_unavailable"
             ],
-            "description": "Recorded producer cause. holder_scan_incomplete means at least one attempted holder scan did not establish complete coverage; directional_unavailable can accompany an emitted wider_holder row; live_source_stale means provider live evidence exceeded its freshness bound. Other values identify reconciliation, applicable board-source or terminal failure evidence."
+            "description": "Recorded producer cause. holder_scan_incomplete is retired and no longer emitted: the one-page holder read is an intentional bound, disclosed by each row's holder_scan_complete and by coverage.incomplete_holder_markets, and it does not degrade a generation. directional_unavailable can accompany an emitted wider_holder row; live_source_stale means provider live evidence exceeded its freshness bound. Other values identify reconciliation, applicable board-source or terminal failure evidence."
           },
           "sport": {
             "type": "string",
@@ -46022,7 +46054,7 @@
           }
         },
         "example": {
-          "reason": "holder_scan_incomplete",
+          "reason": "holder_deadline_unavailable",
           "sport": "Soccer"
         }
       },
@@ -46056,7 +46088,7 @@
           "incomplete_holder_markets": {
             "type": "integer",
             "minimum": 0,
-            "description": "Canonical source-generation markets whose attempted holder scan did not establish complete coverage, including incomplete scans that did not emit an observation."
+            "description": "Canonical source-generation markets whose attempted holder scan did not establish complete coverage, including incomplete scans that did not emit an observation. Collection reads one 100-row page per token, so a market with more holders on a token counts here by design; this count does not by itself degrade the generation."
           },
           "selected_observations": {
             "type": "integer",
@@ -46115,7 +46147,7 @@
           },
           "degraded": {
             "type": "boolean",
-            "description": "True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field; board_upcoming_status=not_configured is not a failure."
+            "description": "True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounds do not by themselves set this field: capacity_limited rows remain fully accounted in the funnel, and a holder scan the one-page read leaves incomplete counts in coverage.incomplete_holder_markets; board_upcoming_status=not_configured is not a failure."
           },
           "degradation_reasons": {
             "type": "array",
@@ -46123,7 +46155,7 @@
             "items": {
               "$ref": "#/components/schemas/EdgeHunterObservationDegradationReason"
             },
-            "description": "Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input and board_upcoming_status=not_configured do not by themselves add a reason."
+            "description": "Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input, the one-page holder bound (holder_scan_complete=false) and board_upcoming_status=not_configured do not by themselves add a reason."
           },
           "coverage": {
             "$ref": "#/components/schemas/EdgeHunterObservationCoverage"

@@ -259,7 +259,7 @@ export interface WebhookEventEnvelope<
 
 // Every `data` payload is generated into `schema.ts` from the OpenAPI document
 // (#24940): the backend builds each payload from a typed struct,
-// `scripts/check-openapi-nullability.py` holds each struct to its schema, and
+// `tools/run check-openapi-nullability` holds each struct to its schema, and
 // the generated `WebhookEventData` pairs each event type with its payload.
 // Change a payload in the document and regenerate; never declare one here.
 export type {

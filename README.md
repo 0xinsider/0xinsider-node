@@ -114,6 +114,8 @@ const total = trader.data.pnl.correction?.net_total ?? trader.data.pnl.net_total
 
 SDK 0.27.0 types 23 response fields as always present, because the API sends them on every response and earlier releases typed them `field?: T`. Among them: `freshness` and `score_components` on an `ExploreMarket`, `pick_rank` on a `PickOfTheDayArchiveEntry`, `stake_usd` and `series` on a `PickOfTheDayHitRate`, and `large_trade_count` in market flows. Code that checks them for `undefined` keeps compiling, and the checks can go. The same release removes `monthly_quota.unavailable_reason` from the usage type, which the API has never sent: code that reads it no longer compiles.
 
+SDK 0.29.0 adds `monthly_quota.unavailable_reason` back to the usage type, now that `GET /api/v1/usage` sends it on every response: `"usage_price_reconciliation_required"` while the account's usage subscription carries a price billing has not reconciled to its plan (pay as you go stays off), otherwise `null`.
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.

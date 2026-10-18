@@ -646,9 +646,9 @@ export type EdgeHunterObservation = {
   conviction_score: number;
   /** Whether the provider holder page came from the shared cache or a live provider read. */
   provider_read_source: "cached" | "live";
-  /** True only when provider pagination proves exhaustion of both outcome holder populations. Observation collection may follow bounded cursor pages; hitting an individual 100-row page does not by itself prove incompleteness. Bounded or interrupted walks remain incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate. */
+  /** True only when the provider page read for each outcome token listed every holder of that token. Observation collection reads one 100-row page per token; a token with more holders stays incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate. */
   holder_scan_complete: boolean;
-  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. Null, malformed, future, or stale holder time fails in-play closed. */
+  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes, with that page's original time here and provider_read_source cached; in_play rows never reuse one. Null, malformed, future, or stale holder time fails in-play closed. */
   holder_snapshot_at: string | null;
   /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
   directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
@@ -672,7 +672,7 @@ export type EdgeHunterObservationCoverage = {
   capacity_limited_markets: number;
   /** All wider_holder and in_play observations emitted in the canonical source generation, before cohort, category or selector projection. Emerging pile is an overlapping projection and does not add source emissions. */
   emitted_observations: number;
-  /** Canonical source-generation markets whose attempted holder scan did not establish complete coverage, including incomplete scans that did not emit an observation. */
+  /** Canonical source-generation markets whose attempted holder scan did not establish complete coverage, including incomplete scans that did not emit an observation. Collection reads one 100-row page per token, so a market with more holders on a token counts here by design; this count does not by itself degrade the generation. */
   incomplete_holder_markets: number;
   /** Observations matching the requested cohort, category, selectors and applicable pinned projection cutoff before pagination. */
   selected_observations: number;
@@ -682,7 +682,7 @@ export type EdgeHunterObservationCoverage = {
 
 /** One observed cause of operational degradation in the canonical all-sports observation generation. Reasons are independent of the one-terminal-per-input funnel and remain unchanged through category, cohort and selector projection. Intentional capacity limits and an unconfigured upcoming source are not degradation reasons. */
 export type EdgeHunterObservationDegradationReason = {
-  /** Recorded producer cause. holder_scan_incomplete means at least one attempted holder scan did not establish complete coverage; directional_unavailable can accompany an emitted wider_holder row; live_source_stale means provider live evidence exceeded its freshness bound. Other values identify reconciliation, applicable board-source or terminal failure evidence. */
+  /** Recorded producer cause. holder_scan_incomplete is retired and no longer emitted: the one-page holder read is an intentional bound, disclosed by each row's holder_scan_complete and by coverage.incomplete_holder_markets, and it does not degrade a generation. directional_unavailable can accompany an emitted wider_holder row; live_source_stale means provider live evidence exceeded its freshness bound. Other values identify reconciliation, applicable board-source or terminal failure evidence. */
   reason: "holder_scan_incomplete" | "live_source_stale" | "directional_unavailable" | "funnel_unreconciled" | "board_live_unavailable" | "board_upcoming_unavailable" | "provider_unavailable" | "holder_deadline_unavailable" | "holder_computation_unavailable" | "missing_stored_market" | "price_unavailable" | "in_play_stale_observed" | "in_play_directional_unavailable" | "internal_unclassified" | "board_source_unavailable" | "board_deadline_unavailable";
   /** Canonical sport for the recorded cause; null only for generation-wide evidence without a sport attribution. */
   sport: string | null;
@@ -698,9 +698,9 @@ export type EdgeHunterObservationsResponse = {
   next_cursor: string | null;
   /** Completion time of the shared observation snapshot pinned by the cursor. */
   snapshot_as_of: string;
-  /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounded capacity_limited rows remain fully accounted in the funnel and do not by themselves set this field; board_upcoming_status=not_configured is not a failure. */
+  /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounds do not by themselves set this field: capacity_limited rows remain fully accounted in the funnel, and a holder scan the one-page read leaves incomplete counts in coverage.incomplete_holder_markets; board_upcoming_status=not_configured is not a failure. */
   degraded: boolean;
-  /** Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input and board_upcoming_status=not_configured do not by themselves add a reason. */
+  /** Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input, the one-page holder bound (holder_scan_complete=false) and board_upcoming_status=not_configured do not by themselves add a reason. */
   degradation_reasons: EdgeHunterObservationDegradationReason[];
   coverage: EdgeHunterObservationCoverage;
   funnel: EdgeHunterFunnelReport;
@@ -915,7 +915,7 @@ export type EdgeHunterSportFunnelReport = {
   board_upcoming_configured: boolean;
   /** Whether every configured upcoming-board scope completed as available. False with board_upcoming_configured=false means not applicable. When board_upcoming_configured is true and this flag is false, read board_upcoming_status for the cause (it reads unknown, i.e. no recorded cause, only on a snapshot cached before that field existed, which self-clears within one TTL): the board_source_unavailable and board_deadline_unavailable terminals are assigned only to already-started rows (the live half) and are structurally 0 for the upcoming source, so they never explain this flag. */
   board_upcoming_available: boolean;
-  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to 3,000 rows or an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available. */
+  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: exactly one cause -- a snapshot cached before this field existed whose legacy flags recorded an unavailable-but-configured half without saying why. Every freshly computed snapshot reports a concrete status, and a legacy available or not-configured row is reconstructed exactly, so unknown self-clears within one TTL. board_upcoming_available is exactly board_upcoming_status == available. */
   board_upcoming_status: "unknown" | "not_configured" | "available" | "capacity_limited" | "source_unavailable" | "cold_unavailable" | "deadline_unavailable";
   /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
   board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "euroleague-basketball" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
@@ -1099,6 +1099,8 @@ export type ExploreMarket = {
   smart_count: number | null;
   /** The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side diverges from that side's price-implied share by at least 10 points, with at least $500 on the leaning side and outside the crowded-side guard. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
   smart_label: string | null;
+  /** When the oldest stored smart-money wallet behind this split (smart_score, smart_count and smart_label) last finished syncing. Graded wallets sync on different schedules, so this is often hours or days ago. Some holdings in the split can come from a Polymarket holder read cached for up to 3 minutes, which this time does not describe. Null when there is no split or a wallet's sync time is unknown. */
+  sharp_money_as_of: string | null;
   /** Display label for the YES/outcome_index=0 side, enriched from provider outcome metadata when available. */
   outcome_yes_label: string | null;
   /** Display label for the NO/outcome_index=1 side, enriched from provider outcome metadata when available. */
@@ -1410,7 +1412,7 @@ export type GameStatus = {
   period?: string;
   /** The game clock as the provider spells it, never reformatted. Omitted when the provider sent none. */
   clock?: string;
-  /** The provider's own in-play flag. Omitted when no live-score frame exists, which is not the same as false. */
+  /** Whether the game is in play. It is the provider's own in-play flag, except that a game the provider reports suspended (period SUS) or rescheduled to a later kickoff reads false. Omitted when no live-score frame exists, which is not the same as false. */
   live?: boolean;
   /** Whether the game is over. Always present. */
   ended: boolean;
@@ -1532,9 +1534,9 @@ export type LargeTrade = {
   traded_at: string;
   size_usd: number;
   side: "BUY" | "SELL";
-  /** Traded outcome label (e.g. "Yes"/"No"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, whose stored outcome_index is not trusted (a defaulted 0 for about a third of those rows; the side is unknown, not defaulted). */
+  /** Traded outcome label (e.g. "Yes"/"No"/team name), resolved provider-first from the trade's outcome_index against market_canonical (index 0 -> yes, 1 -> no). Distinct axis from side (BUY/SELL): side is the trade direction, outcome is which leg was traded. null for multi-outcome (outcome_index >= 2) or unsynced markets, and for a Polymarket trade recorded before 2026-04-02T00:00:00Z unless its stored outcome_index was verified against the fill's own trade records (before that date the stored index was wrong for a large share of trades; an unverified side is unknown, not defaulted). */
   outcome: string | null;
-  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z, where the traded side is unknown. */
+  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets) and for a Polymarket trade recorded before 2026-04-02T00:00:00Z whose traded side is not verified (the same rule as outcome). */
   token_id: string | null;
   price: number;
   /** Current trade review score on a 0..1 scale; higher values indicate a stronger review signal. This is the current response value and can differ from the recorded score. Missing measurements remain unavailable. */
@@ -2271,11 +2273,11 @@ export type PickOfTheDayArchiveDay = {
   wins: number;
   /** Picks on the day that resolved as a loss, counted by the same pass as hit_rate.losses. */
   losses: number;
-  /** Picks on the day that resolved void (stake refunded). */
+  /** Picks on the day that resolved void (a 50-50 split: each share pays half a dollar). */
   void: number;
   /** Picks on the day not yet resolved. A day whose picks are all pending is a real 0-0 day with pending > 0, not a missing record. */
   pending: number;
-  /** Net units over the day's visible, valued, decided (win/loss) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick void, or a price-gated current row -- which is not the same as a real 0.0 day. */
+  /** Net units over the day's visible, valued, staked (win, loss or priced void) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick an unpriced void, or a price-gated current row -- which is not the same as a real 0.0 day. */
   unit_score?: number;
   /** unit_score pre-formatted as signed units to two decimals (for example +1.24u or -2.00u), by the same formatter the per-pick unit_score_display and hit_rate.unit_score_display use. Present exactly when unit_score is; unit_score is the source value. */
   unit_score_display?: string;
@@ -2313,9 +2315,9 @@ export type PickOfTheDayArchiveEntry = {
   resolved_at?: string;
   /** The flat stake this row was valued at, in USD: 1000 since 2026-09-22 (100 before). Every row of the record is valued at the current stake, including picks published before the change. Present exactly when return_usd is. */
   stake_usd?: number;
-  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void refunds stake_usd. A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
+  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void returns stake_usd * 0.5 / backed_price (a 50-50 split pays half a dollar a share). A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
   return_usd?: number;
-  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 100), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
+  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 50 / backed_price), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
   return_per_100?: number;
   /** Pre-formatted return_usd as USD with cents: "$2,000.00". Present exactly when return_usd is -- it is formatted from that already-gated value -- so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. Convenience only; return_usd is the source value. */
   payout_display?: string;
@@ -2417,9 +2419,9 @@ export type PickOfTheDayHitRate = {
   pending: number;
   /** The flat stake every money figure here assumes, in USD: 1000 since 2026-09-22 (100 before). Always present. */
   stake_usd: number;
-  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued decided picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a void pays 0. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
+  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a priced void pays stake_usd * 0.5 / backed_price - stake_usd. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
   net_profit_usd: number;
-  /** Total staked (USD) = stake_usd * count of visible valued decided picks: every visible loss plus every priced win. Void, unpriced wins, and current non-Insider rows whose price is gated are excluded. */
+  /** Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss, every priced win and every priced void. Unpriced wins and voids, and current non-Insider rows whose price is gated, are excluded. */
   staked_usd: number;
   /** Return on the staked amount as a percentage (net_profit_usd / staked_usd * 100, to 1 decimal); 0 when nothing is staked. */
   roi_pct: number;
@@ -2467,7 +2469,7 @@ export type PickOfTheDayHitRate = {
   clv_beats_close: number;
   /** Measured public rows where close exactly equals entry. */
   clv_ties: number;
-  /** Cumulative track-record series, one point per decided (win/loss) pick in ascending pick_date order (void and pending add no point). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
+  /** Cumulative track-record series, one point per decided (win/loss) pick and per valued void in ascending pick_date order (pending adds no point; a void point moves profit, not hit rate). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
   series: {
     /** The decided pick's publish date (YYYY-MM-DD). */
     date: string;
@@ -2520,6 +2522,8 @@ export type PickOfTheDayLedgerOpenedEntry = {
   payload: PickOfTheDayCommitmentPayload;
   /** How the pick settled. Never pending: a pending pick is a sealed entry. */
   outcome: "win" | "loss" | "void";
+  /** Why the site withdrew this pick from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick keeps its commitment and its real outcome here, but the site's record leaves it out of every count and money figure. Not part of the hashed payload, so it never moves commitment_hash. */
+  withdrawal_reason: "provider_game_cancelled" | "published_after_kickoff" | null;
   /** Frozen matchup, for a reader. */
   matchup: string;
   /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
@@ -2588,6 +2592,8 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   pre_commitment: true;
   /** How the pick settled, or pending. */
   outcome: "pending" | "win" | "loss" | "void";
+  /** Omitted while the pick is pending; once it settles, why the site withdrew it from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick stays here with its real outcome, but the site's record leaves it out of every count and money figure. */
+  withdrawal_reason?: "provider_game_cancelled" | "published_after_kickoff" | null;
   /** Frozen matchup, for a reader. */
   matchup?: string;
   /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
@@ -3854,6 +3860,8 @@ export type Usage = {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
+      /** Why pay as you go is unavailable, or null. usage_price_reconciliation_required: the account's usage subscription carries a historical price whose included requests differ from its plan's, so pay as you go stays off (pay_as_you_go false) until billing reconciles it. Always sent since 2026-10-17. */
+      unavailable_reason: "usage_price_reconciliation_required" | null;
     } | null;
   };
   meta: ResponseMeta;
@@ -4423,6 +4431,8 @@ export interface OperationData {
       pay_as_you_go: boolean;
       /** The most requests this account is admitted in a UTC calendar month once enforcement has begun: limit, or four times limit with pay as you go on (2,000,000 for Pro). null for an admin account, which no number stops. Additive since 2026-09-22. */
       ceiling: number | null;
+      /** Why pay as you go is unavailable, or null. usage_price_reconciliation_required: the account's usage subscription carries a historical price whose included requests differ from its plan's, so pay as you go stays off (pay_as_you_go false) until billing reconciles it. Always sent since 2026-10-17. */
+      unavailable_reason: "usage_price_reconciliation_required" | null;
     } | null;
   };
   getWebhook: WebhookEndpoint;
@@ -4655,7 +4665,7 @@ export interface OperationQuery {
     view?: "board" | "signals" | "observations";
     /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
     category?: string;
-    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
+    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so an evaluated pregame market stays evaluated until its game starts; the rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
     /** Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations. */
     min_grade?: "S" | "A" | "B";
