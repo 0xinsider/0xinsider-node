@@ -115,6 +115,7 @@ export type BatchMarketFlowItem = {
 
 export type BatchRateLimitMeta = {
   basis: "batch_items_per_minute";
+  /** The batch item budget per minute for the caller's plan: 2500 item units on Pro, 5000 on Max. The same number X-Batch-RateLimit-Limit reports. */
   limit: number;
   remaining: number;
   /** Unix timestamp when the batch item window resets. */
@@ -611,6 +612,8 @@ export type EdgeHunterObservation = {
   observed_at: string;
   /** Source cohort or additive projection view. emerging_pile is projected from wider_holder after source computation, overlaps its funnel denominator, and uses the source row's directional evidence. */
   cohort: "wider_holder" | "in_play" | "emerging_pile";
+  /** Which evaluation place in its sport the row took this refresh. most_held: a wider_holder place for up to 8 markets per sport kicking off within 24 hours, most graded holders first, kept until kickoff while the holder page still shows a card or could not be read; also every in_play row, whose places go most graded holders first. soonest_kickoff: a wider_holder place among the sport's 8 soonest kickoffs, which is not kept. emerging_pile rows carry their source wider_holder row's value. Filter on most_held to keep the most-held selection. */
+  admitted_by: "most_held" | "soonest_kickoff";
   /** Always true. This row must not be routed to an order executor. */
   observation_only: true;
   /**
@@ -648,7 +651,7 @@ export type EdgeHunterObservation = {
   provider_read_source: "cached" | "live";
   /** True only when the provider page read for each outcome token listed every holder of that token. Observation collection reads one 100-row page per token; a token with more holders stays incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate. */
   holder_scan_complete: boolean;
-  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes, with that page's original time here and provider_read_source cached; in_play rows never reuse one. Null, malformed, future, or stale holder time fails in-play closed. */
+  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes; an in_play row may reuse its last in-play page, read after the provider reported the game live and never before that market's own kickoff, for up to 10 minutes. Both ages are counted when the snapshot is computed. Either reuse carries that page's original time here and provider_read_source cached. A pregame market more than an hour before kickoff reuses its last page the same way until that page is 10 minutes old, and only then is read again. Once that market's own kickoff has passed, an in_play row with provider_read_source cached, a warm hit or a reuse, never carries a page read before it. Null, malformed, future, or stale holder time fails in-play closed. */
   holder_snapshot_at: string | null;
   /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
   directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
@@ -1824,6 +1827,8 @@ export type MarketHolder = {
     /** Resolved markets in the category that this wallet closed with a profit or a loss. A market resolved at zero realized P&L is in neither count. */
     decided: number;
   };
+  /** The wallet's average entry price in the market's canonical category, as a 0..1 fraction of $1 (0.98 is 98 cents). Its sample is the wallet's settled markets in that category of $20 or more where it bought one side at a known price, so it can differ from the `category_win_record` sample. A wallet that buys near-certain outcomes wins almost every time, so read the win rate beside this price. Present only with `category_win_rate_status` = `measured`, and only when that sample has at least 5 markets. When `category_win_rate_game` is present the price is still the `Esports` category's: there is no per-game price. Absent otherwise and on payloads predating the field. */
+  category_avg_price?: number;
   /** For an esports market, the game `category_win_rate` and `category_win_record` were measured in: `LoL`, `CS2`, `Dota 2`, `Valorant`, `Call of Duty`, `Honor of Kings`, `Mobile Legends: Bang Bang`, `Overwatch`, `Rainbow Six Siege`, `Rocket League` or `StarCraft II`. Present only when the wallet's record in that game clears the 5-resolved-market floor, in which case the rate and record are the game's rather than the `Esports` bucket's. Absent when the rate is the bucket's (the wallet's game history is under the floor), on every non-esports market, and beside every non-measured status. Label the rate with this when present and with the market's `category` otherwise. */
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Always present on this route. */
@@ -2043,6 +2048,8 @@ export type PickHolder = {
     /** Resolved markets in the category that this wallet closed with a profit or a loss. A market resolved at zero realized P&L is in neither count. */
     decided: number;
   };
+  /** The wallet's average entry price in the pick's canonical category, as a 0..1 fraction of $1 (0.98 is 98 cents). Its sample is the wallet's settled markets in that category of $20 or more where it bought one side at a known price, so it can differ from the `category_win_record` sample. A wallet that buys near-certain outcomes wins almost every time, so read the win rate beside this price. Present only with `category_win_rate_status` = `measured`, and only when that sample has at least 5 markets. When `category_win_rate_game` is present the price is still the `Esports` category's: there is no per-game price. Absent otherwise and on payloads predating the field. */
+  category_avg_price?: number;
   /** For an esports pick, the game `category_win_rate` and `category_win_record` were measured in, by the same name the pick's `display_category` uses for it: `LoL`, `CS2`, `Dota 2`, `Valorant`, `Call of Duty`, `Honor of Kings`, `Mobile Legends: Bang Bang`, `Overwatch`, `Rainbow Six Siege`, `Rocket League` or `StarCraft II`. Present only when the wallet's record in that game clears the 5-resolved-market floor, in which case the rate and record are the game's rather than the `Esports` bucket's. Absent when the rate is the bucket's (the wallet's game history is under the floor), on every non-esports pick, beside every non-measured status, and on payloads predating the field. Label the rate with this when present and with `category` otherwise. */
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the resolved-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample. */
@@ -2273,11 +2280,11 @@ export type PickOfTheDayArchiveDay = {
   wins: number;
   /** Picks on the day that resolved as a loss, counted by the same pass as hit_rate.losses. */
   losses: number;
-  /** Picks on the day that resolved void (a 50-50 split: each share pays half a dollar). */
+  /** Picks on the day that resolved void: the market settled with no winner. A void is neither a win nor a loss and is not staked, so it enters no money figure. */
   void: number;
   /** Picks on the day not yet resolved. A day whose picks are all pending is a real 0-0 day with pending > 0, not a missing record. */
   pending: number;
-  /** Net units over the day's visible, valued, staked (win, loss or priced void) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick an unpriced void, or a price-gated current row -- which is not the same as a real 0.0 day. */
+  /** Net units over the day's visible, valued, staked (win or loss) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending or void, or a price-gated current row -- which is not the same as a real 0.0 day. */
   unit_score?: number;
   /** unit_score pre-formatted as signed units to two decimals (for example +1.24u or -2.00u), by the same formatter the per-pick unit_score_display and hit_rate.unit_score_display use. Present exactly when unit_score is; unit_score is the source value. */
   unit_score_display?: string;
@@ -2315,13 +2322,13 @@ export type PickOfTheDayArchiveEntry = {
   resolved_at?: string;
   /** The flat stake this row was valued at, in USD: 1000 since 2026-09-22 (100 before). Every row of the record is valued at the current stake, including picks published before the change. Present exactly when return_usd is. */
   stake_usd?: number;
-  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void returns stake_usd * 0.5 / backed_price (a 50-50 split pays half a dollar a share). A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
+  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price and a loss returns 0. A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on every row that carries a return, so the entry never has to be recovered by inverting this number. Omitted (not null) for a still-pending pick, for a void (the market settled with no winner, so the pick is not staked) and for a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
   return_usd?: number;
-  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 50 / backed_price), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
+  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
   return_per_100?: number;
-  /** Pre-formatted return_usd as USD with cents: "$2,000.00". Present exactly when return_usd is -- it is formatted from that already-gated value -- so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. Convenience only; return_usd is the source value. */
+  /** Pre-formatted return_usd as USD with cents: "$2,000.00". Present exactly when return_usd is -- it is formatted from that already-gated value -- so it is omitted for a still-pending pick, a void, an unpriced win, and any pick whose backed side is withheld. Convenience only; return_usd is the source value. */
   payout_display?: string;
-  /** Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present exactly when return_usd is, so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. */
+  /** Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present exactly when return_usd is, and on a void, which carries no return: so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. */
   backed_price?: number;
   /** Closing-line value toward the backed side, computed as (close / entry - 1) * 100. Omitted when the row is gated, ineligible, or not measured. */
   clv_pct?: number;
@@ -2419,9 +2426,9 @@ export type PickOfTheDayHitRate = {
   pending: number;
   /** The flat stake every money figure here assumes, in USD: 1000 since 2026-09-22 (100 before). Always present. */
   stake_usd: number;
-  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a priced void pays stake_usd * 0.5 / backed_price - stake_usd. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
+  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price. A void is not staked and adds nothing. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
   net_profit_usd: number;
-  /** Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss, every priced win and every priced void. Unpriced wins and voids, and current non-Insider rows whose price is gated, are excluded. */
+  /** Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss and every priced win. Voids, unpriced wins and current non-Insider rows whose price is gated are excluded. */
   staked_usd: number;
   /** Return on the staked amount as a percentage (net_profit_usd / staked_usd * 100, to 1 decimal); 0 when nothing is staked. */
   roi_pct: number;
@@ -2469,7 +2476,7 @@ export type PickOfTheDayHitRate = {
   clv_beats_close: number;
   /** Measured public rows where close exactly equals entry. */
   clv_ties: number;
-  /** Cumulative track-record series, one point per decided (win/loss) pick and per valued void in ascending pick_date order (pending adds no point; a void point moves profit, not hit rate). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
+  /** Cumulative track-record series, one point per decided (win/loss) pick in ascending pick_date order (pending and void picks add no point). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
   series: {
     /** The decided pick's publish date (YYYY-MM-DD). */
     date: string;
@@ -3830,6 +3837,7 @@ export type Usage = {
   data: {
     rate_limit: {
       used: number;
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
@@ -4401,6 +4409,7 @@ export interface OperationData {
   getUsage: {
     rate_limit: {
       used: number;
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
@@ -4665,7 +4674,7 @@ export interface OperationQuery {
     view?: "board" | "signals" | "observations";
     /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
     category?: string;
-    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so an evaluated pregame market stays evaluated until its game starts; the rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
+    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so a market among a sport's 8 soonest stays evaluated until its game starts. wider_holder also evaluates up to 8 more markets per sport that kick off within 24 hours, most graded holders first, so the most-held markets appear up to a day before kickoff. Each of these keeps its place in later refreshes until its game starts while its holder page still shows a card or could not be read, so a more-held market waits for a free place instead of displacing it. Each row's admitted_by names its place, most_held or soonest_kickoff. The rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
     /** Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations. */
     min_grade?: "S" | "A" | "B";
