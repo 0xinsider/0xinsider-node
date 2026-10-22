@@ -44139,9 +44139,10 @@
           },
           "supersedes_pick_id": {
             "deprecated": true,
-            "type": ["null"],
-            "enum": [null],
-            "description": "Deprecated (#24157): always null, as on every Pick of the Day shape."
+            "type": "string",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id."
           }
         }
       },

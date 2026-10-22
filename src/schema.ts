@@ -2676,10 +2676,10 @@ export type PickOfTheDayNoEntitledPicks = {
   /** Entitled published picks whose holder proof is unreadable, ordered by rank. Unauthorized ranks appear only in locked_picks and cannot trigger proof warming. Read retry_at for the next read. */
   proof_pending_picks?: ProofPendingPickSlot[];
   /**
-   * Deprecated (#24157): always null, as on every Pick of the Day shape.
+   * Deprecated (#24157): always null. No replacement lineage was ever recorded in this field; the key stays so existing V1 clients keep parsing. Identify a pick by pick_id.
    * @deprecated
    */
-  supersedes_pick_id: null;
+  supersedes_pick_id: string | null;
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
