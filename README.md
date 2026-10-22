@@ -118,6 +118,8 @@ SDK 0.29.0 adds `monthly_quota.unavailable_reason` back to the usage type, now t
 
 SDK 0.30.0 follows the API to sports and esports markets only. A market or event outside them throws `MarketOutOfScopeError`, the 404 `market_out_of_scope`: stop asking for it, because a retry cannot succeed. A `category` outside sports and esports is a 400 `bad_request` with `error.param` `category`. New types: `pnl.in_scope` (`TraderPnlInScope`) on a trader, `report.market_scope` on reports, `product_scope` on trader exports, Edge Hunter's opt-in `admission: "most_held_48h"`, a `departures` list (`EdgeHunterObservationDeparture`) for cards that leave before kickoff, and `category_avg_price` on `MarketHolder` and `PickHolder`. Parameter descriptions and examples use sports and esports values only.
 
+SDK 0.31.0 types the deprecated `supersedes_pick_id` on `PickOfTheDayNoEntitledPicks` as `string | null`, the same as every other Pick of the Day shape. Earlier releases typed it `null`. The API still always sends `null`. Code that assigns the field to a variable typed `null` no longer compiles: type it `string | null`, or stop reading it and identify picks by `pick_id`.
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
