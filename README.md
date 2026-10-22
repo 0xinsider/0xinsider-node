@@ -116,6 +116,8 @@ SDK 0.27.0 types 23 response fields as always present, because the API sends the
 
 SDK 0.29.0 adds `monthly_quota.unavailable_reason` back to the usage type, now that `GET /api/v1/usage` sends it on every response: `"usage_price_reconciliation_required"` while the account's usage subscription carries a price billing has not reconciled to its plan (pay as you go stays off), otherwise `null`.
 
+SDK 0.30.0 follows the API to sports and esports markets only. A market or event outside them throws `MarketOutOfScopeError`, the 404 `market_out_of_scope`: stop asking for it, because a retry cannot succeed. A `category` outside sports and esports is a 400 `bad_request` with `error.param` `category`. New types: `pnl.in_scope` (`TraderPnlInScope`) on a trader, `report.market_scope` on reports, `product_scope` on trader exports, Edge Hunter's opt-in `admission: "most_held_48h"`, a `departures` list (`EdgeHunterObservationDeparture`) for cards that leave before kickoff, and `category_avg_price` on `MarketHolder` and `PickHolder`. Parameter descriptions and examples use sports and esports values only.
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.

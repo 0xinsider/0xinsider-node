@@ -51,7 +51,8 @@ export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
  * an existing `code` means. It tells you what to DO, where the code alone could
  * not: `pick_not_released` is "not YET" (sleep until `retryAt`), not "does not
  * exist"; `unknown_endpoint` is a wrong PATH (do not retry); `trader_not_tracked`
- * is a wallet we do not capture (stop asking for it); `cursor_expired` means
+ * is a wallet we do not capture (stop asking for it); `market_out_of_scope`
+ * is a market outside product scope, sports and esports only (stop asking for it); `cursor_expired` means
  * re-request page 1; `read_model_warming` is endpoint-local unavailability,
  * not rate limiting. Retry only that route after the supplied interval; do not
  * infer dependency health from the reason.
@@ -61,6 +62,7 @@ export const API_ERROR_REASONS = [
   "unknown_endpoint",
   "pick_not_released",
   "trader_not_tracked",
+  "market_out_of_scope",
   "read_model_warming",
   "database_unavailable",
   "request_accounting_unavailable",
@@ -756,6 +758,23 @@ export class TraderNotTrackedError extends NotFoundError {
   }
 }
 
+/**
+ * 404 `reason: market_out_of_scope` - the market or event is real and the URL is right,
+ * but 0xinsider serves sports and esports markets only (#27303). Stop asking for this
+ * market; neither a retry nor another URL for it can succeed.
+ */
+export class MarketOutOfScopeError extends NotFoundError {
+  override readonly reason = "market_out_of_scope" as const;
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
+    this.name = "MarketOutOfScopeError";
+  }
+}
+
 /** Parse the RFC3339 `error.retry_at` off an error envelope, if present. */
 function parseRetryAt(body: unknown): Date | null {
   const raw = extractApiErrorBody(body)?.retry_at;
@@ -844,6 +863,8 @@ export function errorFromResponse(
       return new UnknownEndpointError(status, body, metadata);
     case "trader_not_tracked":
       return new TraderNotTrackedError(status, body, metadata);
+    case "market_out_of_scope":
+      return new MarketOutOfScopeError(status, body, metadata);
     case "idempotency_in_progress":
       return new IdempotencyInProgressError(status, body, metadata);
     case "webhook_delivery_in_progress":
