@@ -85,8 +85,8 @@ export type ApiError = {
     /** The recommended next request instant (RFC3339), always in the future. Present on every retryable error: `pick_not_released`, `rate_limited`, `rate_limit_unavailable`, and `read_model_warming`. Omitted otherwise. The absolute twin of `Retry-After`; prefer the header for the sleep duration. For `pick_not_released`, the earliest of the next scheduled release, the next automatic selector attempt, the operating-window start, or about 60 seconds. See that response. */
     retry_at?: string;
     freshness?: FreshnessFailure;
-    /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed. */
-    reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied" | "max_plan_required" | "endpoint_retired";
+    /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed. */
+    reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "market_out_of_scope" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied" | "max_plan_required" | "endpoint_retired";
   };
   meta: ResponseMeta;
 };
@@ -100,8 +100,8 @@ export type ApiErrorBody = {
   /** The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released, the recommendation is advisory and can change before a pick becomes available. Schedule the next request from the returned value instead of inferring a release schedule or polling. Prefer Retry-After for the duration because it is immune to client clock skew. */
   retry_at?: string;
   freshness?: FreshnessFailure;
-  /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed. */
-  reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied" | "max_plan_required" | "endpoint_retired";
+  /** ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed. */
+  reason?: "cursor_expired" | "unknown_endpoint" | "pick_not_released" | "trader_not_tracked" | "market_out_of_scope" | "read_model_warming" | "database_unavailable" | "request_accounting_unavailable" | "idempotency_in_progress" | "webhook_delivery_in_progress" | "webhook_secret_rotation_not_prepared" | "webhook_secret_rotation_overlap_active" | "sandbox_api_key" | "api_key_in_query" | "subscription_inactive" | "monthly_quota_exceeded" | "invalid_query" | "unknown_query_parameter" | "invalid_path" | "invalid_body" | "unsupported_media_type" | "payload_too_large" | "method_not_allowed" | "ip_rate_limited" | "ip_throttled" | "export_expired" | "freshness_ceiling_unsatisfied" | "max_plan_required" | "endpoint_retired";
 };
 
 export type BatchMarketFlowItem = {
@@ -115,6 +115,7 @@ export type BatchMarketFlowItem = {
 
 export type BatchRateLimitMeta = {
   basis: "batch_items_per_minute";
+  /** The batch item budget per minute for the caller's plan: 2500 item units on Pro, 5000 on Max. The same number X-Batch-RateLimit-Limit reports. */
   limit: number;
   remaining: number;
   /** Unix timestamp when the batch item window resets. */
@@ -611,6 +612,8 @@ export type EdgeHunterObservation = {
   observed_at: string;
   /** Source cohort or additive projection view. emerging_pile is projected from wider_holder after source computation, overlaps its funnel denominator, and uses the source row's directional evidence. */
   cohort: "wider_holder" | "in_play" | "emerging_pile";
+  /** Which evaluation place in its sport the row took this refresh. most_held: a wider_holder place for up to 8 markets per sport kicking off within 24 hours, most graded holders first, kept until kickoff while the holder page still shows a card or could not be read; also every in_play row, whose places go most graded holders first. soonest_kickoff: a wider_holder place among the sport's 8 soonest kickoffs, which is not kept. emerging_pile rows carry their source wider_holder row's value. Filter on most_held to keep the most-held selection. most_held_48h: every row of an admission=most_held_48h response, which is that opt-in selection (up to 8 markets per sport within 48 hours, most graded holders first, recomputed every refresh), including a market a default place also evaluates; it never appears on a default response. */
+  admitted_by: "most_held" | "soonest_kickoff" | "most_held_48h";
   /** Always true. This row must not be routed to an order executor. */
   observation_only: true;
   /**
@@ -648,7 +651,7 @@ export type EdgeHunterObservation = {
   provider_read_source: "cached" | "live";
   /** True only when the provider page read for each outcome token listed every holder of that token. Observation collection reads one 100-row page per token; a token with more holders stays incomplete. False means holder counts and dollar totals measure the observed positive-holder subset. sharp_pct describes that observed subset and is not a lower bound on the full-population percentage. Incomplete scans cannot satisfy a future capital-promotion gate. */
   holder_scan_complete: boolean;
-  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes, with that page's original time here and provider_read_source cached; in_play rows never reuse one. Null, malformed, future, or stale holder time fails in-play closed. */
+  /** Proven provider holder observation time. A warm cache hit uses only the original provider completion time from its companion metadata, never cache-read time. A wider_holder or emerging_pile row whose holder read did not finish in the current pass may reuse that market's last pregame holder page for up to 15 minutes; an in_play row may reuse its last in-play page, read after the provider reported the game live and never before that market's own kickoff, for up to 10 minutes. Both ages are counted when the snapshot is computed. Either reuse carries that page's original time here and provider_read_source cached. A pregame market more than an hour before kickoff reuses its last page the same way until that page is 10 minutes old, and only then is read again. Once that market's own kickoff has passed, an in_play row with provider_read_source cached, a warm hit or a reuse, never carries a page read before it. Null, malformed, future, or stale holder time fails in-play closed. */
   holder_snapshot_at: string | null;
   /** Truthful state of the directional read, which classifies each graded holder by its fresh synced legs across the game's markets and, when holder_scan_complete is true, by Polymarket's currentValue on both outcomes of this market. A wider_holder row can remain emitted with unavailable and terminal wider_holder_emitted; in_play fails closed instead and terminates as in_play_directional_unavailable. */
   directional_status: "available" | "unknown_ungrouped" | "unknown_stale" | "unavailable";
@@ -664,7 +667,7 @@ export type EdgeHunterObservation = {
   market_context: EdgeHunterMarketContext | null;
 };
 
-/** Measured coverage of the frozen canonical observation generation and this requested page. For sports and esports reads, the first four counts remain global through category, cohort and all selectors. They are neither a census of all provider markets nor a count of successfully evaluated holders. Selected and returned counts describe the requested projection. An unmappable legacy category synthesizes a zero-work empty generation with all six counts zero and no degradation reasons; it does not read the all-sports cache. */
+/** Measured coverage of the frozen canonical observation generation and this requested page. For sports and esports reads, the first four counts remain global through category, cohort and all selectors; with admission=most_held_48h they count that selection's generation, where every wider_holder candidate it did not take is capacity_limited. They are neither a census of all provider markets nor a count of successfully evaluated holders. Selected and returned counts describe the requested projection. An unmappable legacy category synthesizes a zero-work empty generation with all six counts zero and no degradation reasons; it does not read the all-sports cache. */
 export type EdgeHunterObservationCoverage = {
   /** Sum of canonical source-generation funnel input across all sports, before category, cohort or selector projection. */
   input_markets: number;
@@ -688,6 +691,25 @@ export type EdgeHunterObservationDegradationReason = {
   sport: string | null;
 };
 
+/** A market whose wider_holder card left this selection before kickoff, with why it left. */
+export type EdgeHunterObservationDeparture = {
+  /** Raw Polymarket condition id. */
+  condition_id: string;
+  event_slug: string | null;
+  /** Canonical sport bucket the departed card carried. */
+  category: "Basketball" | "Football" | "Baseball" | "Hockey" | "MMA" | "Boxing" | "Soccer" | "Cricket" | "Golf" | "Tennis" | "Esports" | "Racing" | "Table Tennis" | "Pickleball";
+  /** The departed card's admitted_by: most_held_48h on an admission=most_held_48h response. */
+  admitted_by: "most_held" | "soonest_kickoff" | "most_held_48h";
+  /** Kickoff the departed card carried, in UTC. The entry leaves the list once it passes. */
+  game_start_time: string;
+  /** The departed card's observed_at: when its last evaluation finished. */
+  last_observed_at: string;
+  /** snapshot_as_of of the first snapshot of this selection without the card. */
+  departed_at: string;
+  /** Why the market has no card: its terminal in this selection's funnel in the snapshot it left, and while that terminal reports a read that did not finish (holder_deadline_unavailable, provider_unavailable, holder_computation_unavailable, internal_unclassified), the terminal of each later snapshot until one answers; an answered reason never changes. primary_slate_candidate: the market joined the funded slate, which view=signals covers. capacity_limited: it lost its evaluation place without another outcome. missing_stored_market: the market was no longer in the stored market universe. Any other value means what it means in the funnel, for example split_holder_pile, no_current_graded_holder or resolved. */
+  reason: EdgeHunterObservationTerminalReason;
+};
+
 /** Full Edge Hunter observations list envelope. Required degradation_reasons explains the source-generation verdict; required coverage distinguishes source input, intentional capacity exclusions, source emissions, incomplete holder scans, selection and the returned page. The view literal distinguishes advanced collections, including empty pages. */
 export type EdgeHunterObservationsResponse = {
   object: "list";
@@ -700,13 +722,17 @@ export type EdgeHunterObservationsResponse = {
   snapshot_as_of: string;
   /** True when an operational failure or unknown provider-board, holder, directional, reconciliation, or internal completeness state made this snapshot partial. This is snapshot-wide and can retain degradation that the funnel's one-terminal-per-input accounting cannot represent. Inspect degradation_reasons for every recorded source-generation cause and its nullable canonical sport attribution. Intentional bounds do not by themselves set this field: capacity_limited rows remain fully accounted in the funnel, and a holder scan the one-page read leaves incomplete counts in coverage.incomplete_holder_markets; board_upcoming_status=not_configured is not a failure. */
   degraded: boolean;
-  /** Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors. Empty exactly when degraded is false. Capacity-limited input, the one-page holder bound (holder_scan_complete=false) and board_upcoming_status=not_configured do not by themselves add a reason. */
+  /** Sorted, deduplicated causes from the canonical all-sports generation, unchanged by category, cohort or selectors; with admission=most_held_48h, from that selection's generation. Empty exactly when degraded is false. Capacity-limited input, the one-page holder bound (holder_scan_complete=false) and board_upcoming_status=not_configured do not by themselves add a reason. */
   degradation_reasons: EdgeHunterObservationDegradationReason[];
   coverage: EdgeHunterObservationCoverage;
   funnel: EdgeHunterFunnelReport;
   meta: ResponseMeta;
   /** Normalized axes requested with a selector or category; omitted on an unselected default read. */
   selection?: EdgeHunterSelection;
+  /** Echoes the opt-in admission rule a request named; omitted on a default read. When present, data, funnel, coverage, degraded and degradation_reasons describe that selection, not the default one. */
+  admission?: "most_held_48h";
+  /** cohort=wider_holder only, for the default selection and for admission=most_held_48h: markets that had a wider_holder card in an earlier snapshot of the same selection, have none in this one, and have not kicked off. Newest departed_at first. An entry stays until the game_start_time it carries passes, and leaves as soon as the market has a card again; while it stays only a reason that reports an unfinished read changes (see reason), and a later departure of the same market is a new entry. Filtered by the same category and selectors as data, and identical on every page of one snapshot. At most 336 entries; when more are open, the oldest departures leave first. An empty array means no card of this selection is departed. Omitted on in_play and emerging_pile, and on a snapshot that could not establish its departures, never reported as an empty array. Tracking that restarts after its record is lost starts empty. */
+  departures?: EdgeHunterObservationDeparture[];
 };
 
 /** Closed 25-value terminal-reason vocabulary for the accountable Edge Hunter observation funnel. capacity_limited is intentional bounded provider-work admission and does not itself set the snapshot degraded. board_source_unavailable is a completed board-source failure; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; both classify only already-started rows, so for the upcoming source read funnel.sports[].board_upcoming_status instead; provider_unavailable is reserved for an attempted holder-provider failure; holder_deadline_unavailable is holder cache/provider absolute-deadline exhaustion. */
@@ -1154,9 +1180,13 @@ export type ExportCompleteness = {
 };
 
 export type ExportCounts = {
+  /** Daily P&L rows. The daily P&L covers every market of the wallet. */
   pnl_days: number;
+  /** The wallet's sports and esports markets: the rows of the export's markets section, before its 50,000-row cap. */
   exported_markets: number;
+  /** Estimated trades in the wallet's sports and esports markets: the summed trade counts of those markets. The file counts its own rows in generation.source_watermarks.trades.rows. */
   estimated_trade_rows: number;
+  /** Estimated file size from estimated_trade_rows and exported_markets. */
   estimated_size_mb: number;
 };
 
@@ -1201,7 +1231,9 @@ export type ExportJobReadyData = {
 export type ExportSourceRange = {
   first_pnl_date: string | null;
   last_pnl_date: string | null;
+  /** The latest trade in the wallet's sports and esports markets. Null when it has none. */
   latest_trade_at: string | null;
+  /** Same instant as latest_trade_at: the latest activity of the markets the export holds. */
   latest_market_activity_at: string | null;
 };
 
@@ -1210,6 +1242,7 @@ export type ExportVolumeReconciliation = {
   provider_lifetime_volume: number | null;
   /** Cash in USD, buys and sells, summed over the daily P&L rows this export carries, from the fills 0xinsider has stored for the wallet. It can cover less history than provider_lifetime_volume; never Polymarket's share count. */
   exported_activity_volume: number;
+  /** Cost basis in USD summed over the wallet's sports and esports markets, the markets section of the export. */
   exported_market_cost_basis: number;
   /** provider_lifetime_volume minus exported_activity_volume, in USD, rounded to cents. Null when provider_lifetime_volume is null. */
   provider_activity_volume_gap: number | null;
@@ -1667,7 +1700,7 @@ export type LeaderboardEntry = {
   markets_traded?: number;
   /** The wallet's win rate across ALL categories, not the filtered one. ?category= decides WHICH wallets are listed (the wallet must be ranked in that category); it does not rescope this field, so a soccer-filtered list still reports each wallet's overall rate. For a per-category record use GET /api/v1/trader/{address}/categories. */
   win_rate?: number;
-  /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
+  /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified, counted over the wallet's sports and esports markets only. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
   strategy_type?: string;
   /** Provider platform. Always polymarket. */
   platform: "polymarket";
@@ -1824,6 +1857,8 @@ export type MarketHolder = {
     /** Resolved markets in the category that this wallet closed with a profit or a loss. A market resolved at zero realized P&L is in neither count. */
     decided: number;
   };
+  /** The wallet's average entry price in the market's canonical category, as a 0..1 fraction of $1 (0.98 is 98 cents). Its sample is the wallet's settled markets in that category of $20 or more where it bought one side at a known price, so it can differ from the `category_win_record` sample. A wallet that buys near-certain outcomes wins almost every time, so read the win rate beside this price. Present only with `category_win_rate_status` = `measured`, and only when that sample has at least 5 markets. When `category_win_rate_game` is present the price is still the `Esports` category's: there is no per-game price. Absent otherwise and on payloads predating the field. */
+  category_avg_price?: number;
   /** For an esports market, the game `category_win_rate` and `category_win_record` were measured in: `LoL`, `CS2`, `Dota 2`, `Valorant`, `Call of Duty`, `Honor of Kings`, `Mobile Legends: Bang Bang`, `Overwatch`, `Rainbow Six Siege`, `Rocket League` or `StarCraft II`. Present only when the wallet's record in that game clears the 5-resolved-market floor, in which case the rate and record are the game's rather than the `Esports` bucket's. Absent when the rate is the bucket's (the wallet's game history is under the floor), on every non-esports market, and beside every non-measured status. Label the rate with this when present and with the market's `category` otherwise. */
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Always present on this route. */
@@ -2043,6 +2078,8 @@ export type PickHolder = {
     /** Resolved markets in the category that this wallet closed with a profit or a loss. A market resolved at zero realized P&L is in neither count. */
     decided: number;
   };
+  /** The wallet's average entry price in the pick's canonical category, as a 0..1 fraction of $1 (0.98 is 98 cents). Its sample is the wallet's settled markets in that category of $20 or more where it bought one side at a known price, so it can differ from the `category_win_record` sample. A wallet that buys near-certain outcomes wins almost every time, so read the win rate beside this price. Present only with `category_win_rate_status` = `measured`, and only when that sample has at least 5 markets. When `category_win_rate_game` is present the price is still the `Esports` category's: there is no per-game price. Absent otherwise and on payloads predating the field. */
+  category_avg_price?: number;
   /** For an esports pick, the game `category_win_rate` and `category_win_record` were measured in, by the same name the pick's `display_category` uses for it: `LoL`, `CS2`, `Dota 2`, `Valorant`, `Call of Duty`, `Honor of Kings`, `Mobile Legends: Bang Bang`, `Overwatch`, `Rainbow Six Siege`, `Rocket League` or `StarCraft II`. Present only when the wallet's record in that game clears the 5-resolved-market floor, in which case the rate and record are the game's rather than the `Esports` bucket's. Absent when the rate is the bucket's (the wallet's game history is under the floor), on every non-esports pick, beside every non-measured status, and on payloads predating the field. Label the rate with this when present and with `category` otherwise. */
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the resolved-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample. */
@@ -2273,11 +2310,11 @@ export type PickOfTheDayArchiveDay = {
   wins: number;
   /** Picks on the day that resolved as a loss, counted by the same pass as hit_rate.losses. */
   losses: number;
-  /** Picks on the day that resolved void (a 50-50 split: each share pays half a dollar). */
+  /** Picks on the day that resolved void: the market settled with no winner, or the game was suspended or postponed and not completed within 72 hours of kickoff. A void is neither a win nor a loss and is not staked, so it enters no money figure. */
   void: number;
   /** Picks on the day not yet resolved. A day whose picks are all pending is a real 0-0 day with pending > 0, not a missing record. */
   pending: number;
-  /** Net units over the day's visible, valued, staked (win, loss or priced void) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending, every pick an unpriced void, or a price-gated current row -- which is not the same as a real 0.0 day. */
+  /** Net units over the day's visible, valued, staked (win or loss) picks: the same population staked_usd runs over. Omitted when the day has not scored -- every pick still pending or void, or a price-gated current row -- which is not the same as a real 0.0 day. */
   unit_score?: number;
   /** unit_score pre-formatted as signed units to two decimals (for example +1.24u or -2.00u), by the same formatter the per-pick unit_score_display and hit_rate.unit_score_display use. Present exactly when unit_score is; unit_score is the source value. */
   unit_score_display?: string;
@@ -2315,13 +2352,13 @@ export type PickOfTheDayArchiveEntry = {
   resolved_at?: string;
   /** The flat stake this row was valued at, in USD: 1000 since 2026-09-22 (100 before). Every row of the record is valued at the current stake, including picks published before the change. Present exactly when return_usd is. */
   stake_usd?: number;
-  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price, a loss returns 0, a void returns stake_usd * 0.5 / backed_price (a 50-50 split pays half a dollar a share). A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on exactly the same rows, so the entry never has to be recovered by inverting this number. Omitted (not null) only for a still-pending pick or a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
+  /** Gross return of stake_usd on this resolved pick: a win returns stake_usd / backed_price and a loss returns 0. A loss always returns 0 (the whole stake is lost regardless of price). The operand is published beside it as backed_price on every row that carries a return, so the entry never has to be recovered by inverting this number. Omitted (not null) for a still-pending pick, for a void (the market settled with no winner, or the game was suspended or postponed and not completed within 72 hours of kickoff, so the pick is not staked) and for a resolved WIN with no frozen price (a win's payout needs the price); mirrors the backend skip-when-absent behavior and the route-client optional (non-nullable) schema. */
   return_usd?: number;
-  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0, a void 50 / backed_price), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
+  /** The same return on a literal $100 (a win returns 100 / backed_price, a loss 0), kept for compatibility: the field predates stake_usd and its name promises the $100 basis. Present exactly when return_usd is. */
   return_per_100?: number;
-  /** Pre-formatted return_usd as USD with cents: "$2,000.00". Present exactly when return_usd is -- it is formatted from that already-gated value -- so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. Convenience only; return_usd is the source value. */
+  /** Pre-formatted return_usd as USD with cents: "$2,000.00". Present exactly when return_usd is -- it is formatted from that already-gated value -- so it is omitted for a still-pending pick, a void, an unpriced win, and any pick whose backed side is withheld. Convenience only; return_usd is the source value. */
   payout_display?: string;
-  /** Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present exactly when return_usd is, so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. */
+  /** Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present exactly when return_usd is, and on a void, which carries no return: so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld. */
   backed_price?: number;
   /** Closing-line value toward the backed side, computed as (close / entry - 1) * 100. Omitted when the row is gated, ineligible, or not measured. */
   clv_pct?: number;
@@ -2419,9 +2456,9 @@ export type PickOfTheDayHitRate = {
   pending: number;
   /** The flat stake every money figure here assumes, in USD: 1000 since 2026-09-22 (100 before). Always present. */
   stake_usd: number;
-  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price, and a priced void pays stake_usd * 0.5 / backed_price - stake_usd. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
+  /** Cumulative profit (USD) of a stake_usd-per-pick strategy over visible valued settled picks: a priced win pays stake_usd/backed_price - stake_usd, every visible loss pays -stake_usd independent of price. A void is not staked and adds nothing. An unpriced visible win and a current non-Insider row whose price is gated remain in wins/losses but are excluded from price-derived totals. */
   net_profit_usd: number;
-  /** Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss, every priced win and every priced void. Unpriced wins and voids, and current non-Insider rows whose price is gated, are excluded. */
+  /** Total staked (USD) = stake_usd * count of visible valued settled picks: every visible loss and every priced win. Voids, unpriced wins and current non-Insider rows whose price is gated are excluded. */
   staked_usd: number;
   /** Return on the staked amount as a percentage (net_profit_usd / staked_usd * 100, to 1 decimal); 0 when nothing is staked. */
   roi_pct: number;
@@ -2469,7 +2506,7 @@ export type PickOfTheDayHitRate = {
   clv_beats_close: number;
   /** Measured public rows where close exactly equals entry. */
   clv_ties: number;
-  /** Cumulative track-record series, one point per decided (win/loss) pick and per valued void in ascending pick_date order (pending adds no point; a void point moves profit, not hit rate). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
+  /** Cumulative track-record series, one point per decided (win/loss) pick in ascending pick_date order (pending and void picks add no point). A non-valued decided row carries cumulative profit forward while advancing hit rate. The last point's net_profit_usd and hit_rate_pct equal the headline net_profit_usd and pct by construction. Empty when nothing is decided. */
   series: {
     /** The decided pick's publish date (YYYY-MM-DD). */
     date: string;
@@ -2976,6 +3013,8 @@ export type ReportPayload = {
   categories: Record<string, unknown>[] | null;
   /** Counts of current grades for distinct Polymarket traders with at least one whale alert in the report's source date range. The grade is the current projection at snapshot materialization time, not a historical grade at trade time. Traders without a current ranking projection are omitted; a null grade entry means the active trader's current grade is unavailable. */
   grade_distribution: Record<string, unknown>[] | null;
+  /** Which markets the report counts. sports_and_esports for a period that ends on or after 2026-10-21: totals, categories, top trades and the grade cohort cover sports and esports markets only. all_markets for an earlier period, whose stored report keeps every Polymarket market it published. */
+  market_scope: "all_markets" | "sports_and_esports";
 };
 
 export type ReportReconciliation = {
@@ -3286,6 +3325,8 @@ export type Trader = {
     last_30d?: number;
     /** Additive lossless counterpart. Omitted when the trusted native realized-P&L source is unavailable; existing numeric fields keep their display-safe v1 semantics. */
     exact?: TraderPnlExact;
+    /** Additive (#27311): the wallet's sports and esports record, the figure the 0xinsider profile headlines. Omitted until 0xinsider has computed the wallet's record; absent means not computed yet, never zero. The other pnl fields stay Polymarket's wallet-wide figures. */
+    in_scope?: TraderPnlInScope;
   };
   stats: {
     markets_traded?: number;
@@ -3297,7 +3338,7 @@ export type Trader = {
     exact?: TraderStatsExact;
   };
   strategy?: {
-    /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
+    /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified, counted over the wallet's sports and esports markets only. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
     strategy_type: string;
     description?: string;
     confidence?: number;
@@ -3370,7 +3411,7 @@ export type TraderCategoryRecords = {
 
 export type TraderContext = {
   trader: Trader;
-  /** Aggregate position and P&L coverage for the trader. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
+  /** Aggregate position and P&L coverage for the trader. Counts all Polymarket markets, not only sports and esports. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
   position_summary?: {
     /** Provider markets_traded count when known; null when the provider total is unavailable. */
     markets_total: number | null;
@@ -3455,6 +3496,8 @@ export type TraderExportGeneration = {
   selected_at: string;
   consistency: "repeatable_read";
   source_watermarks: TraderExportSourceWatermarks;
+  /** The markets the file's trades and markets sections hold: sports and esports markets only (export_metadata.scope_note in a JSON or NDJSON file names the sections that still cover every market). Absent on a file written before 2026-10-22, which holds every market; a submit never reuses such a file. */
+  product_scope?: "sports_esports_v1";
 };
 
 export type TraderExportJob = {
@@ -3464,7 +3507,9 @@ export type TraderExportJob = {
     /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
     status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
+    /** Trade rows the file holds: trades in the wallet's sports and esports markets, counted in the file's own read snapshot. Null until the worker has read the snapshot (queued, and early in running); a job accepted before 2026-10-22 can carry the earlier all-markets estimate until its file is read. */
     total_trades: number | null;
+    /** Trade rows written so far; equals total_trades once the file is read. */
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
@@ -3527,6 +3572,8 @@ export type TraderExportPositionWatermark = {
 
 export type TraderExportSnapshot = {
   address: string;
+  /** The markets the export file's trades and markets sections hold: sports and esports markets only. counts.exported_markets, counts.estimated_trade_rows, counts.estimated_size_mb, reconciliation.exported_market_cost_basis and source_range.latest_trade_at and latest_market_activity_at describe those markets. The pnl dates, pnl_days, exported_activity_volume and completeness cover every market of the wallet. */
+  product_scope: "sports_esports_v1";
   generated_at: string;
   source_range: ExportSourceRange;
   completeness: ExportCompleteness;
@@ -3544,7 +3591,9 @@ export type TraderExportSourceWatermarks = {
 
 export type TraderExportTradeWatermark = {
   source: string;
+  /** sports_esports_rows: the file holds every stored trade in the wallet's sports and esports markets. all_matching_rows on a file written before 2026-10-22, which holds every market's trades. */
   coverage: string;
+  /** Trade rows the file holds, counted in the same read snapshot as the rows. */
   rows: number;
   first_activity_date: string | null;
 };
@@ -3701,6 +3750,24 @@ export type TraderPnlExact = {
   realized: ExactDecimal;
 };
 
+/** A wallet's sports and esports record (#27311): Polymarket's published realized P&L (pnl.realized plus any published pnl.correction) split into the part earned on sports and esports markets. Fees, refunds and rebates stay in, apportioned by cost. A wallet wholly in sports keeps the published figure exactly; one with no sports market gets 0. Refreshed after each wallet sync; as_of dates it. */
+export type TraderPnlInScope = {
+  /** Names the split rule, currently sports_esports_split_v1. A new value means the rule changed; compare figures only within one basis. */
+  basis: string;
+  /** Sports and esports realized P&L in USD, display-safe. null when the wallet has no published realized figure to split. */
+  realized_pnl: number | null;
+  /** Sports and esports markets the wallet has traded, any status. */
+  markets: number;
+  /** Of those, the markets that have resolved. */
+  markets_resolved: number;
+  /** Share of decided sports and esports markets the wallet won, 0 to 1. null with no decided market. */
+  win_rate: number | null;
+  /** The wallet's markets outside sports and esports, which 0xinsider no longer lists. */
+  markets_out_of_scope: number;
+  /** When the record behind these figures was computed. */
+  as_of: string;
+};
+
 /** Lossless counterparts for trader statistics. The object is omitted when the verified provider observation is unavailable. */
 export type TraderStatsExact = {
   /** stats.total_volume as an exact decimal: full-history both-sides cash volume in USD, Polymarket user-volume `volume_usdc`, from the verified `trader_usd_volume` observation. Never Polymarket's share count. */
@@ -3830,6 +3897,7 @@ export type Usage = {
   data: {
     rate_limit: {
       used: number;
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
@@ -4170,7 +4238,9 @@ export interface OperationData {
     /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
     status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
+    /** Trade rows the file holds: trades in the wallet's sports and esports markets, counted in the file's own read snapshot. Null until the worker has read the snapshot (queued, and early in running); a job accepted before 2026-10-22 can carry the earlier all-markets estimate until its file is read. */
     total_trades: number | null;
+    /** Trade rows written so far; equals total_trades once the file is read. */
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
@@ -4352,7 +4422,9 @@ export interface OperationData {
     /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
     status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
+    /** Trade rows the file holds: trades in the wallet's sports and esports markets, counted in the file's own read snapshot. Null until the worker has read the snapshot (queued, and early in running); a job accepted before 2026-10-22 can carry the earlier all-markets estimate until its file is read. */
     total_trades: number | null;
+    /** Trade rows written so far; equals total_trades once the file is read. */
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
@@ -4401,6 +4473,7 @@ export interface OperationData {
   getUsage: {
     rate_limit: {
       used: number;
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
@@ -4522,7 +4595,9 @@ export interface OperationData {
     /** queued: accepted, not started. running: the worker is streaming rows. reconcile_required: the upload finished but the storage completion answer was lost; the hourly reconciler reads the object back and moves the job to ready or failed, and expires_at bounds the wait. ready: downloadable until expires_at. failed: terminal; error says why; submit a new export. expired: the retention window passed; the file is retired, the download route answers 410, submit a new export. cancel_requested: the owner cancelled a running job (POST /api/v1/trader/{address}/export/cancel); the worker stops at its next safe point and the job reads cancelled. cancelled: terminal; the owner cancelled the job and no file was published; submit a new export. A job that has not reached ready by expires_at reads failed with error 'export expired before completion'. failed, cancelled and expired rows stay readable for 48 hours, then the job answers 404. */
     status: "queued" | "running" | "ready" | "failed" | "reconcile_required" | "expired" | "cancel_requested" | "cancelled";
     format: "json" | "ndjson" | "csv";
+    /** Trade rows the file holds: trades in the wallet's sports and esports markets, counted in the file's own read snapshot. Null until the worker has read the snapshot (queued, and early in running); a job accepted before 2026-10-22 can carry the earlier all-markets estimate until its file is read. */
     total_trades: number | null;
+    /** Trade rows written so far; equals total_trades once the file is read. */
     processed_trades: number | null;
     file_size: number | null;
     error: string | null;
@@ -4636,7 +4711,7 @@ export interface OperationQuery {
   createWebhookVerificationAttempt: Record<string, never>;
   deleteWebhook: Record<string, never>;
   exploreMarkets: {
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
@@ -4665,13 +4740,15 @@ export interface OperationQuery {
     view?: "board" | "signals" | "observations";
     /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
     category?: string;
-    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so an evaluated pregame market stays evaluated until its game starts; the rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
+    /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets outside the funded slate. A market that enters the slate leaves wider_holder; view=signals lists it only while its holder pile leans to one side, its backed side has a holder at or above min_grade and its kickoff is within horizon_hours, and otherwise neither view lists it. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so a market among a sport's 8 soonest stays evaluated until its game starts. wider_holder also evaluates up to 8 more markets per sport that kick off within 24 hours, most graded holders first, so the most-held markets appear up to a day before kickoff. Each of these keeps its place in later refreshes until its game starts while its holder page still shows a card or could not be read, so a more-held market waits for a free place instead of displacing it. Each row's admitted_by names its place, most_held or soonest_kickoff. The rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
+    /** Opt-in admission rule for view=observations with cohort=wider_holder; rejected for every other view and cohort. most_held_48h returns the most-held selection instead of the default one: per sport, up to 8 wider_holder markets kicking off within 48 hours, most graded holders first, then most volume, then soonest kickoff, at most 4 per event. It is recomputed every refresh and keeps no place, so a more-held market displaces a less-held one; funded-slate markets stay excluded. Every row carries admitted_by most_held_48h, including a market the default selection also evaluates, and the response echoes admission. funnel, coverage, degraded and degradation_reasons describe this selection: a wider_holder candidate it did not take counts as capacity_limited. Its markets that no default place covers are read after every default market, at most once per 10 minutes, so a row can rest on a holder page up to 15 minutes old (holder_snapshot_at). Omit for the default selection. Cursors and ETags bind it. */
+    admission?: "most_held_48h";
     /** Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations. */
     min_grade?: "S" | "A" | "B";
     /** Board row cap defaults to 30 and clamps integer values to 1..30; total counts selected admitted rows before the cap. Signals and observations page size defaults to 20 and clamps to 1..100. */
     limit?: number;
-    /** Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, every normalized selection axis, grade/horizon where applicable, source snapshot and ordering; observations also bind cohort and emerging cutoff. Changed selections or replaced snapshots return cursor_expired. Rejected in board. */
+    /** Opaque canonical Edge Hunter cursor from next_cursor. Bound to view, every normalized selection axis, grade/horizon where applicable, source snapshot and ordering; observations also bind cohort, admission and emerging cutoff. Changed selections or replaced snapshots return cursor_expired. Rejected in board. */
     cursor?: string;
     /** Kickoff window for board (default 48) or signals (default 12). Integer values clamp to 1..48. Rejected for observations, whose pre-game universe is fixed at 48 hours with a 12-hour in-play kickoff lookback. */
     horizon_hours?: number;
@@ -4802,7 +4879,7 @@ export interface OperationQuery {
     max_age_s?: number;
   };
   getTraderCategoryRecords: {
-    /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A value that matches no record answers 200 with an empty records array, never 404. */
+    /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
   };
   getTraderContext: Record<string, never>;
@@ -4898,11 +4975,11 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum position value in USD. Raises the feed's own floor of 50,000 USD; a smaller value does not lower it. */
     min_size?: number;
-    /** One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. */
+    /** One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. A value outside sports and esports returns 400 bad_request with param=category (#27305), as on GET /api/v1/markets/explore. */
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id (round-trips a value from a list response). Must be 0x followed by 64 hexadecimal characters after any mkt_ prefix is stripped; any other value returns 400. Polymarket-only; an unknown but well-formed id returns []. */
+    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id (round-trips a value from a list response). Must be 0x followed by 64 hexadecimal characters after any mkt_ prefix is stripped; any other value returns 400. Polymarket-only; an unknown but well-formed id returns []. A market outside sports and esports returns 404 not_found with error.reason=market_out_of_scope (#27305). */
     condition_id?: string;
   };
   listLargeTradeCounterpartyExecutions: {
@@ -4932,7 +5009,7 @@ export interface OperationQuery {
     condition_id?: string;
     /** Trader wallet address, timestamp-suffixed wallet alias, username, or trd_-prefixed trader ID, resolved against the traders table. Unknown traders return an empty list. */
     trader?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule filter on trader.grade_at_trade instead. A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -4956,7 +5033,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum trade size in USD. */
     min_size?: number;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -4974,9 +5051,9 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the committed leaderboard generation and the effective category/strategy filters; legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
     cursor?: string;
-    /** Filter by category. Values are matched to canonical category buckets: political variants (Elections, Global Politics, U.S. Politics, ...) fold into Politics, Geopolitics stays distinct, Culture/Entertainment map to Pop Culture, Science maps to Science & Tech, and Finance/Business map to Stocks. Mapped buckets are case-insensitive; passthrough categories (Crypto, NBA, and the sports leagues) match case-sensitively against the provider-native bucket key, so use exact casing (e.g. Crypto, NBA). */
+    /** Filter by category: a sport or esports bucket. Values are matched to canonical category buckets: league values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Mapped buckets are case-insensitive; passthrough buckets (Cricket, Sports) match case-sensitively against the provider-native bucket key, so use exact casing. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
-    /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. The original ten archetype identifiers remain accepted for historical rows until normal reclassification. Style describes recorded behavior; grade measures performance. */
+    /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. Current styles count the wallet's sports and esports markets only. The original ten archetype identifiers remain accepted for historical rows until normal reclassification. Style describes recorded behavior; grade measures performance. */
     strategy?: "accumulator" | "algo_trader" | "arbitrageur" | "category_focused" | "directional" | "diversified" | "event_driven" | "high_activity" | "market_maker" | "mixed" | "momentum" | "scalper" | "speculator" | "swing_trader" | "two_sided" | "unclassified";
   };
   listPositions: {
@@ -4988,9 +5065,9 @@ export interface OperationQuery {
     consistency?: "live" | "snapshot";
     /** Minimum current position value in USD. Defaults to 100 when omitted, or to 0 when wallet is present; send 0 to include every reconciled position. */
     min_size?: number;
-    /** Exact match against provider-backed market_canonical.category. */
+    /** Exact match against provider-backed market_canonical.category. Sports and esports only (#27311): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
-    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id emitted by V1 responses. Combine with min_size=0 for every reconciled position in that market; an unknown id or a resolved market returns []. */
+    /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id emitted by V1 responses. Combine with min_size=0 for every reconciled position in that market; an unknown id or a resolved market returns []. A market outside sports and esports returns 404 not_found with error.reason=market_out_of_scope (#27311). Without condition_id the board and wallet reads list sports and esports markets only. */
     condition_id?: string;
     /** Scope to one wallet or a book of wallets (repeatable, up to 25 per request; comma-separated values inside one occurrence also work). Each value is a wallet address, a known username, or a trd_-prefixed trader id, resolved like /api/v1/trader/{address}. The response keeps the board's order and cursor, so pages of a book interleave wallets by current_value_usd. An address this API has never tracked returns its mirror rows or an empty list; a username or trader id that resolves to nothing is a 404 naming wallet; more than 25 values is a 400. min_size defaults to 0 when wallet is present. */
     wallet?: string[];
@@ -5008,7 +5085,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
@@ -5024,7 +5101,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
@@ -5088,7 +5165,7 @@ export interface OperationQuery {
     condition_id?: string;
     /** Trader wallet address, timestamp-suffixed wallet alias, or username resolved against the traders table. Unknown traders return an empty list. */
     trader?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -5112,7 +5189,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum trade size in USD. */
     min_size?: number;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Minimum trader grade as of today (trader.grade). A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -5145,7 +5222,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
-    /** Filter by category. */
+    /** Filter by category. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
   };
   submitTraderExport: {

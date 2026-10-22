@@ -1349,8 +1349,12 @@ export type EdgeHunterBoardParams = EdgeHunterSelectionParams &
   Pick<OperationQuery["getEdgeHunter"], "horizon_hours" | "min_grade" | "limit"> & { view?: "board" };
 /** Full ranked records with category, grade and horizon projection before pagination. */
 export type EdgeHunterSignalsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "horizon_hours" | "min_grade"> & { view: "signals" };
-/** Full observation evidence; cohort is required, including for empty pages. */
-export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
+/**
+ * Full observation evidence; cohort is required, including for empty pages.
+ * admission "most_held_48h" (cohort "wider_holder" only) opts in to the
+ * most-held selection; the read then requires the server to echo it.
+ */
+export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "admission"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
 export type EdgeHunterAdvancedParams = EdgeHunterSignalsParams | EdgeHunterObservationsParams;
 export type EdgeHunterParams = EdgeHunterBoardParams | EdgeHunterAdvancedParams;
 const EDGE_HUNTER_SELECTION_ARRAYS = ["sports", "leagues", "market_types", "condition_ids", "event_slugs", "series_slugs"] as const;
@@ -1362,6 +1366,23 @@ function requestedEdgeHunterAxes(query: ApiRequestOptions["query"] = {}): (typeo
     if (value === undefined || value === null) return false;
     return key !== "category" || typeof value !== "string" || value.trim().length > 0;
   });
+}
+
+/** The opt-in admission rule a request named, if any (#27607). */
+function requestedEdgeHunterAdmission(query: ApiRequestOptions["query"] = {}): string | undefined {
+  const value = query["admission"];
+  return typeof value === "string" ? value.trim().toLowerCase() : undefined;
+}
+
+/**
+ * An instance that predates admission ignores it and answers the default
+ * selection, so an opt-in read requires the echo, as a selected read does.
+ */
+function requireEdgeHunterAdmissionEcho(envelope: object, admission: string | undefined): void {
+  if (admission === undefined) return;
+  if (Reflect.get(envelope, "admission") !== admission) {
+    throw new InvalidResponseError(200, "Edge Hunter response is missing its admission echo", envelope);
+  }
 }
 
 function requireEdgeHunterSelectionEcho(envelope: object, axes: ReturnType<typeof requestedEdgeHunterAxes>): void {
@@ -2062,6 +2083,7 @@ export class OxinsiderApiClient {
       if (isApiEnvelope<unknown>(envelope)) {
         if (operationId === "getEdgeHunter") {
           requireEdgeHunterSelectionEcho(envelope, requestedEdgeHunterAxes(options.query));
+          requireEdgeHunterAdmissionEcho(envelope, requestedEdgeHunterAdmission(options.query));
           if (options.query?.["view"] === "observations" && !hasEdgeHunterObservationQuality(envelope)) {
             throw new InvalidResponseError(response.status,
               "Edge Hunter observations response is missing valid snapshot quality evidence", envelope);
@@ -3271,7 +3293,8 @@ export class OxinsiderApiClient {
       }
     }
     if (options.strictQuery || (operation.operationId === "getEdgeHunter" &&
-      requestedEdgeHunterAxes(options.query).length > 0)) {
+      (requestedEdgeHunterAxes(options.query).length > 0 ||
+        requestedEdgeHunterAdmission(options.query) !== undefined))) {
       headers.set("x-query-validation", "strict");
     }
     return headers;
