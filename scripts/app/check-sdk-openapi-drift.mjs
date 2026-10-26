@@ -230,7 +230,19 @@ const sdk = sdkTableRows(clientSource, "API_CLIENT_OPERATIONS");
 const sdkRedirect = sdkTableRows(clientSource, "REDIRECT_OPERATIONS");
 const sdkUnsupported = sdkTableRows(clientSource, "UNSUPPORTED_OPERATIONS");
 
-const missingFromSdk = [...spec.keys()].filter((id) => !sdk.has(id)).sort();
+/**
+ * A deprecated operation that still answers 2xx may be declared in
+ * `UNSUPPORTED_OPERATIONS` instead of the operation table: SDK 0.32.0 dropped
+ * the September rename aliases while their paths stay live until the
+ * 2027-02-01 sunset (#29350, #29351). Only the spec's `deprecated: true` grants
+ * it, so a current operation can never be silently left unwrapped.
+ */
+const specDeprecatedSuccess = new Set(
+  [...spec.entries()].filter(([, row]) => row.operation.deprecated === true).map(([id]) => id),
+);
+const droppedAlias = (id) => specDeprecatedSuccess.has(id) && sdkUnsupported.has(id);
+const missingFromSdk = [...spec.keys()].filter((id) => !sdk.has(id) && !droppedAlias(id)).sort();
+const droppedAliasCount = [...specDeprecatedSuccess].filter(droppedAlias).length;
 const missingFromSpec = [...sdk.keys()].filter((id) => !spec.has(id)).sort();
 /** A row whose declared `kind` is not what its success body actually is. */
 const wrongKind = [...spec.entries()]
@@ -256,7 +268,9 @@ const redirectMismatch = [...specRedirect.entries()]
   })
   .sort();
 const unsupportedMissingFromSdk = [...specOther.keys()].filter((id) => !sdkUnsupported.has(id)).sort();
-const unsupportedMissingFromSpec = [...sdkUnsupported.keys()].filter((id) => !specOther.has(id)).sort();
+const unsupportedMissingFromSpec = [...sdkUnsupported.keys()]
+  .filter((id) => !specOther.has(id) && !(specDeprecatedSuccess.has(id) && !sdk.has(id)))
+  .sort();
 
 if (
   missingFromSdk.length === 0 &&
@@ -273,7 +287,7 @@ if (
   typesCurrent
 ) {
   console.log(
-    `check-sdk-openapi-drift: OK (${spec.size} operations agree between the OpenAPI spec and the SDK table, each with the response kind its body declares; ${specRedirect.size} redirect and ${specOther.size} unsupported operation(s) declared; every documented query parameter has a typed spelling; ${specIdempotent.size} Idempotency-Key operations agree).`,
+    `check-sdk-openapi-drift: OK (${spec.size - droppedAliasCount} operations agree between the OpenAPI spec and the SDK table, each with the response kind its body declares; ${specRedirect.size} redirect and ${specOther.size} unsupported operation(s) declared, plus ${droppedAliasCount} deprecated alias(es) the SDK no longer wraps; every documented query parameter has a typed spelling; ${specIdempotent.size} Idempotency-Key operations agree).`,
   );
   process.exit(0);
 }

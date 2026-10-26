@@ -85,7 +85,7 @@ explore.data[0].title; // compile error: an ExploreEntry has no title
 const batch = await client.batchGetTraders(["swisstony", "0xabc..."], { expand: ["trust"] });
 if (batch.object === "trader_batch") batch.meta.request_cost; // BatchResponseMeta
 
-client.listInsiderRadar({ min_grade: "S" }); // compile error: the route takes min_suspicion and severity
+client.listSuspiciousTrades({ min_grade: "S" }); // compile error: the route takes min_suspicion and severity
 ```
 
 Every method forwards the same transport options, so a conditional read,
@@ -119,6 +119,27 @@ SDK 0.29.0 adds `monthly_quota.unavailable_reason` back to the usage type, now t
 SDK 0.30.0 follows the API to sports and esports markets only. A market or event outside them throws `MarketOutOfScopeError`, the 404 `market_out_of_scope`: stop asking for it, because a retry cannot succeed. A `category` outside sports and esports is a 400 `bad_request` with `error.param` `category`. New types: `pnl.in_scope` (`TraderPnlInScope`) on a trader, `report.market_scope` on reports, `product_scope` on trader exports, Edge Hunter's opt-in `admission: "most_held_48h"`, a `departures` list (`EdgeHunterObservationDeparture`) for cards that leave before kickoff, and `category_avg_price` on `MarketHolder` and `PickHolder`. Parameter descriptions and examples use sports and esports values only.
 
 SDK 0.31.0 types the deprecated `supersedes_pick_id` on `PickOfTheDayNoEntitledPicks` as `string | null`, the same as every other Pick of the Day shape. Earlier releases typed it `null`. The API still always sends `null`. Code that assigns the field to a variable typed `null` no longer compiles: type it `string | null`, or stop reading it and identify picks by `pick_id`.
+
+SDK 0.32.0 removes the old names from the September 2026 renames. Each removed name was an alias of the name that replaces it, so the replacement takes the same arguments and returns the same data. Code that uses an old name stops compiling; switch to the new name. The API paths behind the old methods still answer until their sunset on 2027-02-01, and `call()` and `paginate()` accept only the new operation ids.
+
+| Removed | Use |
+| --- | --- |
+| `listWhaleTrades()`, `WhaleTradeListParams` | `listLargeTrades()`, `LargeTradeListParams` |
+| `listWhaleTradeHistory()`, `WhaleTradeHistoryParams` | `listLargeTradeHistory()`, `LargeTradeHistoryParams` |
+| `getWhaleTrade()` | `getLargeTrade()` |
+| `WhaleTrade`, `WhaleTradeDetail`, `WhaleTradeHistoryMeta` | `LargeTrade`, `LargeTradeDetail`, `LargeTradeHistoryMeta` |
+| `listInsiderRadar()`, `InsiderRadarListParams` | `listSuspiciousTrades()`, `SuspiciousTradesListParams` |
+| `getInsiderRadarFlag()`, `RadarFlag` | `getSuspiciousTrade()`, `SuspiciousTrade` |
+| `getMarketIntel()`, `MarketIntel` | `getMarketFlow()`, `MarketFlow` |
+| `batchGetMarketIntel()`, `BatchMarketIntelItem` | `batchGetMarketFlow()`, `BatchMarketFlowItem` |
+| `listSmartMoneyFlows()` | `listSharpMoneyFlows()` |
+| `getPlatforms()` | `getCoverage()` |
+| `WhaleTradesInsertedEvent`, `WhaleTradesInsertedData` | `LargeTradesInsertedEvent`, `LargeTradesInsertedData` |
+| `WhaleTraderSyncedEvent`, `WhaleTraderSyncedData` | `TraderSyncedEvent`, `TraderSyncedData` |
+| `InsiderRadarFlagRaisedEvent`, `InsiderRadarFlagRaisedData` | `SuspiciousTradeFlaggedEvent`, `SuspiciousTradeFlaggedData` |
+| `SmartMoneyFlowDetectedEvent`, `SmartMoneyFlowDetectedData` | `SharpMoneyFlowDetectedEvent`, `SharpMoneyFlowDetectedData` |
+
+Two differences remain on the wire. The new methods call the new paths, so a response has the new `object`: `market_flow` and `market_flow_batch` instead of `market_intel` and `market_intel_batch`, `suspicious_trade` instead of `radar_flag`. The old webhook event names are still delivered, so a subscription made under an old name keeps the old `type` literal. `WebhookEvent` still includes those literals: narrow on `event.type` rather than on a removed event type.
 
 ## Combos
 
@@ -489,7 +510,7 @@ A sandbox key from `POST https://api.0xinsider.com/api/v1/agents/register` (`oxi
 ```ts
 import { paginate } from "@0xinsider/sdk";
 
-for await (const trade of paginate(client, "listWhaleTrades", {
+for await (const trade of paginate(client, "listLargeTrades", {
   query: { min_grade: "S", limit: 100 },
 })) {
   console.log(trade);
@@ -504,7 +525,7 @@ The loop ends when a page says `has_more: false`, whatever its `next_cursor` say
 import { paginatePages, type PaginationProgress } from "@0xinsider/sdk";
 
 const progress: PaginationProgress = {};
-for await (const page of paginatePages(client, "listWhaleTrades", {
+for await (const page of paginatePages(client, "listLargeTrades", {
   query: { min_grade: "S", limit: 100 },
   maxPages: 3,
   progress,
@@ -542,7 +563,7 @@ Each page request retries on its own (see [Retries](#retries)). If a page still 
 import { paginate, paginationResumePoint } from "@0xinsider/sdk";
 
 try {
-  for await (const trade of paginate(client, "listWhaleTrades", { query })) handle(trade);
+  for await (const trade of paginate(client, "listLargeTrades", { query })) handle(trade);
 } catch (err) {
   const resume = paginationResumePoint(err); // { cursor, pagesFetched } or undefined
   if (resume) scheduleLater({ ...query, cursor: resume.cursor });
@@ -762,7 +783,7 @@ The endpoint's `secret_rotation.status` is `idle`, `pending`, or `overlap`. `rot
 
 The client retries a failed request when retrying is safe and can help. `maxRetries` defaults to 2 and can be set on the client or on one call; `0` sends exactly one request.
 
-- **What is retried:** a GET, a read-only POST (`batchGetTraders`, `batchGetMarketFlow` and its deprecated `batchGetMarketIntel`, which resolve their inputs and store nothing), a convergent write (`cancelTraderExport`, exported as `CONVERGENT_WRITE_OPERATIONS`: a repeat answers the state the first one reached and never repeats a transition), or one of the nine writes the API replays under `Idempotency-Key` (`createWebhook`, `updateWebhook`, `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`, `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`, `createWebhookVerificationAttempt`, exported as `IDEMPOTENT_WRITE_OPERATIONS` and pinned to the OpenAPI contract by the drift check) when it carries a key; each when it fails with 408, 429, 502, 503, or 504, or with a network error before any response. A 408 is the server's own 30-second timeout (`error.code` `request_timeout`, thrown as `ServerTimeoutError` when retries run out); it carries `Retry-After` on a GET, and a keyed write replays safely. `retryEligibility(operation)` returns `"read"`, `"keyed"` or `"never"`.
+- **What is retried:** a GET, a read-only POST (`batchGetTraders`, `batchGetMarketFlow`, which resolve their inputs and store nothing), a convergent write (`cancelTraderExport`, exported as `CONVERGENT_WRITE_OPERATIONS`: a repeat answers the state the first one reached and never repeats a transition), or one of the nine writes the API replays under `Idempotency-Key` (`createWebhook`, `updateWebhook`, `deleteWebhook`, `rotateWebhookSecret`, `prepareWebhookSecret`, `activateWebhookSecret`, `retireWebhookSecret`, `redeliverWebhookDelivery`, `createWebhookVerificationAttempt`, exported as `IDEMPOTENT_WRITE_OPERATIONS` and pinned to the OpenAPI contract by the drift check) when it carries a key; each when it fails with 408, 429, 502, 503, or 504, or with a network error before any response. A 408 is the server's own 30-second timeout (`error.code` `request_timeout`, thrown as `ServerTimeoutError` when retries run out); it carries `Retry-After` on a GET, and a keyed write replays safely. `retryEligibility(operation)` returns `"read"`, `"keyed"` or `"never"`.
 - **How long it waits:** the response's `Retry-After` plus up to 250 ms of jitter; delta-seconds and HTTP-date forms both parse (`parseRetryAfter` is exported), and a negative, non-finite or malformed value is treated as absent. To show or forward the wait as a validated whole number of seconds, use `parseRetryAfterStrict`: it accepts only the RFC 9110 forms (digits, or one of the three HTTP-date formats with a valid calendar date and weekday), rounds a date up to whole seconds, and returns `null` for anything else, a fractional delay included. Without the header, a jittered exponential backoff from 500 ms, capped at 8 s. A `Retry-After` longer than 60 s (`RETRY_AFTER_CEILING_MS`) is not waited out; the error is thrown for you to schedule from `retryAfterSeconds` or `retryAt`. No wait is ever handed to a timer past Node's 2147483647 ms range, which would fire at once.
 - **What is never retried:** 400, 401, 402, 403, 404, 409, 500, a write without an idempotency key, any other write outside the nine above (`verifyWebhook` sends a challenge to your URL each time; `submitTraderExport` starts a job; an MCP call runs a tool), the client's own timeout (`RequestTimeoutError`), or your own abort. A key on one of those writes is refused before the request is sent, because the server would ignore it and the retry it seemed to license could repeat the effect.
 - **Deadline:** all attempts share one `timeoutMs` deadline (15 s by default). A retry that cannot finish before it is not started, so you get the real error, not a timeout. An `AbortSignal` ends a backoff immediately.
@@ -774,7 +795,7 @@ await client.call("createWebhook", {
   body: {
     name: "Large trades",
     url: "https://example.com/hooks/0xinsider",
-    event_types: ["whale_trades_inserted"],
+    event_types: ["large_trades_inserted"],
   },
   idempotencyKey: crypto.randomUUID(), // reuse the SAME key if you retry by hand
 });
@@ -812,7 +833,7 @@ An owned JSON/text body that fails during consumption throws `ResponseBodyReadEr
 import { RateLimitedError, OxinsiderApiError } from "@0xinsider/sdk";
 
 try {
-  await client.listWhaleTrades({ min_grade: "S" });
+  await client.listLargeTrades({ min_grade: "S" });
 } catch (err) {
   // Thrown after the client's own retries (see Retries) are exhausted.
   if (err instanceof RateLimitedError) {
@@ -829,7 +850,7 @@ Direct error constructors accept optional `ApiErrorTransportMetadata` after thei
 
 ## Authentication
 
-Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getPlatforms`, `getHealth`, `getPickOfTheDayLedger`, and `registerAgent`, which mints the sandbox key) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
+Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getCoverage`, `getHealth`, `getPickOfTheDayLedger`, and `registerAgent`, which mints the sandbox key) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
 
 ## Examples
 

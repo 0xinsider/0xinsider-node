@@ -206,10 +206,10 @@ const resumePoints = new WeakMap<object, PaginationResumePoint>();
  *
  * @example
  * try {
- *   for await (const trade of paginate(client, "listWhaleTrades", { query })) handle(trade);
+ *   for await (const trade of paginate(client, "listLargeTrades", { query })) handle(trade);
  * } catch (err) {
  *   const resume = paginationResumePoint(err);
- *   if (resume) later(() => paginate(client, "listWhaleTrades", { query: { ...query, cursor: resume.cursor } }));
+ *   if (resume) later(() => paginate(client, "listLargeTrades", { query: { ...query, cursor: resume.cursor } }));
  * }
  */
 export function paginationResumePoint(
@@ -351,7 +351,7 @@ export async function* paginatePages(
  * Async-iterate individual `data[]` items across all pages.
  *
  * @example
- * for await (const trade of paginate(client, "listWhaleTrades", {
+ * for await (const trade of paginate(client, "listLargeTrades", {
  *   query: { min_grade: "S", limit: 100 },
  * })) {
  *   handle(trade); // typed as the route's whale trade (#16136)

@@ -45,10 +45,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type {
-  LargeTradesInsertedData,
-  SharpMoneyFlowDetectedData,
-  SuspiciousTradeFlaggedData,
-  TraderSyncedData,
   WebhookEventData,
   WebhookEventType as ContractWebhookEventType,
 } from "./schema.js";
@@ -278,30 +274,6 @@ export type {
   WalletGradeChangedData,
 } from "./schema.js";
 
-/**
- * @deprecated Use `LargeTradesInsertedData`; renamed in #16304. The two event
- * spellings are one event with one payload, so this is an alias.
- */
-export type WhaleTradesInsertedData = LargeTradesInsertedData;
-
-/**
- * @deprecated Use `TraderSyncedData`; renamed in #16304. The two event
- * spellings are one event with one payload, so this is an alias.
- */
-export type WhaleTraderSyncedData = TraderSyncedData;
-
-/**
- * @deprecated Use `SuspiciousTradeFlaggedData`; renamed in #16301. The two
- * event spellings are one event with one payload, so this is an alias.
- */
-export type InsiderRadarFlagRaisedData = SuspiciousTradeFlaggedData;
-
-/**
- * @deprecated Use `SharpMoneyFlowDetectedData`; renamed in #16308. The two
- * event spellings are one event with one payload, so this is an alias.
- */
-export type SmartMoneyFlowDetectedData = SharpMoneyFlowDetectedData;
-
 /** One event type's delivery: the envelope around the payload the document declares for it. */
 type EventFor<TType extends WebhookEventType> = WebhookEventEnvelope<
   TType,
@@ -315,44 +287,12 @@ type EventFor<TType extends WebhookEventType> = WebhookEventEnvelope<
  */
 export type LargeTradeInsertedV2Event = EventFor<"large_trade_inserted_v2">;
 export type LargeTradesInsertedEvent = EventFor<"large_trades_inserted">;
-/**
- * @deprecated Use `LargeTradesInsertedEvent`; renamed in #16304. This stays a
- * distinct envelope rather than an alias of it because the delivered `type`
- * discriminant is the spelling the endpoint registered: an endpoint subscribed
- * to `whale_trades_inserted` keeps receiving that literal, so narrowing on it
- * keeps working.
- */
-export type WhaleTradesInsertedEvent = EventFor<"whale_trades_inserted">;
 export type LiveSportsUpdatedEvent = EventFor<"live_sports_updated">;
 export type TraderSyncedEvent = EventFor<"trader_synced">;
-/**
- * @deprecated Use `TraderSyncedEvent`; renamed in #16304. This stays a
- * distinct envelope rather than an alias of it because the delivered `type`
- * discriminant is the spelling the endpoint registered: an endpoint subscribed
- * to `whale_trader_synced` keeps receiving that literal, so narrowing on it
- * keeps working.
- */
-export type WhaleTraderSyncedEvent = EventFor<"whale_trader_synced">;
 export type LargePositionsUpdatedEvent = EventFor<"large_positions_updated">;
 export type WalletGradeChangedEvent = EventFor<"wallet_grade_changed">;
 export type SuspiciousTradeFlaggedEvent = EventFor<"suspicious_trade_flagged">;
-/**
- * @deprecated Use `SuspiciousTradeFlaggedEvent`; renamed in #16301. This stays
- * a distinct envelope rather than an alias of it because the delivered `type`
- * discriminant is the spelling the endpoint registered: an endpoint subscribed
- * to `insider_radar_flag_raised` keeps receiving that literal, so narrowing on
- * it keeps working.
- */
-export type InsiderRadarFlagRaisedEvent = EventFor<"insider_radar_flag_raised">;
 export type SharpMoneyFlowDetectedEvent = EventFor<"sharp_money_flow_detected">;
-/**
- * @deprecated Use `SharpMoneyFlowDetectedEvent`; renamed in #16308. This stays
- * a distinct envelope rather than an alias of it because the delivered `type`
- * discriminant is the spelling the endpoint registered: an endpoint subscribed
- * to `smart_money_flow_detected` keeps receiving that literal, so narrowing on
- * it keeps working.
- */
-export type SmartMoneyFlowDetectedEvent = EventFor<"smart_money_flow_detected">;
 export type ExportJobReadyEvent = EventFor<"export_job_ready">;
 export type ExportJobFailedEvent = EventFor<"export_job_failed">;
 export type ExportJobExpiredEvent = EventFor<"export_job_expired">;
@@ -361,12 +301,12 @@ export type ExportJobCancelledEvent = EventFor<"export_job_cancelled">;
 /**
  * Discriminated union over every typed webhook delivery payload.
  *
- * `SuspiciousTradeFlaggedEvent` and `InsiderRadarFlagRaisedEvent` are both
- * members because the same event is delivered under whichever spelling the
- * endpoint registered (#16301); the `data` shape is identical. So are
- * `SharpMoneyFlowDetectedEvent` and `SmartMoneyFlowDetectedEvent` (#16308),
- * `LargeTradesInsertedEvent` and `WhaleTradesInsertedEvent`, and
- * `TraderSyncedEvent` and `WhaleTraderSyncedEvent` (#16304).
+ * The backend still delivers each September rename under whichever spelling
+ * the endpoint registered, with the same `data` shape, so the old literals
+ * stay members here: `whale_trades_inserted` and `whale_trader_synced`
+ * (#16304), `insider_radar_flag_raised` (#16301) and
+ * `smart_money_flow_detected` (#16308). 0.32.0 removed their named aliases
+ * (`WhaleTradesInsertedEvent` and the rest, #29350); narrow on `type` instead.
  *
  * One member for every name in `WEBHOOK_EVENT_TYPES`; the `satisfies` on that
  * list fails to compile when a name has none.
@@ -374,16 +314,16 @@ export type ExportJobCancelledEvent = EventFor<"export_job_cancelled">;
 export type WebhookEvent =
   | LargeTradeInsertedV2Event
   | LargeTradesInsertedEvent
-  | WhaleTradesInsertedEvent
+  | EventFor<"whale_trades_inserted">
   | LiveSportsUpdatedEvent
   | TraderSyncedEvent
-  | WhaleTraderSyncedEvent
+  | EventFor<"whale_trader_synced">
   | LargePositionsUpdatedEvent
   | WalletGradeChangedEvent
   | SuspiciousTradeFlaggedEvent
-  | InsiderRadarFlagRaisedEvent
+  | EventFor<"insider_radar_flag_raised">
   | SharpMoneyFlowDetectedEvent
-  | SmartMoneyFlowDetectedEvent
+  | EventFor<"smart_money_flow_detected">
   | ExportJobReadyEvent
   | ExportJobFailedEvent
   | ExportJobExpiredEvent

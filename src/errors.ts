@@ -115,6 +115,12 @@ export const API_ERROR_REASONS = [
   // with `reason` set; sleep `retryAfterSeconds` either way.
   "ip_rate_limited",
   "ip_throttled",
+  // 429 `rate_limited` refinement (#28752): the account has used its share of
+  // cold reads on GET /api/v1/market/{condition_id}/holders, requests for a
+  // market whose roster is not cached. Not the per-minute window: cached
+  // markets still answer. Arrives as RateLimitedError with `reason` set; the
+  // next cold read is admitted after `retryAfterSeconds`.
+  "cold_read_limited",
   // 410 `not_found` refinement (#16181): the export job finished but its
   // retention window has passed and the file is retired. Arrives as
   // NotFoundError with `status` 410 and `reason` set; submit a new export,
@@ -280,7 +286,7 @@ export class OxinsiderApiError extends Error {
    *
    * Read from the wire for EVERY class (#16547): a `SubscriptionRequiredError` carries
    * `subscription_inactive`, a `RateLimitedError` carries `monthly_quota_exceeded`,
-   * `ip_rate_limited` or `ip_throttled`, and a `BadRequestError` carries `invalid_body`,
+   * `ip_rate_limited`, `ip_throttled` or `cold_read_limited`, and a `BadRequestError` carries `invalid_body`,
    * `payload_too_large` and the rest. Until then only the subclasses that pin a literal
    * carried a value and every other known reason read `null`.
    */

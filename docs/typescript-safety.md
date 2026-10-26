@@ -4,24 +4,7 @@
 
 ## Named compatibility declarations
 
-`typescript/no-deprecated` remains an error. Its allowlist matches only these declarations in their owning files:
-
-| Owner | Allowed declarations | Contract |
-| --- | --- | --- |
-| `src/client.ts:1343` | `SportsEdgeSignalsParams` | Existing alias for `PreGameSidesParams` |
-| `src/client.ts:1422` | `SportsEdgeObservationsResponse` | Existing alias for `PreGameSideObservationsResponse` |
-| `src/client.ts:1428` | `SportsEdgeObservationsParams` | Existing alias for `PreGameSideObservationsParams` |
-| `src/client.ts:1855` | `WhaleTradeListParams` | Parameters of the retained large-trade endpoint alias |
-| `src/client.ts:1858` | `WhaleTradeHistoryParams` | Parameters of the retained history endpoint alias |
-| `src/client.ts:1878` | `InsiderRadarListParams` | Existing alias for `SuspiciousTradesListParams` |
-| `src/webhooks.ts:324` | `InsiderRadarFlagRaisedData` | Existing suspicious-trade payload alias |
-| `src/webhooks.ts:415` | `InsiderRadarFlagRaisedEvent` | Retained `insider_radar_flag_raised` event discriminant |
-| `src/webhooks.ts:423` | `SmartMoneyFlowDetectedData` | Existing sharp-money payload alias |
-| `src/webhooks.ts:436` | `SmartMoneyFlowDetectedEvent` | Retained `smart_money_flow_detected` event discriminant |
-
-The public barrel and webhook union must reference these declarations to retain source compatibility and the event discriminants delivered to existing subscriptions. Removing their exports, substituting the new discriminants, or deleting `@deprecated` would change the public contract. New deprecated vendor calls receive no allowance.
-
-[Oxc's rule reference](https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-deprecated) documents named file specifiers for intentional compatibility references.
+`typescript/no-deprecated` is an error with no allowlist. Until 0.32.0 it allowed ten deprecated aliases by name. SDK 0.32.0 ([app issue #29350](https://github.com/0xinsider/0xinsider/issues/29350)) removed seven of them. The three Sports Edge entries were already stale: those aliases left with the legacy sports feeds (app #23810). `WebhookEvent` keeps the old event literals (`insider_radar_flag_raised`, `smart_money_flow_detected`, `whale_trades_inserted`, `whale_trader_synced`) as inline members, because the API still delivers them. It references no deprecated declaration. Any new reference to a deprecated declaration fails lint.
 
 ## Caller abort reasons
 
