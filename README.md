@@ -139,7 +139,7 @@ SDK 0.32.0 removes the old names from the September 2026 renames. Each removed n
 | `InsiderRadarFlagRaisedEvent`, `InsiderRadarFlagRaisedData` | `SuspiciousTradeFlaggedEvent`, `SuspiciousTradeFlaggedData` |
 | `SmartMoneyFlowDetectedEvent`, `SmartMoneyFlowDetectedData` | `SharpMoneyFlowDetectedEvent`, `SharpMoneyFlowDetectedData` |
 
-Two differences remain on the wire. The new methods call the new paths, so a response has the new `object`: `market_flow` and `market_flow_batch` instead of `market_intel` and `market_intel_batch`, `suspicious_trade` instead of `radar_flag`. The old webhook event names are still delivered, so a subscription made under an old name keeps the old `type` literal. `WebhookEvent` still includes those literals: narrow on `event.type` rather than on a removed event type.
+Two differences remain on the wire. The new methods call the new paths, so a response has the new `object`: `large_trade` instead of `whale_trade`, `suspicious_trade` instead of `radar_flag`, and `market_flow` and `market_flow_batch` instead of `market_intel` and `market_intel_batch`. The old webhook event names are still delivered, so a subscription made under an old name keeps the old `type` literal. `WebhookEvent` still includes those literals: narrow on `event.type` rather than on a removed event type.
 
 ## Combos
 
