@@ -2825,7 +2825,7 @@ export class OxinsiderApiClient {
    * One page of a market's graded (S/A/B) holder roster from a complete
    * provider holder scan: the list a Pick of the Day shows, for any market.
    * `params.outcome` (`yes` | `no` | `all`), `params.min_grade` (`S` | `A` |
-   * `B`), `params.limit` and `params.cursor` (`mh_` prefix). The page carries
+   * `B`), `params.limit` and `params.cursor` (the previous page's opaque `next_cursor`). The page carries
    * the `market`, `scan` and roster `totals` beside `data`; `total` is the
    * count matching the filters across every page.
    */

@@ -1077,8 +1077,12 @@ export type ExploreGroup = {
   markets: ExploreMarket[];
   /** The volume of the group's highest-volume market, which is markets[0]: the same figure as that market's volume, Polymarket's cumulative taker volume in shares rather than cash. Null when unavailable. */
   rep_volume: number | null;
-  /** Canonical key since #16304; rep_whales is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; rep_whales is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   rep_large_trades: number | null;
+  /**
+   * Deprecated spelling of rep_large_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read rep_large_trades.
+   * @deprecated
+   */
   rep_whales: number | null;
 };
 
@@ -1101,17 +1105,33 @@ export type ExploreMarket = {
   /** Polymarket's traded-volume figure for the market, as last stored: cumulative taker volume in shares, each counted at its $1 settlement value, not the cash that changed hands (100 shares bought at $0.40 add 100, not 40). It can lag Polymarket's current figure. sort=volume orders by it. Null when unavailable. */
   volume: number | null;
   liquidity: number | null;
-  /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trade_count: number | null;
+  /**
+   * Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.
+   * @deprecated
+   */
   whale_trade_count: number | null;
-  /** Canonical key since #16304; whale_distinct_wallets is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; whale_distinct_wallets is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trade_distinct_wallets: number | null;
+  /**
+   * Deprecated spelling of large_trade_distinct_wallets, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_distinct_wallets.
+   * @deprecated
+   */
   whale_distinct_wallets: number | null;
-  /** Canonical key since #16304; whale_total_usd is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; whale_total_usd is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trade_total_usd: number | null;
+  /**
+   * Deprecated spelling of large_trade_total_usd, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_total_usd.
+   * @deprecated
+   */
   whale_total_usd: number | null;
-  /** Canonical key since #16304; whale_last_trade_at is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; whale_last_trade_at is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trade_last_at: string | null;
+  /**
+   * Deprecated spelling of large_trade_last_at, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_last_at.
+   * @deprecated
+   */
   whale_last_trade_at: string | null;
   end_date: string | null;
   created_at: string | null;
@@ -1148,15 +1168,19 @@ export type ExploreMarket = {
   discover_score: number | null;
   score_components: {
     volume_signal: number | null;
-    /** Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     large_trade_signal: number | null;
+    /**
+     * Deprecated spelling of large_trade_signal, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_signal.
+     * @deprecated
+     */
     whale_signal: number | null;
     liquidity_signal: number | null;
     recency_signal: number | null;
-    /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     sharp_money_signal: number | null;
     /**
-     * Deprecated spelling of sharp_money_signal; emitted beside it with the same value and never removed.
+     * Deprecated spelling of sharp_money_signal; emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money_signal.
      * @deprecated
      */
     smart_money_signal: number | null;
@@ -1576,14 +1600,14 @@ export type LargeTrade = {
   /** Current trade review score on a 0..1 scale; higher values indicate a stronger review signal. This is the current response value and can differ from the recorded score. Missing measurements remain unavailable. */
   review_score: number;
   /**
-   * Deprecated alias of review_score with the same current value and 0..1 scale.
+   * Deprecated alias of review_score with the same current value and 0..1 scale. Sunset 2027-02-01 (#29352): removed from V1 on that date; read review_score.
    * @deprecated
    */
   signal_score: number;
   /** 0.0–1.0 review score written once when the trade row is inserted, from the trader's statistics at that moment. Populated from 2026-08-03T11:59Z; older rows return null and are never backfilled, because a backfill could only read today's statistics. If a trade is added later, its time-sensitive recorded score reflects that delay. Canonical since #16311; recorded_signal_score carries the same value. */
   recorded_review_score: number | null;
   /**
-   * 0.0–1.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire.
+   * 0.0–1.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed.
    * @deprecated
    */
   recorded_signal_score: number | null;
@@ -1664,7 +1688,7 @@ export type LargeTradeInsertedV2Data = {
   platform: "polymarket";
 };
 
-/** `large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object. */
+/** `large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object until its sunset on 2027-02-01 (#29352). */
 export type LargeTradesInsertedData = {
   /** Large trades the producing batch admitted. */
   count: number;
@@ -1780,8 +1804,12 @@ export type MarketFlow = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
-    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     large_trade_count: number;
+    /**
+     * Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.
+     * @deprecated
+     */
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1799,7 +1827,7 @@ export type MarketFlow = {
     oldest_snapshot_as_of: string | null;
   };
   /**
-   * Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.
+   * Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.
    * @deprecated
    */
   smart_money: {
@@ -1807,8 +1835,12 @@ export type MarketFlow = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
-    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     large_trade_count: number;
+    /**
+     * Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.
+     * @deprecated
+     */
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -1959,12 +1991,12 @@ export type MarketSnapshot = {
     /** Polymarket series slug from the canonical identity row, null when unavailable. A sports series identifies a league and must not be used as a per-matchup grouping key. */
     series_slug: string | null;
     /**
-     * Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire so existing clients keep parsing; do not read it.
+     * Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed; do not read it.
      * @deprecated
      */
     market_type: string | null;
     /**
-     * Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire so existing clients keep parsing; do not read it. market.status and market.resolved_at say whether the market has closed or resolved.
+     * Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed; do not read it. market.status and market.resolved_at say whether the market has closed or resolved.
      * @deprecated
      */
     market_result: string | null;
@@ -2568,7 +2600,7 @@ export type PickOfTheDayLedgerOpenedEntry = {
   matchup: string;
   /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
   category: string;
-  /** The pick's public page. */
+  /** The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`. */
   permalink: string;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
   pick_id: string;
@@ -2601,7 +2633,7 @@ export type PickOfTheDayLedgerSealedEntry = {
   commitment_algo: "sha256(canonical_json(payload)||nonce)";
   /** When the hash was frozen. Always strictly before kickoff: a pick that reaches kickoff unsealed stays unsealed forever, because a seal written after the game started would be a backdated proof. */
   sealed_at: string;
-  /** The pick's public page. */
+  /** The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`. */
   permalink: string;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
   pick_id: string;
@@ -2642,7 +2674,7 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   resolved_at: string | null;
   /** The pick's market, side and price once it has settled; null while it is pending, and null for a settled pick whose stored row lacks one of these columns. Not hashed: nothing was committed over these values, which is what pre_commitment: true says. */
   payload: PickOfTheDayUncommittedPayload | null;
-  /** The pick's public page. */
+  /** The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`. */
   permalink: string;
   /** Stable pick row identity as decimal text. Never use a quality rank as identity. */
   pick_id: string;
@@ -2767,10 +2799,18 @@ export type PlatformCapabilities = {
   pnl: PlatformCapabilityStatus;
   strategy: PlatformCapabilityStatus;
   timeline: PlatformCapabilityStatus;
-  /** The large-trade feed. Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value. */
+  /** The large-trade feed. Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trades: PlatformCapabilityStatus;
+  /**
+   * Deprecated spelling of large_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trades.
+   * @deprecated
+   */
   whale_signal: PlatformCapabilityStatus;
   suspicious_trades: PlatformCapabilityStatus;
+  /**
+   * Deprecated spelling of suspicious_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read suspicious_trades.
+   * @deprecated
+   */
   insider_radar: PlatformCapabilityStatus;
   market_snapshot: PlatformCapabilityStatus;
 };
@@ -2948,15 +2988,15 @@ export type ProofPendingPickSlot = {
 };
 
 export type ReportPayload = {
-  /** Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   total_large_trades: number | null;
   total_whale_trades: number | null;
-  /** Canonical key since #16304; total_whale_volume is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; total_whale_volume is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   total_large_trade_volume: number | null;
   total_whale_volume: number | null;
   biggest_trade_size: number | null;
   active_traders: number | null;
-  /** Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   top_large_trades: ({
     /** Provider outcome label for the traded side. */
     outcome: string | null;
@@ -3117,7 +3157,7 @@ export type ScoreCell = {
 /** Shape the provider score string was parsed into. `two_side` is one aggregate per side (basketball `105-98`), `multi_set` is per-set columns (tennis `6-7(5-7), 6-0, 1-0`), `esports_series` is a maps/sets/format triplet (`000-000|2-0|Bo3`). Omitted when the score could not be parsed. */
 export type ScoreFormat = "two_side" | "multi_set" | "esports_series";
 
-/** `sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object. */
+/** `sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object until its sunset on 2027-02-01 (#29352). */
 export type SharpMoneyFlowDetectedData = {
   /** Polymarket condition id of the market. */
   condition_id: string;
@@ -3151,14 +3191,18 @@ export type SmartMoneyFlowMarket = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
-    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     large_trade_count: number;
+    /**
+     * Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.
+     * @deprecated
+     */
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
   };
   /**
-   * Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.
+   * Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.
    * @deprecated
    */
   smart_money: {
@@ -3166,8 +3210,12 @@ export type SmartMoneyFlowMarket = {
     direction: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
-    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value. */
+    /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
     large_trade_count: number;
+    /**
+     * Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.
+     * @deprecated
+     */
     whale_trade_count: number;
     buy_volume_usd: number;
     sell_volume_usd: number;
@@ -3180,8 +3228,12 @@ export type SnapshotCompleteness = {
   status: "complete" | "partial" | "empty";
   reason: string;
   expected_days: number;
-  /** Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value. */
+  /** Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   covered_days_with_large_trade_activity: number;
+  /**
+   * Deprecated spelling of covered_days_with_large_trade_activity, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read covered_days_with_large_trade_activity.
+   * @deprecated
+   */
   covered_days_with_whale_activity: number;
 };
 
@@ -3237,7 +3289,7 @@ export type SuspiciousTrade = {
   created_at: string;
 };
 
-/** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object. */
+/** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object until its sunset on 2027-02-01 (#29352). */
 export type SuspiciousTradeFlaggedData = {
   /** Numeric id of the flagged trade, a JSON number. It is the `id` that `GET /api/v1/large-trades/{id}` accepts. */
   trade_id: number;
@@ -3322,10 +3374,6 @@ export type Trader = {
     /** For pnl.realized, expand=trust marks a matching native accounting snapshot as computed: native Polymarket realized P&L plus credited maker and taker rebates, with fees already included. The exact numeric value is truncated toward zero to cents before conversion to a JSON number. Without a matching native accounting snapshot, pnl.realized is omitted and its trust metadata is unavailable. Raw total P&L is never substituted for realized P&L. */
     realized?: number;
     unrealized?: number;
-    /** DEPRECATED, never sent. The local pnl_7d rollup over-counted P&L (#5416 class) and is no longer emitted. Read the provider-native weekly window from GET /api/trader/{address}/profile-summary instead. */
-    last_7d?: number;
-    /** DEPRECATED, never sent. The local pnl_30d rollup over-counted P&L (#5416 class) and is no longer emitted. Read the provider-native monthly window from GET /api/trader/{address}/profile-summary instead. */
-    last_30d?: number;
     /** Additive lossless counterpart. Omitted when the trusted native realized-P&L source is unavailable; existing numeric fields keep their display-safe v1 semantics. */
     exact?: TraderPnlExact;
     /** Additive (#27311): the wallet's sports and esports record, the figure the 0xinsider profile headlines. Omitted until 0xinsider has computed the wallet's record; absent means not computed yet, never zero. The other pnl fields stay Polymarket's wallet-wide figures. */
@@ -3795,7 +3843,7 @@ export type TraderStatsExact = {
   total_volume: ExactDecimal;
 };
 
-/** `trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object. */
+/** `trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object until its sunset on 2027-02-01 (#29352). */
 export type TraderSyncedData = {
   /** 0xinsider's numeric id for the wallet. */
   trader_id: number;
@@ -4026,7 +4074,7 @@ export type WebhookEndpoint = {
   verification?: WebhookVerification;
 };
 
-/** Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (large_trades_inserted, whale_trades_inserted, wallet_grade_changed, suspicious_trade_flagged, insider_radar_flag_raised, sharp_money_flow_detected, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. Export lifecycle event types (export_job_ready, export_job_failed, export_job_expired, export_job_cancelled) are owner-scoped to the API-key account that created the export and contain no download URL; use the authorized export status/download routes. Some entries are two spellings of one event: large_trades_inserted and whale_trades_inserted, trader_synced and whale_trader_synced, suspicious_trade_flagged and insider_radar_flag_raised, sharp_money_flow_detected and smart_money_flow_detected. Either spelling subscribes, and an endpoint receives deliveries under the spelling it registered. */
+/** Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (large_trades_inserted, whale_trades_inserted, wallet_grade_changed, suspicious_trade_flagged, insider_radar_flag_raised, sharp_money_flow_detected, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. Export lifecycle event types (export_job_ready, export_job_failed, export_job_expired, export_job_cancelled) are owner-scoped to the API-key account that created the export and contain no download URL; use the authorized export status/download routes. Some entries are two spellings of one event: large_trades_inserted and whale_trades_inserted, trader_synced and whale_trader_synced, suspicious_trade_flagged and insider_radar_flag_raised, sharp_money_flow_detected and smart_money_flow_detected. Either spelling subscribes, and an endpoint receives deliveries under the spelling it registered. The deprecated spellings (whale_trades_inserted, whale_trader_synced, insider_radar_flag_raised, smart_money_flow_detected) reach their sunset on 2027-02-01 (#29352); register the canonical spelling. */
 export type WebhookEventDescriptor = {
   id: WebhookEventType;
   /** One-line description of when the event fires. */
@@ -4740,7 +4788,7 @@ export interface OperationQuery {
     status?: "active" | "closed" | "all";
     /** Filter by source platform. Explore is Polymarket-only; polymarket is the only supported value and the parameter is accepted for backward-compatibility but does not change the result set. */
     platform?: "polymarket";
-    /** Sort order for the discovery feed. `large_trades` ranks by large-trade activity; `whales` is its deprecated spelling and selects the same order. */
+    /** Sort order for the discovery feed. `large_trades` ranks by large-trade activity; `whales` is its deprecated spelling and selects the same order until its sunset on 2027-02-01 (#29352); from then it answers 400 bad_request. */
     sort?: "trending" | "hot" | "expiring" | "large_trades" | "whales" | "volume" | "newest";
     /** Opaque pagination cursor from the previous response. */
     cursor?: string;
@@ -4832,7 +4880,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B";
     /** Maximum holders per page. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Legacy page-only cursors remain accepted without scheduled retirement and require their original limit; their next response emits the new format. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes. */
+    /** Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Page-only cursors from before 2026-10-02 are no longer accepted and return 400 bad_request with param=cursor; restart without a cursor. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes. */
     cursor?: string;
   };
   getMarketIntel: {

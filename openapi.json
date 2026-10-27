@@ -5410,7 +5410,7 @@
       "get": {
         "operationId": "listWhaleTrades",
         "summary": "List whale trades",
-        "description": "Returns recent large trades with signal scoring and persisted suspicion facts. Filter by size, category, trader grade, or persisted suspicion. Filters are applied before pagination, and every request uses SQL-backed limit + 1 pagination so has_more and next_cursor reflect the filtered result set. Cursor-paginated, newest first. Market categories come from provider-backed market_canonical identity. Returns trades on sports and esports markets only (#27430): a trade on any other market is not listed, not counted toward has_more, and not returned by since. Deprecated alias of GET /api/v1/large-trades, kept live and never removed (#16304); every response carries `Deprecation: @1790047200` (RFC 9745, 2026-09-22T03:20:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned. The response adds a top-level `data_quality` object beside `data`, grouping alert, trade, trader, ranking, market, and volume fields by their database writer. `whale_alerts.inserted_xid` is reported as unknown because it is a transaction identifier rather than a timestamp. Its stored clocks are part of the ETag; `meta` continues to hold transport cache facts. Pass since to poll for new trades: the answer holds only the trades recorded after the one you name, and with If-None-Match a poll that finds none is 304 with an empty body.",
+        "description": "Returns recent large trades with signal scoring and persisted suspicion facts. Filter by size, category, trader grade, or persisted suspicion. Filters are applied before pagination, and every request uses SQL-backed limit + 1 pagination so has_more and next_cursor reflect the filtered result set. Cursor-paginated, newest first. Market categories come from provider-backed market_canonical identity. Returns trades on sports and esports markets only (#27430): a trade on any other market is not listed, not counted toward has_more, and not returned by since. Deprecated alias of GET /api/v1/large-trades, kept live until its sunset on 2027-02-01 (#16304, #29351); every response carries `Deprecation: @1790132400` (RFC 9745, 2026-09-23T03:00:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired. The response adds a top-level `data_quality` object beside `data`, grouping alert, trade, trader, ranking, market, and volume fields by their database writer. `whale_alerts.inserted_xid` is reported as unknown because it is a transaction identifier rather than a timestamp. Its stored clocks are part of the ETag; `meta` continues to hold transport cache facts. Pass since to poll for new trades: the answer holds only the trades recorded after the one you name, and with If-None-Match a poll that finds none is 304 with an empty body.",
         "tags": ["Large trades"],
         "parameters": [
           {
@@ -5613,6 +5613,9 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -5647,10 +5650,10 @@
                 "$ref": "#/components/headers/X-Usage-Accounting"
               },
               "Deprecation": {
-                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-22T03:20:00Z, #16304).",
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T03:00:00Z, #16304).",
                 "schema": {
                   "type": "string",
-                  "example": "@1790047200"
+                  "example": "@1790132400"
                 }
               },
               "Link": {
@@ -6486,7 +6489,7 @@
       "get": {
         "operationId": "listWhaleTradeHistory",
         "summary": "Replay historical whale trades",
-        "description": "Returns historical whale trades from local whale_alerts rows, not request-time provider fetches. Filter by condition_id, trader, category, minimum grade, persisted suspicion, platform, and RFC3339 from/to windows. All filters are pushed into SQL before LIMIT, every request uses SQL-backed limit + 1 pagination, and results are ordered newest first by traded_at desc, id desc. Metadata exposes local_replay source and best_effort completeness. Returns trades on sports and esports markets only (#27430), across the whole archive: a stored trade on any other market is left out before LIMIT. Deprecated alias of GET /api/v1/large-trades/history, kept live and never removed (#16304); every response carries `Deprecation: @1790047200` (RFC 9745, 2026-09-22T03:20:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned. The response adds a top-level `data_quality` object beside `data`, grouping alert, trade, trader, ranking, market, and volume fields by their database writer. `whale_alerts.inserted_xid` is reported as unknown because it is a transaction identifier rather than a timestamp. Its stored clocks are part of the ETag; `meta` continues to hold transport cache facts.",
+        "description": "Returns historical whale trades from local whale_alerts rows, not request-time provider fetches. Filter by condition_id, trader, category, minimum grade, persisted suspicion, platform, and RFC3339 from/to windows. All filters are pushed into SQL before LIMIT, every request uses SQL-backed limit + 1 pagination, and results are ordered newest first by traded_at desc, id desc. Metadata exposes local_replay source and best_effort completeness. Returns trades on sports and esports markets only (#27430), across the whole archive: a stored trade on any other market is left out before LIMIT. Deprecated alias of GET /api/v1/large-trades/history, kept live until its sunset on 2027-02-01 (#16304, #29351); every response carries `Deprecation: @1790132400` (RFC 9745, 2026-09-23T03:00:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired. The response adds a top-level `data_quality` object beside `data`, grouping alert, trade, trader, ranking, market, and volume fields by their database writer. `whale_alerts.inserted_xid` is reported as unknown because it is a transaction identifier rather than a timestamp. Its stored clocks are part of the ETag; `meta` continues to hold transport cache facts.",
         "tags": ["Large trades"],
         "parameters": [
           {
@@ -6783,6 +6786,9 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimit-Limit"
               },
@@ -6811,10 +6817,10 @@
                 "$ref": "#/components/headers/X-Usage-Accounting"
               },
               "Deprecation": {
-                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-22T03:20:00Z, #16304).",
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T03:00:00Z, #16304).",
                 "schema": {
                   "type": "string",
-                  "example": "@1790047200"
+                  "example": "@1790132400"
                 }
               },
               "Link": {
@@ -7406,7 +7412,7 @@
       "get": {
         "operationId": "getWhaleTrade",
         "summary": "Get whale trade by ID",
-        "description": "Returns one whale trade by raw whale_alerts.id or the wt_-prefixed id emitted by list and history responses. Deprecated alias of GET /api/v1/large-trades/{id}, kept live and never removed (#16304); every response carries `Deprecation: @1790047200` (RFC 9745, 2026-09-22T03:20:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned.",
+        "description": "Returns one whale trade by raw whale_alerts.id or the wt_-prefixed id emitted by list and history responses. Deprecated alias of GET /api/v1/large-trades/{id}, kept live until its sunset on 2027-02-01 (#16304, #29351); every response carries `Deprecation: @1790132400` (RFC 9745, 2026-09-23T03:00:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
         "tags": ["Large trades"],
         "parameters": [
           {
@@ -7504,6 +7510,9 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimit-Limit"
               },
@@ -7532,10 +7541,10 @@
                 "$ref": "#/components/headers/X-Usage-Accounting"
               },
               "Deprecation": {
-                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-22T03:20:00Z, #16304).",
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T03:00:00Z, #16304).",
                 "schema": {
                   "type": "string",
-                  "example": "@1790047200"
+                  "example": "@1790132400"
                 }
               },
               "Link": {
@@ -8065,7 +8074,7 @@
       "get": {
         "operationId": "listWhaleTradeCounterpartyExecutions",
         "summary": "Page counterparty executions",
-        "description": "Returns a bounded execution page from the immutable snapshot emitted by whale-trade detail. A stale or changed snapshot returns a cursor-expired error so clients restart from detail. Deprecated alias of GET /api/v1/large-trades/{id}/counterparties/executions, kept live and never removed (#16304); every response carries `Deprecation: @1790047200` (RFC 9745, 2026-09-22T03:20:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned.",
+        "description": "Returns a bounded execution page from the immutable snapshot emitted by whale-trade detail. A stale or changed snapshot returns a cursor-expired error so clients restart from detail. Deprecated alias of GET /api/v1/large-trades/{id}/counterparties/executions, kept live until its sunset on 2027-02-01 (#16304, #29351); every response carries `Deprecation: @1790132400` (RFC 9745, 2026-09-23T03:00:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
         "tags": ["Large trades"],
         "parameters": [
           {
@@ -8142,14 +8151,17 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "X-Usage-Accounting": {
                 "$ref": "#/components/headers/X-Usage-Accounting"
               },
               "Deprecation": {
-                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-22T03:20:00Z, #16304).",
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T03:00:00Z, #16304).",
                 "schema": {
                   "type": "string",
-                  "example": "@1790047200"
+                  "example": "@1790132400"
                 }
               },
               "Link": {
@@ -8664,7 +8676,7 @@
       "get": {
         "operationId": "listWhaleTradeCounterpartyMakers",
         "summary": "Page maker counterparties",
-        "description": "Returns a bounded maker-wallet page for one exact execution. Percentages keep the complete execution denominator across pages. Deprecated alias of GET /api/v1/large-trades/{id}/counterparties/executions/{execution_id}/makers, kept live and never removed (#16304); every response carries `Deprecation: @1790047200` (RFC 9745, 2026-09-22T03:20:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned.",
+        "description": "Returns a bounded maker-wallet page for one exact execution. Percentages keep the complete execution denominator across pages. Deprecated alias of GET /api/v1/large-trades/{id}/counterparties/executions/{execution_id}/makers, kept live until its sunset on 2027-02-01 (#16304, #29351); every response carries `Deprecation: @1790132400` (RFC 9745, 2026-09-23T03:00:00Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
         "tags": ["Large trades"],
         "parameters": [
           {
@@ -8740,14 +8752,17 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "X-Usage-Accounting": {
                 "$ref": "#/components/headers/X-Usage-Accounting"
               },
               "Deprecation": {
-                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-22T03:20:00Z, #16304).",
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T03:00:00Z, #16304).",
                 "schema": {
                   "type": "string",
-                  "example": "@1790047200"
+                  "example": "@1790132400"
                 }
               },
               "Link": {
@@ -10370,7 +10385,7 @@
                             "matchup": "Spain vs. France",
                             "category": "Soccer",
                             "resolved_at": null,
-                            "permalink": "https://0xinsider.com/pick-of-the-day/2026-06-22/1",
+                            "permalink": "https://0xinsider.com/pick-of-the-day/picks/1",
                             "payload": {
                               "backed_price": "0.6100",
                               "condition_id": "0xabc1230000000000000000000000000000000abc7f7f7f7f7f7f7f7f7f7f7f7f",
@@ -10410,7 +10425,7 @@
                             "withdrawal_reason": null,
                             "matchup": "Lakers vs. Warriors",
                             "category": "Basketball",
-                            "permalink": "https://0xinsider.com/pick-of-the-day/2026-09-20/1",
+                            "permalink": "https://0xinsider.com/pick-of-the-day/picks/350",
                             "pick_id": "1001",
                             "publication_order": 1,
                             "is_free_selection": true,
@@ -11602,7 +11617,7 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Sort order for the discovery feed. `large_trades` ranks by large-trade activity; `whales` is its deprecated spelling and selects the same order.",
+            "description": "Sort order for the discovery feed. `large_trades` ranks by large-trade activity; `whales` is its deprecated spelling and selects the same order until its sunset on 2027-02-01 (#29352); from then it answers 400 bad_request.",
             "schema": {
               "type": "string",
               "enum": ["trending", "hot", "expiring", "large_trades", "whales", "volume", "newest"],
@@ -12224,7 +12239,7 @@
       "get": {
         "operationId": "listSmartMoneyFlows",
         "summary": "List ranked sharp-money flows (deprecated alias)",
-        "description": "Ranks sports and esports markets (#27306) by absolute net S/A/B-grade whale flow over a requested timeframe. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again. Deprecated alias of GET /api/v1/markets/sharp-money-flows, kept live and never removed; every response carries `Deprecation: @1783276950` (RFC 9745, 2026-07-05T18:42:30Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). No `Sunset` header is sent because no removal is planned.",
+        "description": "Ranks sports and esports markets (#27306) by absolute net S/A/B-grade whale flow over a requested timeframe. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again. Deprecated alias of GET /api/v1/markets/sharp-money-flows, kept live until its sunset on 2027-02-01 (#29351); every response carries `Deprecation: @1783276950` (RFC 9745, 2026-07-05T18:42:30Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -12317,6 +12332,9 @@
           "200": {
             "description": "Ranked market sharp-money flows",
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -13990,7 +14008,7 @@
         "deprecated": true,
         "operationId": "getPlatforms",
         "summary": "Get platform capability matrix",
-        "description": "Deprecated since #16315: use GET /api/v1/coverage, which serves the same body. This path stays live and answers with Deprecation and successor Link headers. Unauthenticated discovery endpoint that declares which V1 data surfaces the API serves for Polymarket, the one venue it covers. Every capability reports supported. Coverage is sports and esports markets only (#27299): a market outside them answers 404 not_found with error.reason market_out_of_scope, and a category filter outside them answers 400 bad_request with param category on the reads that filter by it: large trades and their history, large positions, the leaderboard, market search and explore, and sharp-money flows. GET /api/v1/positions and GET /api/v1/trader/{address}/categories do not refuse a category value (#27581).",
+        "description": "Deprecated since #16315: use GET /api/v1/coverage, which serves the same body. This path stays live until its sunset on 2027-02-01 (#29351) and answers with Deprecation, Sunset and successor Link headers; from that date it answers 410 Gone with error.code endpoint_retired. Unauthenticated discovery endpoint that declares which V1 data surfaces the API serves for Polymarket, the one venue it covers. Every capability reports supported. Coverage is sports and esports markets only (#27299): a market outside them answers 404 not_found with error.reason market_out_of_scope, and a category filter outside them answers 400 bad_request with param category on the reads that filter by it: large trades and their history, large positions, the leaderboard, market search and explore, and sharp-money flows. GET /api/v1/positions and GET /api/v1/trader/{address}/categories do not refuse a category value (#27581).",
         "tags": ["System"],
         "security": [],
         "parameters": [
@@ -14057,6 +14075,22 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
+              "Deprecation": {
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T18:00:00Z, #16315).",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790186400"
+                }
+              },
+              "Link": {
+                "description": "RFC 8288 links to the successor operation (rel=\"successor-version\") and the deprecation policy (rel=\"deprecation\").",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -14253,7 +14287,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Legacy page-only cursors remain accepted without scheduled retirement and require their original limit; their next response emits the new format. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes.",
+            "description": "Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Page-only cursors from before 2026-10-02 are no longer accepted and return 400 bad_request with param=cursor; restart without a cursor. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes.",
             "schema": {
               "type": "string"
             }
@@ -15014,7 +15048,7 @@
         "operationId": "getMarketIntel",
         "summary": "Get market intelligence",
         "deprecated": true,
-        "description": "Deprecated since #16312: use GET /api/v1/market/{condition_id}/flow, which serves the same body under object market_flow. This path stays live, keeps object market_intel, and answers with Deprecation and successor Link headers. One market's flow and top positions: the signed flow of every tracked large trade in the window (net_flow_usd and its YES or NO direction), the large-trade count, gross buy and sell volumes, and the top five graded trader positions.",
+        "description": "Deprecated since #16312: use GET /api/v1/market/{condition_id}/flow, which serves the same body under object market_flow. This path stays live until its sunset on 2027-02-01 (#29351), keeps object market_intel, and answers with Deprecation, Sunset and successor Link headers; from that date it answers 410 Gone with error.code endpoint_retired. One market's flow and top positions: the signed flow of every tracked large trade in the window (net_flow_usd and its YES or NO direction), the large-trade count, gross buy and sell volumes, and the top five graded trader positions.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -15126,6 +15160,22 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
+              "Deprecation": {
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T15:00:00Z, #16312).",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790175600"
+                }
+              },
+              "Link": {
+                "description": "RFC 8288 links to the successor operation (rel=\"successor-version\") and the deprecation policy (rel=\"deprecation\").",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -15386,7 +15436,7 @@
       "post": {
         "operationId": "batchGetMarketFlow",
         "summary": "Batch market flow",
-        "description": "Returns each market's flow and top positions for 1-25 raw provider condition_id values. Results preserve request order, duplicate inputs return duplicate rows, and each item is charged one batch item unit before execution. Do not pass prefixed mkt_ IDs; use market.condition_id from search or explore. A market outside sports and esports is that item's own error, 404 not_found with error.reason market_out_of_scope (stop asking for it); the rest of the batch is served.",
+        "description": "Returns each market's flow and top positions for 1-25 raw provider condition_id values. Results preserve request order, duplicate inputs return duplicate rows, and each item is charged one batch item unit before execution. Do not pass prefixed mkt_ IDs; use market.condition_id from search or explore.",
         "tags": ["Markets"],
         "requestBody": {
           "description": "Batch market-flow request. Supply 1-25 condition IDs and an optional shared timeframe.",
@@ -15838,7 +15888,7 @@
         "operationId": "batchGetMarketIntel",
         "summary": "Batch market intelligence",
         "deprecated": true,
-        "description": "Deprecated since #16312: use POST /api/v1/markets/flow/batch, which returns the same items under object market_flow_batch. This path stays live, keeps object market_intel_batch, and answers with Deprecation and successor Link headers. Returns each market's flow and top positions for 1-25 raw provider condition_id values. Results preserve request order, duplicate inputs return duplicate rows, and each item is charged one batch item unit before execution. Do not pass prefixed mkt_ IDs; use market.condition_id from search or explore. A market outside sports and esports is that item's own error, 404 not_found with error.reason market_out_of_scope (stop asking for it); the rest of the batch is served.",
+        "description": "Deprecated since #16312: use POST /api/v1/markets/flow/batch, which returns the same items under object market_flow_batch. This path stays live until its sunset on 2027-02-01 (#29351), keeps object market_intel_batch, and answers with Deprecation, Sunset and successor Link headers; from that date it answers 410 Gone with error.code endpoint_retired. Returns each market's flow and top positions for 1-25 raw provider condition_id values. Results preserve request order, duplicate inputs return duplicate rows, and each item is charged one batch item unit before execution. Do not pass prefixed mkt_ IDs; use market.condition_id from search or explore.",
         "tags": ["Markets"],
         "requestBody": {
           "description": "Batch market-intelligence request. Supply 1-25 condition IDs and an optional shared timeframe.",
@@ -15889,6 +15939,22 @@
           "200": {
             "description": "Ordered batch market intelligence results",
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
+              "Deprecation": {
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T15:00:00Z, #16312).",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790175600"
+                }
+              },
+              "Link": {
+                "description": "RFC 8288 links to the successor operation (rel=\"successor-version\") and the deprecation policy (rel=\"deprecation\").",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -18626,7 +18692,7 @@
         "operationId": "listInsiderRadar",
         "deprecated": true,
         "summary": "Get insider radar flags",
-        "description": "Deprecated alias of GET /api/v1/suspicious-trades (2026-09-23), kept live with no retirement date; responses carry Deprecation and a Link rel=\"successor-version\" to it. Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope.",
+        "description": "Deprecated alias of GET /api/v1/suspicious-trades (2026-09-23), kept live until its sunset on 2027-02-01 (#29351); responses carry Deprecation, Sunset and a Link rel=\"successor-version\" to it, and from that date the path answers 410 Gone with error.code endpoint_retired. Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope.",
         "tags": ["Insider Radar"],
         "parameters": [
           {
@@ -18748,6 +18814,22 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
+              "Deprecation": {
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T00:00:00Z, #16301).",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790121600"
+                }
+              },
+              "Link": {
+                "description": "RFC 8288 links to the successor operation (rel=\"successor-version\") and the deprecation policy (rel=\"deprecation\").",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -19001,7 +19083,7 @@
         "operationId": "getInsiderRadarFlag",
         "deprecated": true,
         "summary": "Get insider radar flag by ID",
-        "description": "Deprecated alias of GET /api/v1/suspicious-trades/{id} (2026-09-23), kept live with no retirement date; responses carry Deprecation and a Link rel=\"successor-version\" to it. The envelope keeps object: radar_flag, so an integration that branches on it keeps working here. Returns one suspicious-trading radar flag by raw whale_alerts.id or the rf_-prefixed id emitted by list responses. A flag on a market outside sports and esports returns 404 not_found with error.reason=market_out_of_scope (#27305); stop requesting it.",
+        "description": "Deprecated alias of GET /api/v1/suspicious-trades/{id} (2026-09-23), kept live until its sunset on 2027-02-01 (#29351); responses carry Deprecation, Sunset and a Link rel=\"successor-version\" to it, and from that date the path answers 410 Gone with error.code endpoint_retired. The envelope keeps object: radar_flag, so an integration that branches on it keeps working here. Returns one suspicious-trading radar flag by raw whale_alerts.id or the rf_-prefixed id emitted by list responses. A flag on a market outside sports and esports returns 404 not_found with error.reason=market_out_of_scope (#27305); stop requesting it.",
         "tags": ["Insider Radar"],
         "parameters": [
           {
@@ -19097,6 +19179,22 @@
               }
             },
             "headers": {
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              },
+              "Deprecation": {
+                "description": "RFC 9745 structured-field date when this alias was deprecated (2026-09-23T00:00:00Z, #16301).",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790121600"
+                }
+              },
+              "Link": {
+                "description": "RFC 8288 links to the successor operation (rel=\"successor-version\") and the deprecation policy (rel=\"deprecation\").",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
@@ -30259,7 +30357,7 @@
                         "matchup": "Spain vs. France",
                         "category": "Soccer",
                         "resolved_at": null,
-                        "permalink": "https://0xinsider.com/pick-of-the-day/2026-06-22/1",
+                        "permalink": "https://0xinsider.com/pick-of-the-day/picks/1",
                         "payload": {
                           "backed_price": "0.6100",
                           "condition_id": "0xabc1230000000000000000000000000000000abc7f7f7f7f7f7f7f7f7f7f7f7f",
@@ -32885,7 +32983,7 @@
     "whale_trades_inserted": {
       "post": {
         "summary": "whale_trades_inserted",
-        "description": "Fires when new large trades are ingested. Deprecated spelling of large_trades_inserted, kept live: an endpoint registered under this name keeps receiving `type: whale_trades_inserted`.",
+        "description": "Fires when new large trades are ingested. Deprecated spelling of large_trades_inserted: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: whale_trades_inserted`; subscribe to large_trades_inserted instead.",
         "tags": [
           "Webhooks"
         ],
@@ -33098,7 +33196,7 @@
     "whale_trader_synced": {
       "post": {
         "summary": "whale_trader_synced",
-        "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Deprecated spelling of trader_synced, kept live: an endpoint registered under this name keeps receiving `type: whale_trader_synced`.",
+        "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Deprecated spelling of trader_synced: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: whale_trader_synced`; subscribe to trader_synced instead.",
         "tags": [
           "Webhooks"
         ],
@@ -33382,7 +33480,7 @@
     "insider_radar_flag_raised": {
       "post": {
         "summary": "insider_radar_flag_raised",
-        "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Deprecated spelling of suspicious_trade_flagged, kept live: an endpoint registered under this name keeps receiving `type: insider_radar_flag_raised`.",
+        "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Deprecated spelling of suspicious_trade_flagged: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: insider_radar_flag_raised`; subscribe to suspicious_trade_flagged instead.",
         "tags": [
           "Webhooks"
         ],
@@ -33524,7 +33622,7 @@
     "smart_money_flow_detected": {
       "post": {
         "summary": "smart_money_flow_detected",
-        "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Deprecated spelling of sharp_money_flow_detected, kept live: an endpoint registered under this name keeps receiving `type: smart_money_flow_detected`.",
+        "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Deprecated spelling of sharp_money_flow_detected: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: smart_money_flow_detected`; subscribe to sharp_money_flow_detected instead.",
         "tags": [
           "Webhooks"
         ],
@@ -34096,7 +34194,7 @@
       },
       "WebhookEventDescriptor": {
         "type": "object",
-        "description": "Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (large_trades_inserted, whale_trades_inserted, wallet_grade_changed, suspicious_trade_flagged, insider_radar_flag_raised, sharp_money_flow_detected, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. Export lifecycle event types (export_job_ready, export_job_failed, export_job_expired, export_job_cancelled) are owner-scoped to the API-key account that created the export and contain no download URL; use the authorized export status/download routes. Some entries are two spellings of one event: large_trades_inserted and whale_trades_inserted, trader_synced and whale_trader_synced, suspicious_trade_flagged and insider_radar_flag_raised, sharp_money_flow_detected and smart_money_flow_detected. Either spelling subscribes, and an endpoint receives deliveries under the spelling it registered.",
+        "description": "Self-describing entry in the webhook event catalog: the event type a subscriber lists in event_types, when it fires, the data payload shape, and whether it currently fires (active) or is reserved (dormant, subscribable but not yet delivered). Pro-only event types (large_trades_inserted, whale_trades_inserted, wallet_grade_changed, suspicious_trade_flagged, insider_radar_flag_raised, sharp_money_flow_detected, smart_money_flow_detected) only deliver to API keys on an active Pro subscription. Export lifecycle event types (export_job_ready, export_job_failed, export_job_expired, export_job_cancelled) are owner-scoped to the API-key account that created the export and contain no download URL; use the authorized export status/download routes. Some entries are two spellings of one event: large_trades_inserted and whale_trades_inserted, trader_synced and whale_trader_synced, suspicious_trade_flagged and insider_radar_flag_raised, sharp_money_flow_detected and smart_money_flow_detected. Either spelling subscribes, and an endpoint receives deliveries under the spelling it registered. The deprecated spellings (whale_trades_inserted, whale_trader_synced, insider_radar_flag_raised, smart_money_flow_detected) reach their sunset on 2027-02-01 (#29352); register the canonical spelling.",
         "required": ["id", "description", "payload_shape", "status"],
         "properties": {
           "id": {
@@ -35180,7 +35278,7 @@
       },
       "LargeTradesInsertedData": {
         "type": "object",
-        "description": "`large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object.",
+        "description": "`large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object until its sunset on 2027-02-01 (#29352).",
         "required": [
           "count"
         ],
@@ -35313,7 +35411,7 @@
       },
       "TraderSyncedData": {
         "type": "object",
-        "description": "`trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object.",
+        "description": "`trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object until its sunset on 2027-02-01 (#29352).",
         "required": [
           "trader_id",
           "wallet"
@@ -35412,7 +35510,7 @@
       },
       "SuspiciousTradeFlaggedData": {
         "type": "object",
-        "description": "`suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object.",
+        "description": "`suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object until its sunset on 2027-02-01 (#29352).",
         "required": [
           "trade_id",
           "wallet",
@@ -35474,7 +35572,7 @@
       },
       "SharpMoneyFlowDetectedData": {
         "type": "object",
-        "description": "`sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object.",
+        "description": "`sharp_money_flow_detected` data (Pro and Max): ranked-trader net flow on a market crossed the threshold. The deprecated spelling `smart_money_flow_detected` delivers the same object until its sunset on 2027-02-01 (#29352).",
         "required": [
           "condition_id",
           "net_flow_usd",
@@ -36221,16 +36319,20 @@
             "$ref": "#/components/schemas/PlatformCapabilityStatus"
           },
           "large_trades": {
-            "description": "The large-trade feed. Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value.",
+            "description": "The large-trade feed. Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "$ref": "#/components/schemas/PlatformCapabilityStatus"
           },
           "whale_signal": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trades.",
             "$ref": "#/components/schemas/PlatformCapabilityStatus"
           },
           "suspicious_trades": {
             "$ref": "#/components/schemas/PlatformCapabilityStatus"
           },
           "insider_radar": {
+            "deprecated": true,
+            "description": "Deprecated spelling of suspicious_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read suspicious_trades.",
             "$ref": "#/components/schemas/PlatformCapabilityStatus"
           },
           "market_snapshot": {
@@ -36545,14 +36647,6 @@
               },
               "unrealized": {
                 "type": "number"
-              },
-              "last_7d": {
-                "type": "number",
-                "description": "DEPRECATED, never sent. The local pnl_7d rollup over-counted P&L (#5416 class) and is no longer emitted. Read the provider-native weekly window from GET /api/trader/{address}/profile-summary instead."
-              },
-              "last_30d": {
-                "type": "number",
-                "description": "DEPRECATED, never sent. The local pnl_30d rollup over-counted P&L (#5416 class) and is no longer emitted. Read the provider-native monthly window from GET /api/trader/{address}/profile-summary instead."
               },
               "exact": {
                 "$ref": "#/components/schemas/TraderPnlExact",
@@ -36987,7 +37081,7 @@
           "signal_score": {
             "deprecated": true,
             "type": "number",
-            "description": "Deprecated alias of review_score with the same current value and 0..1 scale."
+            "description": "Deprecated alias of review_score with the same current value and 0..1 scale. Sunset 2027-02-01 (#29352): removed from V1 on that date; read review_score."
           },
           "recorded_review_score": {
             "type": ["number", "null"],
@@ -36996,7 +37090,7 @@
           "recorded_signal_score": {
             "deprecated": true,
             "type": ["number", "null"],
-            "description": "0.0\u20131.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire."
+            "description": "0.0\u20131.0 review score written once when the trade row is inserted; null before 2026-08-03T11:59Z. Deprecated (#16311): `recorded_review_score` is the canonical spelling and carries the same value; this key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed."
           },
           "suspicion_score": {
             "type": ["integer", "null"],
@@ -38473,7 +38567,7 @@
           "permalink": {
             "type": "string",
             "format": "uri",
-            "description": "The pick's public page."
+            "description": "The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`."
           },
           "pick_id": {
             "type": "string",
@@ -38593,7 +38687,7 @@
           "permalink": {
             "type": "string",
             "format": "uri",
-            "description": "The pick's public page."
+            "description": "The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`."
           },
           "pick_id": {
             "type": "string",
@@ -38695,7 +38789,7 @@
           "permalink": {
             "type": "string",
             "format": "uri",
-            "description": "The pick's public page."
+            "description": "The pick's stable public page, `https://0xinsider.com/pick-of-the-day/picks/{pick_id}`."
           },
           "pick_id": {
             "type": "string",
@@ -39006,32 +39100,40 @@
             "type": ["number", "null"]
           },
           "large_trade_count": {
-            "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["integer", "null"]
           },
           "whale_trade_count": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
             "type": ["integer", "null"]
           },
           "large_trade_distinct_wallets": {
-            "description": "Canonical key since #16304; whale_distinct_wallets is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; whale_distinct_wallets is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["integer", "null"]
           },
           "whale_distinct_wallets": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trade_distinct_wallets, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_distinct_wallets.",
             "type": ["integer", "null"]
           },
           "large_trade_total_usd": {
-            "description": "Canonical key since #16304; whale_total_usd is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; whale_total_usd is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["number", "null"]
           },
           "whale_total_usd": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trade_total_usd, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_total_usd.",
             "type": ["number", "null"]
           },
           "large_trade_last_at": {
-            "description": "Canonical key since #16304; whale_last_trade_at is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; whale_last_trade_at is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["string", "null"],
             "format": "date-time"
           },
           "whale_last_trade_at": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trade_last_at, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_last_at.",
             "type": ["string", "null"],
             "format": "date-time"
           },
@@ -39153,10 +39255,12 @@
                 "type": ["number", "null"]
               },
               "large_trade_signal": {
-                "description": "Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16304; whale_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": ["number", "null"]
               },
               "whale_signal": {
+                "deprecated": true,
+                "description": "Deprecated spelling of large_trade_signal, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_signal.",
                 "type": ["number", "null"]
               },
               "liquidity_signal": {
@@ -39166,12 +39270,12 @@
                 "type": ["number", "null"]
               },
               "sharp_money_signal": {
-                "description": "Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": ["number", "null"]
               },
               "smart_money_signal": {
                 "deprecated": true,
-                "description": "Deprecated spelling of sharp_money_signal; emitted beside it with the same value and never removed.",
+                "description": "Deprecated spelling of sharp_money_signal; emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money_signal.",
                 "type": ["number", "null"]
               },
               "price_move_signal": {
@@ -39247,10 +39351,12 @@
             "description": "The volume of the group's highest-volume market, which is markets[0]: the same figure as that market's volume, Polymarket's cumulative taker volume in shares rather than cash. Null when unavailable."
           },
           "rep_large_trades": {
-            "description": "Canonical key since #16304; rep_whales is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; rep_whales is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["integer", "null"]
           },
           "rep_whales": {
+            "deprecated": true,
+            "description": "Deprecated spelling of rep_large_trades, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read rep_large_trades.",
             "type": ["integer", "null"]
           }
         }
@@ -39644,10 +39750,12 @@
                 "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
               },
               "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": "integer"
               },
               "whale_trade_count": {
+                "deprecated": true,
+                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
                 "type": "integer"
               },
               "buy_volume_usd": {
@@ -39706,7 +39814,7 @@
           "smart_money": {
             "type": "object",
             "deprecated": true,
-            "description": "Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.",
+            "description": "Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.",
             "required": [
               "net_flow_usd",
               "direction",
@@ -39731,10 +39839,12 @@
                 "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
               },
               "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": "integer"
               },
               "whale_trade_count": {
+                "deprecated": true,
+                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
                 "type": "integer"
               },
               "buy_volume_usd": {
@@ -39850,10 +39960,12 @@
                 "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
               },
               "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": "integer"
               },
               "whale_trade_count": {
+                "deprecated": true,
+                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
                 "type": "integer"
               },
               "buy_volume_usd": {
@@ -39867,7 +39979,7 @@
           "smart_money": {
             "type": "object",
             "deprecated": true,
-            "description": "Deprecated alias of sharp_money; byte-identical and retained for backward compatibility.",
+            "description": "Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.",
             "required": [
               "net_flow_usd",
               "direction",
@@ -39890,10 +40002,12 @@
                 "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
               },
               "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value.",
+                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
                 "type": "integer"
               },
               "whale_trade_count": {
+                "deprecated": true,
+                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
                 "type": "integer"
               },
               "buy_volume_usd": {
@@ -40045,12 +40159,12 @@
               "market_type": {
                 "deprecated": true,
                 "type": ["string", "null"],
-                "description": "Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire so existing clients keep parsing; do not read it."
+                "description": "Always null. Deprecated (#24169): 0xinsider has never stored a value for this field. The key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed; do not read it."
               },
               "market_result": {
                 "deprecated": true,
                 "type": ["string", "null"],
-                "description": "Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire so existing clients keep parsing; do not read it. market.status and market.resolved_at say whether the market has closed or resolved."
+                "description": "Always null. Deprecated (#24169): 0xinsider stores no value for this field on a Polymarket market. The key stays on the wire until its sunset on 2027-02-01 (#29352), when it is removed; do not read it. market.status and market.resolved_at say whether the market has closed or resolved."
               },
               "created_at": {
                 "type": ["string", "null"],
@@ -40710,10 +40824,12 @@
             "type": "integer"
           },
           "covered_days_with_large_trade_activity": {
-            "description": "Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; covered_days_with_whale_activity is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": "integer"
           },
           "covered_days_with_whale_activity": {
+            "deprecated": true,
+            "description": "Deprecated spelling of covered_days_with_large_trade_activity, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read covered_days_with_large_trade_activity.",
             "type": "integer"
           }
         }
@@ -40752,14 +40868,14 @@
         ],
         "properties": {
           "total_large_trades": {
-            "description": "Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["integer", "null"]
           },
           "total_whale_trades": {
             "type": ["integer", "null"]
           },
           "total_large_trade_volume": {
-            "description": "Canonical key since #16304; total_whale_volume is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; total_whale_volume is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["number", "null"]
           },
           "total_whale_volume": {
@@ -40772,7 +40888,7 @@
             "type": ["integer", "null"]
           },
           "top_large_trades": {
-            "description": "Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value.",
+            "description": "Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["array", "null"],
             "items": {
               "type": "object",
@@ -46516,6 +46632,13 @@
       }
     },
     "headers": {
+      "Sunset": {
+        "description": "RFC 8594 HTTP-date when this deprecated alias stops serving: 2027-02-01T00:00:00Z (#29351). From that instant the path answers 410 Gone with error.code endpoint_retired; call the successor its Link header names (rel=\"successor-version\").",
+        "schema": {
+          "type": "string",
+          "example": "Mon, 01 Feb 2027 00:00:00 GMT"
+        }
+      },
       "X-RateLimit-Limit": {
         "description": "Request limit of the budget this request was counted against, for its current window: the API key's per-minute sliding window on an authenticated call, at its plan's limit (100 requests on Pro, 200 on Max); the control-plane bucket GET /api/v1/me and GET /api/v1/usage share, the same on every plan, on a 429 from either; and the per-IP budget on a public route, on a refused credential (401, 402, 403, 423), and on a remote MCP message other than tools/call.",
         "schema": {
@@ -46664,7 +46787,7 @@
     },
     {
       "name": "Insider Radar",
-      "description": "Deprecated spelling of Suspicious trades; both operations stay live as aliases."
+      "description": "Deprecated spelling of Suspicious trades; both operations stay live as aliases until their 2027-02-01 sunset (#29351)."
     },
     {
       "name": "Events",
