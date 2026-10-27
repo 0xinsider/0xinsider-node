@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   console.log(`  (${walletCount} wallets)`);
 
   // 2. The most recent S-grade whale trades via the typed list helper.
-  const trades = await client.listWhaleTrades({ min_grade: "S", limit: 25 });
+  const trades = await client.listLargeTrades({ min_grade: "S", limit: 25 });
   console.log(`\nLatest S-grade whale trades (cost=${String(trades.meta.cost)}):`);
   for (const trade of trades.data) {
     console.log(

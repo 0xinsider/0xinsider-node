@@ -148,7 +148,9 @@ export interface ApiUnsupportedOperation {
  * `scripts/check-sdk-openapi-drift.mjs`, which also checks every row's kind
  * against the spec. Do not add a row without a matching spec operation, and
  * do not remove a spec operation without removing its row. A redirect-only
- * operation belongs in `REDIRECT_OPERATIONS` below, not here.
+ * operation belongs in `REDIRECT_OPERATIONS` below, not here, and a
+ * deprecated alias this client no longer wraps belongs in
+ * `UNSUPPORTED_OPERATIONS` (#29350).
  */
 export const API_CLIENT_OPERATIONS = [
   {
@@ -328,38 +330,8 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
-    path: "/api/v1/whale-trades",
-    operationId: "listWhaleTrades",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/whale-trades/history",
-    operationId: "listWhaleTradeHistory",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/whale-trades/{id}/counterparties/executions",
-    operationId: "listWhaleTradeCounterpartyExecutions",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/whale-trades/{id}/counterparties/executions/{execution_id}/makers",
-    operationId: "listWhaleTradeCounterpartyMakers",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
     path: "/api/v1/content/search",
     operationId: "searchContent",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/whale-trades/{id}",
-    operationId: "getWhaleTrade",
     auth: "bearer",
   },
   {
@@ -382,12 +354,6 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
-    path: "/api/v1/markets/smart-money-flows",
-    operationId: "listSmartMoneyFlows",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
     path: "/api/v1/markets/sharp-money-flows",
     operationId: "listSharpMoneyFlows",
     auth: "bearer",
@@ -396,12 +362,6 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/coverage",
     operationId: "getCoverage",
-    auth: "none",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/platforms",
-    operationId: "getPlatforms",
     auth: "none",
   },
   {
@@ -417,21 +377,9 @@ export const API_CLIENT_OPERATIONS = [
     auth: "bearer",
   },
   {
-    method: "GET",
-    path: "/api/v1/market/{condition_id}/intel",
-    operationId: "getMarketIntel",
-    auth: "bearer",
-  },
-  {
     method: "POST",
     path: "/api/v1/markets/flow/batch",
     operationId: "batchGetMarketFlow",
-    auth: "bearer",
-  },
-  {
-    method: "POST",
-    path: "/api/v1/markets/intel/batch",
-    operationId: "batchGetMarketIntel",
     auth: "bearer",
   },
   {
@@ -463,22 +411,6 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/suspicious-trades/{id}",
     operationId: "getSuspiciousTrade",
-    auth: "bearer",
-  },
-  // Deprecated aliases (#16301). Both paths stay live with no retirement
-  // date; responses carry Deprecation and a Link rel="successor-version".
-  // `/api/v1/insider-radar/{id}` also keeps answering `object: "radar_flag"`,
-  // so these entries are what an existing integration must keep exercising.
-  {
-    method: "GET",
-    path: "/api/v1/insider-radar",
-    operationId: "listInsiderRadar",
-    auth: "bearer",
-  },
-  {
-    method: "GET",
-    path: "/api/v1/insider-radar/{id}",
-    operationId: "getInsiderRadarFlag",
     auth: "bearer",
   },
   {
@@ -723,9 +655,78 @@ export const REDIRECT_OPERATIONS = [
 /**
  * Published operations this client deliberately does not wrap, with the
  * reason. The drift check requires every remaining spec operation to be
- * accounted for here, so "unsupported" is always a stated decision.
+ * accounted for here, so "unsupported" is always a stated decision. An
+ * operation that still answers 200 may appear here only while the spec marks
+ * it `deprecated`: 0.32.0 dropped the September rename aliases (#29350), whose
+ * paths stay live until their 2027-02-01 sunset (#29351).
  */
 export const UNSUPPORTED_OPERATIONS = [
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades",
+    operationId: "listWhaleTrades",
+    reason: "Deprecated alias (#16304), sunset 2027-02-01: use listLargeTrades().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/history",
+    operationId: "listWhaleTradeHistory",
+    reason: "Deprecated alias (#16304), sunset 2027-02-01: use listLargeTradeHistory().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}",
+    operationId: "getWhaleTrade",
+    reason: "Deprecated alias (#16304), sunset 2027-02-01: use getLargeTrade().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}/counterparties/executions",
+    operationId: "listWhaleTradeCounterpartyExecutions",
+    reason: 'Deprecated alias (#16304), sunset 2027-02-01: use call("listLargeTradeCounterpartyExecutions").',
+  },
+  {
+    method: "GET",
+    path: "/api/v1/whale-trades/{id}/counterparties/executions/{execution_id}/makers",
+    operationId: "listWhaleTradeCounterpartyMakers",
+    reason: 'Deprecated alias (#16304), sunset 2027-02-01: use call("listLargeTradeCounterpartyMakers").',
+  },
+  {
+    method: "GET",
+    path: "/api/v1/markets/smart-money-flows",
+    operationId: "listSmartMoneyFlows",
+    reason: "Deprecated alias (#16308), sunset 2027-02-01: use listSharpMoneyFlows().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/platforms",
+    operationId: "getPlatforms",
+    reason: "Deprecated alias (#16315), sunset 2027-02-01: use getCoverage().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/intel",
+    operationId: "getMarketIntel",
+    reason: "Deprecated alias (#16312), sunset 2027-02-01: use getMarketFlow().",
+  },
+  {
+    method: "POST",
+    path: "/api/v1/markets/intel/batch",
+    operationId: "batchGetMarketIntel",
+    reason: "Deprecated alias (#16312), sunset 2027-02-01: use batchGetMarketFlow().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/insider-radar",
+    operationId: "listInsiderRadar",
+    reason: "Deprecated alias (#16301), sunset 2027-02-01: use listSuspiciousTrades().",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/insider-radar/{id}",
+    operationId: "getInsiderRadarFlag",
+    reason: "Deprecated alias (#16301), sunset 2027-02-01: use getSuspiciousTrade().",
+  },
   {
     method: "GET",
     path: "/api/v1/sports/pre-game-sides",
@@ -787,8 +788,7 @@ export type IdempotentWriteOperationId =
 
 /**
  * POST operations that read and never write (#16182): the batch lookups.
- * `POST /api/v1/traders/batch` and `POST /api/v1/markets/flow/batch` (with its
- * deprecated alias `POST /api/v1/markets/intel/batch`) resolve
+ * `POST /api/v1/traders/batch` and `POST /api/v1/markets/flow/batch` resolve
  * their inputs and store nothing (`backend/src/api_v1/handlers/batch.rs`), so
  * a repeat cannot duplicate a side effect. Each attempt is one request
  * against the account's quota and one reservation of batch item units, which
@@ -798,7 +798,6 @@ export type IdempotentWriteOperationId =
 export const READ_ONLY_POST_OPERATIONS = [
   "batchGetTraders",
   "batchGetMarketFlow",
-  "batchGetMarketIntel",
 ] as const satisfies readonly ApiOperationId[];
 
 /**
@@ -1865,12 +1864,6 @@ export type LargeTradeListParams = OperationQuery["listLargeTrades"];
 /** Query parameters of the V1 historical large-trade replay (#16304). */
 export type LargeTradeHistoryParams = OperationQuery["listLargeTradeHistory"];
 
-/** @deprecated Use {@link LargeTradeListParams} (#16304). */
-export type WhaleTradeListParams = OperationQuery["listWhaleTrades"];
-
-/** @deprecated Use {@link LargeTradeHistoryParams} (#16304). */
-export type WhaleTradeHistoryParams = OperationQuery["listWhaleTradeHistory"];
-
 /** Query parameters of `GET /api/v1/positions`. */
 export type PositionsListParams = OperationQuery["listPositions"];
 
@@ -1880,19 +1873,11 @@ export type ComboFillsParams = OperationQuery["listComboFills"];
 /** Query parameters of `GET /api/v1/large-positions`. */
 export type LargePositionsListParams = OperationQuery["listLargePositions"];
 
-/** Query parameters of the sharp-money flows read and its legacy alias. */
+/** Query parameters of `GET /api/v1/markets/sharp-money-flows`. */
 export type SharpMoneyFlowsParams = OperationQuery["listSharpMoneyFlows"];
 
 /** Query parameters of `GET /api/v1/suspicious-trades`: `min_suspicion` and `severity`, not a grade. */
 export type SuspiciousTradesListParams = OperationQuery["listSuspiciousTrades"];
-
-/**
- * @deprecated Use `SuspiciousTradesListParams`; the Insider Radar spelling of
- * this contract was renamed to suspicious trades in #16301. The deprecated
- * `GET /api/v1/insider-radar` takes the same parameters, so this stays an
- * alias with no retirement date.
- */
-export type InsiderRadarListParams = SuspiciousTradesListParams;
 
 /** Query parameters of `GET /api/v1/markets/explore`. */
 export type ExploreMarketsParams = OperationQuery["exploreMarkets"];
@@ -2720,18 +2705,6 @@ export class OxinsiderApiClient {
     return this.call("batchGetMarketFlow", { ...options, body });
   }
 
-  /**
-   * @deprecated Use {@link batchGetMarketFlow} (#16312); calls the deprecated
-   * `POST /api/v1/markets/intel/batch`, whose envelope keeps
-   * `object: "market_intel_batch"`.
-   */
-  batchGetMarketIntel(
-    body: OperationBody["batchGetMarketIntel"],
-    options: ConvenienceOptions = {},
-  ) {
-    return this.call("batchGetMarketIntel", { ...options, body });
-  }
-
   listLeaderboard(params: LeaderboardListParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listLeaderboard", { ...options, query: params });
   }
@@ -2765,19 +2738,6 @@ export class OxinsiderApiClient {
     return this.list("listLargeTradeHistory", { ...options, query: params });
   }
 
-  /** @deprecated Use {@link listLargeTrades} (#16304); calls the deprecated `/api/v1/whale-trades`. */
-  listWhaleTrades(params: WhaleTradeListParams = {}, options: ConvenienceOptions = {}) {
-    return this.list("listWhaleTrades", { ...options, query: params });
-  }
-
-  /** @deprecated Use {@link listLargeTradeHistory} (#16304); calls the deprecated `/api/v1/whale-trades/history`. */
-  listWhaleTradeHistory(
-    params: WhaleTradeHistoryParams = {},
-    options: ConvenienceOptions = {},
-  ) {
-    return this.list("listWhaleTradeHistory", { ...options, query: params });
-  }
-
   listPositions(params: PositionsListParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listPositions", { ...options, query: params });
   }
@@ -2795,18 +2755,6 @@ export class OxinsiderApiClient {
    */
   listSharpMoneyFlows(params: SharpMoneyFlowsParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listSharpMoneyFlows", { ...options, query: params });
-  }
-
-  /**
-   * @deprecated Use {@link listSharpMoneyFlows} (#16308). Kept live; it calls
-   * the deprecated `/api/v1/markets/smart-money-flows`, whose responses carry
-   * `Deprecation` and a `Link rel="successor-version"`.
-   */
-  listSmartMoneyFlows(
-    params: OperationQuery["listSmartMoneyFlows"] = {},
-    options: ConvenienceOptions = {},
-  ) {
-    return this.list("listSmartMoneyFlows", { ...options, query: params });
   }
 
   /**
@@ -2863,21 +2811,6 @@ export class OxinsiderApiClient {
     });
   }
 
-  /**
-   * @deprecated Use {@link getMarketFlow} (#16312); calls the deprecated
-   * `GET /api/v1/market/{condition_id}/intel`, whose envelope keeps
-   * `object: "market_intel"`.
-   */
-  getMarketIntel(
-    conditionId: OperationPath["getMarketIntel"]["condition_id"],
-    options: Omit<OperationRequestOptions<"getMarketIntel">, "path"> = {},
-  ) {
-    return this.call("getMarketIntel", {
-      ...options,
-      path: { condition_id: conditionId },
-    });
-  }
-
   getMarketSnapshot(
     conditionId: OperationPath["getMarketSnapshot"]["condition_id"],
     options: Omit<OperationRequestOptions<"getMarketSnapshot">, "path"> = {},
@@ -2892,7 +2825,7 @@ export class OxinsiderApiClient {
    * One page of a market's graded (S/A/B) holder roster from a complete
    * provider holder scan: the list a Pick of the Day shows, for any market.
    * `params.outcome` (`yes` | `no` | `all`), `params.min_grade` (`S` | `A` |
-   * `B`), `params.limit` and `params.cursor` (`mh_` prefix). The page carries
+   * `B`), `params.limit` and `params.cursor` (the previous page's opaque `next_cursor`). The page carries
    * the `market`, `scan` and roster `totals` beside `data`; `total` is the
    * count matching the filters across every page.
    */
@@ -2946,42 +2879,11 @@ export class OxinsiderApiClient {
     return this.list("listSuspiciousTrades", { ...options, query: params });
   }
 
-  /**
-   * @deprecated Use `getSuspiciousTrade()`; renamed in #16301. This method
-   * keeps calling the deprecated `GET /api/v1/insider-radar/{id}`, which stays
-   * live with no retirement date and still answers `object: "radar_flag"`, so
-   * an integration branching on that envelope keeps working.
-   */
-  getInsiderRadarFlag(
-    id: OperationPath["getInsiderRadarFlag"]["id"],
-    options: ConvenienceOptions = {},
-  ) {
-    return this.call("getInsiderRadarFlag", { ...options, path: { id } });
-  }
-
-  /**
-   * @deprecated Use `listSuspiciousTrades()`; renamed in #16301. This method
-   * keeps calling the deprecated `GET /api/v1/insider-radar`, which stays live
-   * with no retirement date and answers with `Deprecation` plus a `Link
-   * rel="successor-version"` header.
-   */
-  listInsiderRadar(params: InsiderRadarListParams = {}, options: ConvenienceOptions = {}) {
-    return this.list("listInsiderRadar", { ...options, query: params });
-  }
-
   getLargeTrade(
     id: OperationPath["getLargeTrade"]["id"],
     options: ConvenienceOptions = {},
   ) {
     return this.call("getLargeTrade", { ...options, path: { id } });
-  }
-
-  /** @deprecated Use {@link getLargeTrade} (#16304); calls the deprecated `/api/v1/whale-trades/{id}`. */
-  getWhaleTrade(
-    id: OperationPath["getWhaleTrade"]["id"],
-    options: ConvenienceOptions = {},
-  ) {
-    return this.call("getWhaleTrade", { ...options, path: { id } });
   }
 
   // --- Exports ---
@@ -3119,14 +3021,6 @@ export class OxinsiderApiClient {
    */
   getCoverage(options: ConvenienceOptions = {}) {
     return this.call("getCoverage", options);
-  }
-
-  /**
-   * @deprecated Use {@link getCoverage} (#16315); calls the deprecated
-   * `GET /api/v1/platforms`, which serves the same body.
-   */
-  getPlatforms(options: ConvenienceOptions = {}) {
-    return this.call("getPlatforms", options);
   }
 
   getAccountIdentity(options: ConvenienceOptions = {}) {

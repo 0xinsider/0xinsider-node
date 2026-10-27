@@ -10,39 +10,7 @@
     "typescript/await-thenable": "error",
     "typescript/no-array-delete": "error",
     "typescript/no-base-to-string": "error",
-    "typescript/no-deprecated": [
-      "error",
-      {
-        "allow": [
-          {
-            "from": "file",
-            "name": [
-              "InsiderRadarListParams",
-              "SportsEdgeSignalsParams",
-              "SportsEdgeObservationsParams",
-              "SportsEdgeObservationsResponse",
-              "WhaleTradeHistoryParams",
-              "WhaleTradeListParams"
-            ],
-            "path": "./src/client.ts"
-          },
-          {
-            "from": "file",
-            "name": [
-              "InsiderRadarFlagRaisedData",
-              "InsiderRadarFlagRaisedEvent",
-              "SmartMoneyFlowDetectedData",
-              "SmartMoneyFlowDetectedEvent",
-              "WhaleTradesInsertedData",
-              "WhaleTradesInsertedEvent",
-              "WhaleTraderSyncedData",
-              "WhaleTraderSyncedEvent"
-            ],
-            "path": "./src/webhooks.ts"
-          }
-        ]
-      }
-    ],
+    "typescript/no-deprecated": "error",
     "typescript/no-duplicate-type-constituents": "error",
     "typescript/no-floating-promises": "error",
     "typescript/no-for-in-array": "error",

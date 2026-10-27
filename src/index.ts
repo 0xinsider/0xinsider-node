@@ -86,7 +86,6 @@ export type {
   GamesListParams,
   Grade,
   IdempotentWriteOperationId,
-  InsiderRadarListParams,
   JsonRpcOperationId,
   LargePositionsListParams,
   ListOperationId,
@@ -120,12 +119,10 @@ export type {
   SuspiciousTradesListParams,
   TennisTour,
   LargeTradeHistoryParams,
-  WhaleTradeHistoryParams,
   LeaderboardListParams,
   LeaderboardStrategy,
   TrendingWalletsParams,
   LargeTradeListParams,
-  WhaleTradeListParams,
 } from "./client.js";
 
 // Error hierarchy
@@ -251,8 +248,6 @@ export {
   verifySignature,
 } from "./webhooks.js";
 export type {
-  InsiderRadarFlagRaisedData,
-  InsiderRadarFlagRaisedEvent,
   ExportJobCancelledData,
   ExportJobCancelledEvent,
   ExportJobExpiredData,
@@ -272,8 +267,6 @@ export type {
   LiveSportsUpdatedEvent,
   SharpMoneyFlowDetectedData,
   SharpMoneyFlowDetectedEvent,
-  SmartMoneyFlowDetectedData,
-  SmartMoneyFlowDetectedEvent,
   SuspiciousTradeFlaggedData,
   SuspiciousTradeFlaggedEvent,
   TraderSyncedData,
@@ -283,10 +276,6 @@ export type {
   WalletGradeChangedEvent,
   WebhookEvent,
   WebhookEventEnvelope,
-  WhaleTradesInsertedData,
-  WhaleTradesInsertedEvent,
-  WhaleTraderSyncedData,
-  WhaleTraderSyncedEvent,
 } from "./webhooks.js";
 
 // Which OpenAPI document this release was generated from (scripts/generate.mjs).
@@ -511,26 +500,3 @@ export type {
   WhaleDatasetTrade,
 } from "./schema.js";
 // END GENERATED SCHEMA EXPORTS
-
-/**
- * @deprecated Use `SuspiciousTrade`. The OpenAPI component schema `RadarFlag`
- * was renamed to `SuspiciousTrade` in #16301 and the generated types no longer
- * spell it, so the name is kept here as an alias: an existing
- * `import type { RadarFlag } from "@0xinsider/sdk"` keeps compiling and keeps
- * describing the same payload. The deprecated
- * `GET /api/v1/insider-radar/{id}` still returns it under
- * `object: "radar_flag"`.
- */
-export type RadarFlag = import("./schema.js").SuspiciousTrade;
-import type { LargeTrade, LargeTradeDetail, LargeTradeHistoryMeta } from "./schema.js";
-import type { BatchMarketFlowItem, MarketFlow } from "./schema.js";
-/** @deprecated Use {@link MarketFlow} (#16312). */
-export type MarketIntel = MarketFlow;
-/** @deprecated Use {@link BatchMarketFlowItem} (#16312). */
-export type BatchMarketIntelItem = BatchMarketFlowItem;
-/** @deprecated Use {@link LargeTrade} (#16304). */
-export type WhaleTrade = LargeTrade;
-/** @deprecated Use {@link LargeTradeDetail} (#16304). */
-export type WhaleTradeDetail = LargeTradeDetail;
-/** @deprecated Use {@link LargeTradeHistoryMeta} (#16304). */
-export type WhaleTradeHistoryMeta = LargeTradeHistoryMeta;

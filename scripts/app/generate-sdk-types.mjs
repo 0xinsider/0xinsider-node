@@ -76,10 +76,13 @@ function typeOf(schema, depth, path) {
   if (!schema || typeof schema !== "object") {
     throw new Error(`${path}: not a schema object`);
   }
-  if (schema.$ref) {
-    const type = refName(schema.$ref);
-    return schema.nullable === true ? `${type} | null` : type;
+  // The document is OpenAPI 3.1, whose JSON Schema ignores the 3.0 keyword:
+  // null is a type-array member or a `{"type": "null"}` branch (#28202).
+  // `tools/run check-openapi-nullability --fix` respells a stray one.
+  if ("nullable" in schema) {
+    throw new Error(`${path}: OpenAPI 3.0 nullable keyword in a 3.1 document`);
   }
+  if (schema.$ref) return refName(schema.$ref);
 
   // `const` is how the document spells a discriminant ("object": "trader").
   if (schema.const !== undefined) return quote(schema.const);
@@ -88,10 +91,8 @@ function typeOf(schema, depth, path) {
     if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
       throw new Error(`${path}: empty enum`);
     }
-    const members = [...new Set(schema.enum.map(quote))];
-    // Null can already be an enum member; preserve one spelling per union member.
-    if (schema.nullable === true && !members.includes("null")) members.push("null");
-    return members.join(" | ");
+    // A nullable enum lists null as a member, which quotes as `null`.
+    return [...new Set(schema.enum.map(quote))].join(" | ");
   }
 
   if (schema.oneOf || schema.anyOf) {
@@ -107,11 +108,10 @@ function typeOf(schema, depth, path) {
       .join(" & ");
   }
 
-  // OpenAPI 3.1 spells nullability as a type ARRAY (`["integer","null"]`);
-  // 3.0 spells it `nullable: true`. This document uses both, so both are read
-  // and normalized to one `| null` here.
+  // OpenAPI 3.1 spells nullability as a type ARRAY (`["integer","null"]`),
+  // normalized to one `| null` here.
   let type = schema.type;
-  let nullable = schema.nullable === true;
+  let nullable = false;
   if (Array.isArray(type)) {
     const members = type.filter((member) => member !== "null");
     if (members.length !== type.length) nullable = true;
