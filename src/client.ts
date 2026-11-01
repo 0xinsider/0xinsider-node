@@ -300,6 +300,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/games/{event_slug}/sharp-money",
+    operationId: "getGameSharpMoney",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/large-trades",
     operationId: "listLargeTrades",
     auth: "bearer",
@@ -1828,20 +1834,10 @@ export interface ListParams {
 
 /** `GET /api/v1/leaderboard` -> parameters -> strategy (`web/public/api/v1/openapi.json`). */
 export const LEADERBOARD_STRATEGIES = [
-  "accumulator",
-  "algo_trader",
-  "arbitrageur",
   "category_focused",
-  "directional",
   "diversified",
-  "event_driven",
   "high_activity",
-  "market_maker",
   "mixed",
-  "momentum",
-  "scalper",
-  "speculator",
-  "swing_trader",
   "two_sided",
   "unclassified",
 ] as const;
@@ -2778,6 +2774,21 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getGame", { ...options, path: { event_slug: eventSlug } });
+  }
+
+  /**
+   * Read where the graded money sits on one whole game: S, A and B grade USD per
+   * outcome summed across the game's markets, each outcome's share, the leader,
+   * wallet counts by grade and the backend's verdict. Every aggregate field is
+   * `null` unless `status` is `computed`. A game still computing answers 503
+   * `read_model_warming` with `Retry-After`, which the client's retries honour.
+   * Pro and Max.
+   */
+  getGameSharpMoney(
+    eventSlug: OperationPath["getGameSharpMoney"]["event_slug"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getGameSharpMoney", { ...options, path: { event_slug: eventSlug } });
   }
 
   searchMarkets(

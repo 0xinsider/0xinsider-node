@@ -34,7 +34,8 @@ export const API_ERROR_CODES = [
   "rate_limited",
   "rate_limit_unavailable",
   "internal_error",
-  // 403 (#13689): an OAuth token that lacks the scope this route needs.
+  // 403 (#13689): an OAuth token or integration key that lacks the scope this
+  // route needs.
   "insufficient_scope",
   // 408 (#16146): the handler did not answer inside the server's 30-second
   // timeout. Dispatched to ServerTimeoutError below.
@@ -602,9 +603,10 @@ export class RateLimitUnavailableError extends OxinsiderApiError {
  * current product day (#7209).
  *
  * This is NOT "the endpoint is broken" and NOT "the resource does not exist".
- * Qualified automatic picks publish as soon as they qualify and their final
- * checks pass, from 3am ET to no later than 30 minutes before their own
- * kickoff. Explicit schedules retain their stored time.
+ * Qualified automatic picks publish when their final checks pass, from 3am ET,
+ * no earlier than 4 hours and no later than 30 minutes before their own
+ * kickoff. Picks are chosen only inside that 4-hour window; a pick whose
+ * release is held waits in `scheduled_picks` until its `release_at`.
  * The product day rolls at midnight America/New_York. Until a pick publishes,
  * and on skipped days, this response is expected. Returned retry timing is
  * advisory; new signals can arrive earlier.
