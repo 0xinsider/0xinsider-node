@@ -14384,16 +14384,6 @@
                 "s": 0,
                 "a": 0,
                 "b": 0
-              },
-              "yes_grade_usd": {
-                "s": 0,
-                "a": 0,
-                "b": 0
-              },
-              "no_grade_usd": {
-                "s": 0,
-                "a": 0,
-                "b": 0
               }
             },
             "meta": {
@@ -14448,16 +14438,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "object",
-                    "data",
-                    "has_more",
-                    "total",
-                    "market",
-                    "scan",
-                    "totals",
-                    "meta"
-                  ],
+                  "required": ["object", "data", "has_more", "total", "market", "scan", "totals", "meta"],
                   "properties": {
                     "object": {
                       "type": "string",
@@ -17881,7 +17862,7 @@
       "get": {
         "operationId": "listGames",
         "summary": "List covered games",
-        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. A finished status (ended, cancelled, postponed) also lists the games the board has dropped, from their stored records (freshness.source stored, as GET /api/v1/games/{event_slug} serves them), for kickoffs from starts_after (default 7 days before starts_before) to starts_before (default and cap: now); such a page can hold fewer than limit games, or none, while has_more is true, so follow next_cursor until has_more is false. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport or status outside the published vocabulary returns an empty page rather than a 400. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. The event-level sharp-money split is opt-in through expand=sharp_money (Pro and Max); holder identities remain on their own gated routes.",
+        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport or status outside the published vocabulary returns an empty page rather than a 400. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. Sharp-money splits and holder identities remain on their own gated routes.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -17907,7 +17888,7 @@
             "name": "league",
             "in": "query",
             "required": false,
-            "description": "League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's college basketball games use sport=Basketball and league=cbb. Omit for every league inside the selected sports.",
+            "description": "League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague. EuroLeague games use sport=Basketball and league=euroleague. Omit for every league inside the selected sports.",
             "schema": {
               "type": "string"
             }
@@ -17916,7 +17897,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). Without status, or with any other state, the list is the live and upcoming board. A value outside the enum returns an empty page.",
+            "description": "Keep only games in this state. A value outside the enum returns an empty page.",
             "schema": {
               "type": "string",
               "enum": [
@@ -17936,7 +17917,7 @@
             "name": "starts_after",
             "in": "query",
             "required": false,
-            "description": "RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. With a finished status, the stored games' look-back starts here; omitted, it starts 7 days before starts_before, and nothing caps an earlier value.",
+            "description": "RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set.",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -17968,44 +17949,10 @@
             "name": "cursor",
             "in": "query",
             "required": false,
-            "description": "Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor.",
+            "description": "Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. A cursor this endpoint did not issue returns 400 with error.param=cursor.",
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "expand[]",
-            "in": "query",
-            "required": false,
-            "description": "Backward-compatible alias for expand. Repeatable: sharp_money.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "sharp_money"
-                ]
-              }
-            },
-            "style": "form",
-            "explode": true
-          },
-          {
-            "name": "expand",
-            "in": "query",
-            "required": false,
-            "description": "sharp_money adds each game's sharp_money, the GameSharpMoney object GET /api/v1/games/{event_slug}/sharp-money returns, read from the sport board's cached aggregate: one board read per sport on the page, never a per-game compute. A game the board did not evaluate carries status not_computed (read the per-game route for it); a sport whose aggregate could not be read carries status unavailable while the rest of the page is served. Adds 3 to the request cost. Repeatable.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "sharp_money"
-                ]
-              }
-            },
-            "style": "form",
-            "explode": true
           },
           {
             "name": "If-None-Match",
@@ -18096,7 +18043,7 @@
                     "as_of": {
                       "type": "string",
                       "format": "date-time",
-                      "description": "When this read assembled the catalog; with status ended, cancelled or postponed, when it read the stored records. Per-source vintage is on each game's freshness."
+                      "description": "When this read assembled the catalog. Per-source vintage is on each game's freshness."
                     },
                     "coverage": {
                       "$ref": "#/components/schemas/GamesCoverage"
@@ -18409,7 +18356,7 @@
       "get": {
         "operationId": "getGame",
         "summary": "Get one game",
-        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices and no title. A game the board dropped while it was still in play returns 404. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
+        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -18773,7 +18720,7 @@
       "get": {
         "operationId": "listGameMarkets",
         "summary": "List a game's markets",
-        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, and active or closed status. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. No price, no sharp-money split, no holder identity: pass a condition_id to GET /api/v1/market/{condition_id}/holders or /snapshot.",
+        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, and active or closed status. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a closed or settled line), unavailable when the read failed or was not ready within 120 ms (the first read of a game while its split is built; retry after a few seconds). No price and no holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -18836,6 +18783,40 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. Repeatable: sharp_money.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sharp_money"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "expand[]",
+            "in": "query",
+            "required": false,
+            "description": "Backward-compatible alias for expand. Repeatable: sharp_money.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sharp_money"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
           },
           {
             "name": "If-None-Match",
@@ -18965,6 +18946,53 @@
                           },
                           "title": {
                             "type": "string"
+                          },
+                          "sharp_money": {
+                            "type": "object",
+                            "required": ["status", "trader_count", "outcomes", "money_as_of"],
+                            "properties": {
+                              "money_as_of": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "outcomes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["index", "usd", "wallets"],
+                                  "properties": {
+                                    "index": {
+                                      "type": "integer"
+                                    },
+                                    "usd": {
+                                      "type": "number"
+                                    },
+                                    "wallets": {
+                                      "type": "object",
+                                      "required": ["s", "a", "b"],
+                                      "properties": {
+                                        "a": {
+                                          "type": "integer"
+                                        },
+                                        "b": {
+                                          "type": "integer"
+                                        },
+                                        "s": {
+                                          "type": "integer"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["computed", "not_computed", "unavailable"]
+                              },
+                              "trader_count": {
+                                "type": ["integer", "null"]
+                              }
+                            }
                           }
                         }
                       }
@@ -19275,11 +19303,11 @@
         }
       }
     },
-    "/api/v1/games/{event_slug}/sharp-money": {
+    "/api/v1/games/{event_slug}/holders": {
       "get": {
-        "operationId": "getGameSharpMoney",
-        "summary": "Get one game's sharp money",
-        "description": "Where the graded money sits on a whole game, in one read: the S, A and B grade wallets' USD on each outcome (home, away and, for a 1X2 game, draw) summed across the game's markets, each outcome's integer share, the leader and wallet counts by grade, with the backend's verdict on the split. It is the same aggregate the 0xinsider game page renders, so the two cannot disagree. A game the sports board did not evaluate is computed on demand; while that compute runs the route answers 503 read_model_warming with Retry-After, and the next read serves it. A settled game returns its recap with lifecycle settled. Every aggregate field is null unless status is computed: null means unknown, never zero. Pro and Max.",
+        "operationId": "getGameHolders",
+        "summary": "Get a game's holders",
+        "description": "The S, A and B graded holders of up to 25 markets of one game in one call. Each item is GET /api/v1/market/{condition_id}/holders for one market, unfiltered and cut to limit, with the same market, scan and totals beside it. Pass condition_ids from GET /api/v1/games/{event_slug}/markets; a market that is not one of the game's is that item's not_found. A batch route: results preserve request order, duplicate inputs return duplicate rows, and each requested condition_id costs one batch item unit, reserved before any item is read. Each market loads its roster as the single-market route does (a 60-second cache over a complete provider holder scan). The request waits at most 150 ms for all of them together: a market whose roster is not ready by then is an item error with code rate_limit_unavailable, reason read_model_warming and retry_at, and its scan keeps running, so a retry after that time reads the cached roster. Page a market past limit on its own holders route. Pro and Max.",
         "tags": [
           "Games"
         ],
@@ -19300,42 +19328,55 @@
             "name": "event_slug",
             "in": "path",
             "required": true,
-            "description": "The game's event slug, for example nba-bos-orl-2026-11-01. Matched case-insensitively; the response carries the canonical slug.",
+            "description": "The game's event slug from GET /api/v1/games, for example nba-bos-orl-2026-11-01. Matched case-insensitively.",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "If-None-Match",
-            "in": "header",
-            "required": false,
-            "description": "Conditional GET using a weak semantic ETag from an earlier response. A matching payload returns 304 with an empty body; request_id and cost are excluded from the validator.",
+            "name": "condition_ids",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "explode": false,
+            "description": "1 to 25 condition_id values of this game's markets, comma-separated. The key may also repeat (condition_ids=a&condition_ids=b). A raw provider condition_id or the mkt_-prefixed market id.",
             "schema": {
-              "type": "string"
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 25,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Holders per market. Out-of-range values are clamped to 1..100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
             }
           }
         ],
-        "x-codeSamples": [
-          {
-            "lang": "curl",
-            "label": "cURL",
-            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/games/nba-bos-orl-2026-11-01/sharp-money'"
-          }
-        ],
-        "x-latency-budget": {
-          "milliseconds": 250,
-          "measurement": "response-ready",
-          "requirement": "engineering-budget"
-        },
         "responses": {
           "200": {
-            "description": "Event-level sharp money for one game",
+            "description": "Ordered batch results, one per requested condition_id",
             "headers": {
               "X-Query-Ignored": {
                 "$ref": "#/components/headers/X-Query-Ignored"
               },
               "X-Effective-Query": {
                 "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "X-Request-Cost": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of batch item units charged for this request."
               },
               "RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimit-Limit"
@@ -19355,11 +19396,26 @@
               "X-RateLimit-Reset": {
                 "$ref": "#/components/headers/X-RateLimit-Reset"
               },
+              "X-Batch-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Batch item units allowed per minute."
+              },
+              "X-Batch-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Batch item units remaining in the current sliding window."
+              },
+              "X-Batch-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Unix timestamp when the batch item window resets."
+              },
               "X-Request-Id": {
                 "$ref": "#/components/headers/X-Request-Id"
-              },
-              "ETag": {
-                "$ref": "#/components/headers/ETag"
               },
               "X-Usage-Accounting": {
                 "$ref": "#/components/headers/X-Usage-Accounting"
@@ -19380,112 +19436,137 @@
                   "properties": {
                     "object": {
                       "type": "string",
-                      "const": "game_sharp_money"
+                      "const": "game_holders_batch"
                     },
                     "data": {
-                      "$ref": "#/components/schemas/GameSharpMoney"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BatchGameHoldersItem"
+                      }
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/ResponseMeta"
+                      "$ref": "#/components/schemas/BatchResponseMeta"
                     }
                   }
                 },
-                "example": {
-                  "object": "game_sharp_money",
-                  "data": {
-                    "object": "game_sharp_money",
-                    "event_slug": "nba-bos-orl-2026-11-01",
-                    "status": "computed",
-                    "lifecycle": "live",
-                    "verdict": {
-                      "kind": "leans",
-                      "label": "Celtics",
-                      "pct": 68
-                    },
-                    "allocation": "exact",
-                    "total_usd": 184250.42,
-                    "unallocated_usd": 0.0,
-                    "trader_count": 41,
-                    "holders_partial": false,
-                    "outcomes": [
-                      {
-                        "side": "home",
-                        "label": "Magic",
-                        "usd": 58960.13,
-                        "pct": 32,
-                        "is_leader": false,
-                        "wallets": {
-                          "s": 2,
-                          "a": 5,
-                          "b": 8
+                "examples": {
+                  "success": {
+                    "summary": "One ready market and one still warming",
+                    "value": {
+                      "object": "game_holders_batch",
+                      "data": [
+                        {
+                          "index": 0,
+                          "input": "0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                          "status": "ok",
+                          "data": {
+                            "data": [
+                              {
+                                "id": "pos_0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b:0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807:0",
+                                "trader_id": "trd_0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b",
+                                "address": "0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b",
+                                "name": "courtside",
+                                "side": "YES",
+                                "token_id": "71321045679252212594626385532706912750332728571942532289631379312455583992563",
+                                "grade": "S",
+                                "shares": 18250.0,
+                                "current_value_usd": 9672.5,
+                                "last_traded_at": "2026-11-01T22:41:07Z",
+                                "category_win_rate_status": "measured",
+                                "category_win_rate": 0.6097,
+                                "category_win_record": {
+                                  "wins": 214,
+                                  "decided": 351
+                                }
+                              }
+                            ],
+                            "has_more": true,
+                            "total": 14,
+                            "market": {
+                              "id": "mkt_0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                              "condition_id": "0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                              "title": "Celtics vs. Magic: O/U 219.5",
+                              "slug": "nba-bos-orl-2026-11-01-total-219pt5",
+                              "event_slug": "nba-bos-orl-2026-11-01",
+                              "category": "Sports",
+                              "outcome_yes": "Over",
+                              "outcome_no": "Under",
+                              "token_id_yes": "71321045679252212594626385532706912750332728571942532289631379312455583992563",
+                              "token_id_no": "52114319501245915516055106046884209969926127482827954674443846427813813222426",
+                              "end_date": "2026-11-02T03:00:00Z",
+                              "status": "open"
+                            },
+                            "scan": {
+                              "source": "cached",
+                              "complete": true,
+                              "fetched_at": "2026-11-01T23:02:11Z",
+                              "wallet_count": 412
+                            },
+                            "totals": {
+                              "graded_count": 14,
+                              "yes_count": 9,
+                              "no_count": 5,
+                              "yes_shares": 61840.0,
+                              "no_shares": 20115.0,
+                              "yes_usd": 32775.2,
+                              "no_usd": 9454.05,
+                              "yes_grades": {
+                                "s": 2,
+                                "a": 3,
+                                "b": 4
+                              },
+                              "no_grades": {
+                                "s": 0,
+                                "a": 2,
+                                "b": 3
+                              }
+                            },
+                            "computed_at": "2026-11-01T23:02:14Z",
+                            "cached": true
+                          }
+                        },
+                        {
+                          "index": 1,
+                          "input": "0x9a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b",
+                          "status": "error",
+                          "error": {
+                            "code": "rate_limit_unavailable",
+                            "message": "This read model is still warming. Retry after 3s.",
+                            "reason": "read_model_warming",
+                            "retry_at": "2026-11-01T23:02:20Z",
+                            "doc_url": "https://docs.0xinsider.com/api-reference/introduction"
+                          }
                         }
-                      },
-                      {
-                        "side": "away",
-                        "label": "Celtics",
-                        "usd": 125290.29,
-                        "pct": 68,
-                        "is_leader": true,
-                        "wallets": {
-                          "s": 4,
-                          "a": 9,
-                          "b": 15
+                      ],
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "total_items": 2,
+                        "successful_items": 1,
+                        "failed_items": 1,
+                        "request_cost": 2,
+                        "rate_limit": {
+                          "basis": "batch_items_per_minute",
+                          "limit": 2500,
+                          "remaining": 2489,
+                          "reset": 1790047440
                         }
                       }
-                    ],
-                    "computed_at": "2026-11-01T22:14:05Z",
-                    "money_as_of": "2026-11-01T22:12:31Z"
-                  },
-                  "meta": {
-                    "request_id": "req_01JBX7Q4S2W8M3N5P6R7T8V9W0",
-                    "cached": false,
-                    "cost": 3
+                    }
                   }
                 }
               }
             }
           },
-          "304": {
-            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
-            "headers": {
-              "X-Query-Ignored": {
-                "$ref": "#/components/headers/X-Query-Ignored"
-              },
-              "X-Effective-Query": {
-                "$ref": "#/components/headers/X-Effective-Query"
-              },
-              "ETag": {
-                "$ref": "#/components/headers/ETag"
-              },
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimit-Limit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimit-Remaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimit-Reset"
-              },
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/X-RateLimit-Limit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/X-RateLimit-Remaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/X-RateLimit-Reset"
-              },
-              "X-Request-Id": {
-                "$ref": "#/components/headers/X-Request-Id"
-              },
-              "X-Usage-Accounting": {
-                "$ref": "#/components/headers/X-Usage-Accounting"
-              },
-              "Server-Timing": {
-                "$ref": "#/components/headers/Server-Timing"
+          "400": {
+            "description": "Bad request. error.param names the parameter: condition_ids missing, empty or over 25 items, or a limit that is not an integer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
-            },
-            "x-empty-body": true
+            }
           },
           "401": {
             "description": "Missing or invalid API key",
@@ -19518,7 +19599,7 @@
             }
           },
           "404": {
-            "description": "No sports game has that event_slug: no market under the slug carries a sports category. GET /api/v1/games lists covered games.",
+            "description": "Not found. error.reason=\"market_out_of_scope\": the event is real but outside product scope -- 0xinsider serves sports and esports markets only. This is terminal: stop requesting this event. Without error.reason, no stored market carries this event_slug. Both carry error.code=\"not_found\".",
             "content": {
               "application/json": {
                 "schema": {
@@ -19605,7 +19686,7 @@
             }
           },
           "503": {
-            "description": "Temporarily unavailable. error.reason=read_model_warming means this game's aggregate is still being computed; read again after Retry-After (3 seconds). The authenticated rate limiter or the database being unavailable answers the same status with its own Retry-After.",
+            "description": "Temporarily unavailable. error.reason=database_unavailable means the market read could not reach the database; retry after Retry-After. The authenticated rate limiter being unavailable answers the same status with its own per-process cooldown.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19614,6 +19695,18 @@
               }
             }
           }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/games/nba-bos-orl-2026-11-01/holders?condition_ids=0x5e1f...,0x9a7b...&limit=10'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
         }
       }
     },
@@ -33768,7 +33861,9 @@
       "post": {
         "summary": "large_trade_inserted_v2",
         "description": "One durable Polymarket large trade with a stable event ID and event-time trade facts. Filtered subscriptions receive matching trades without a follow-up feed request; replay uses GET /api/v1/events/feed/since with its own cursor.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -33798,7 +33893,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -33832,7 +33932,9 @@
       "post": {
         "summary": "large_trades_inserted",
         "description": "Fires when new large trades are ingested. Successor spelling of whale_trades_inserted: the same event, delivered as `type: large_trades_inserted` to an endpoint that registered this name.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -33862,7 +33964,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -33896,7 +34003,9 @@
       "post": {
         "summary": "whale_trades_inserted",
         "description": "Fires when new large trades are ingested. Deprecated spelling of large_trades_inserted: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: whale_trades_inserted`; subscribe to large_trades_inserted instead.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -33926,7 +34035,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -33960,7 +34074,9 @@
       "post": {
         "summary": "live_sports_updated",
         "description": "Fires on a bounded per-game pulse when a live game's scores, status, period or live/ended state moves. At most one delivery per game per 20 seconds; a live or ended transition is never coalesced away; the game clock alone never fires one.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -33990,7 +34106,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34024,7 +34145,9 @@
       "post": {
         "summary": "trader_synced",
         "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Successor spelling of whale_trader_synced: the same event, delivered as `type: trader_synced` to an endpoint that registered this name.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34054,7 +34177,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34088,7 +34216,9 @@
       "post": {
         "summary": "whale_trader_synced",
         "description": "Fires after a tracked trader finishes syncing and has a fresh grade. Deprecated spelling of trader_synced: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: whale_trader_synced`; subscribe to trader_synced instead.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34118,7 +34248,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34152,7 +34287,9 @@
       "post": {
         "summary": "large_positions_updated",
         "description": "Fires when new large positions are detected or refreshed.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34182,7 +34319,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34216,7 +34358,9 @@
       "post": {
         "summary": "wallet_grade_changed",
         "description": "Fires when a wallet's grade transitions on a Pass-2 re-grade.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34246,7 +34390,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34280,7 +34429,9 @@
       "post": {
         "summary": "suspicious_trade_flagged",
         "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Successor spelling of insider_radar_flag_raised: the same event, delivered as `type: suspicious_trade_flagged` to an endpoint that registered this name.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34310,7 +34461,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34344,7 +34500,9 @@
       "post": {
         "summary": "insider_radar_flag_raised",
         "description": "Fires the first time a trade's suspicion score crosses the flag threshold. Deprecated spelling of suspicious_trade_flagged: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: insider_radar_flag_raised`; subscribe to suspicious_trade_flagged instead.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34374,7 +34532,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34408,7 +34571,9 @@
       "post": {
         "summary": "sharp_money_flow_detected",
         "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Successor spelling of smart_money_flow_detected: the same event, delivered as `type: sharp_money_flow_detected` to an endpoint that registered this name.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34438,7 +34603,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34472,7 +34642,9 @@
       "post": {
         "summary": "smart_money_flow_detected",
         "description": "Fires when ranked-trader net flow on a market crosses the sharp-money flow threshold (up or down). Deprecated spelling of sharp_money_flow_detected: until its sunset on 2027-02-01 (#29352), an endpoint registered under this name keeps receiving `type: smart_money_flow_detected`; subscribe to sharp_money_flow_detected instead.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34502,7 +34674,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34536,7 +34713,9 @@
       "post": {
         "summary": "export_job_ready",
         "description": "Fires when an owner's asynchronous trader export is ready to download.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34566,7 +34745,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34600,7 +34784,9 @@
       "post": {
         "summary": "export_job_failed",
         "description": "Fires when an owner's asynchronous trader export reaches a terminal failed state.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34630,7 +34816,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34664,7 +34855,9 @@
       "post": {
         "summary": "export_job_expired",
         "description": "Fires when an owner's completed trader export reaches its retention boundary.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34694,7 +34887,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -34728,7 +34926,9 @@
       "post": {
         "summary": "export_job_cancelled",
         "description": "Fires when an owner's asynchronous trader export stops because its owner cancelled it.",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -34758,7 +34958,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["id", "type", "created_at", "data"],
+                "required": [
+                  "id",
+                  "type",
+                  "created_at",
+                  "data"
+                ],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -35413,230 +35618,8 @@
           "url": {
             "type": "string",
             "description": "The game's page on 0xinsider."
-          },
-          "sharp_money": {
-            "$ref": "#/components/schemas/GameSharpMoney"
           }
         }
-      },
-      "GameSharpMoney": {
-        "type": "object",
-        "description": "Event-level sharp money for one game. Every aggregate field is null unless status is computed; null means unknown, never zero.",
-        "properties": {
-          "allocation": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": ["exact", "degraded"]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "computed_at": {
-            "type": ["string", "null"],
-            "format": "date-time"
-          },
-          "event_slug": {
-            "type": "string"
-          },
-          "holders_partial": {
-            "type": ["boolean", "null"]
-          },
-          "lifecycle": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": ["live", "settled", "indeterminate"]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "money_as_of": {
-            "type": ["string", "null"],
-            "format": "date-time"
-          },
-          "object": {
-            "type": "string"
-          },
-          "outcomes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["side", "label", "usd", "pct", "is_leader", "wallets"],
-              "properties": {
-                "is_leader": {
-                  "type": "boolean"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "pct": {
-                  "type": "integer"
-                },
-                "side": {
-                  "type": "string",
-                  "enum": ["home", "draw", "away"]
-                },
-                "usd": {
-                  "type": "number"
-                },
-                "wallets": {
-                  "type": "object",
-                  "required": ["s", "a", "b"],
-                  "properties": {
-                    "a": {
-                      "type": "integer"
-                    },
-                    "b": {
-                      "type": "integer"
-                    },
-                    "s": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "status": {
-            "type": "string",
-            "enum": ["computed", "not_computed", "unavailable"]
-          },
-          "total_usd": {
-            "type": ["number", "null"]
-          },
-          "trader_count": {
-            "type": ["integer", "null"]
-          },
-          "unallocated_usd": {
-            "type": ["number", "null"]
-          },
-          "verdict": {
-            "anyOf": [
-              {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "no_sharp_money"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "all_on"
-                      },
-                      "label": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "split"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label", "pct"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "leans"
-                      },
-                      "label": {
-                        "type": "string"
-                      },
-                      "pct": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "unavailable"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label", "divergence_pts"],
-                    "properties": {
-                      "divergence_pts": {
-                        "type": "integer"
-                      },
-                      "kind": {
-                        "type": "string",
-                        "const": "leans_over_price"
-                      },
-                      "label": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "no_clear_lean"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "withheld"
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "object",
-          "event_slug",
-          "status",
-          "lifecycle",
-          "verdict",
-          "allocation",
-          "total_usd",
-          "unallocated_usd",
-          "trader_count",
-          "holders_partial",
-          "outcomes",
-          "computed_at",
-          "money_as_of"
-        ]
       },
       "GameStatus": {
         "type": "object",
@@ -35656,7 +35639,7 @@
               "delayed",
               "unknown"
             ],
-            "description": "scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own."
+            "description": "scheduled: kickoff is ahead or the provider still calls it scheduled. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own."
           },
           "match_status": {
             "type": "string",
@@ -35677,11 +35660,11 @@
               "cancelled",
               "unknown"
             ],
-            "description": "The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet."
+            "description": "The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status."
           },
           "provider_status": {
             "type": "string",
-            "description": "The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game."
+            "description": "The provider's status string, verbatim. Omitted when the provider sent none."
           },
           "period": {
             "type": "string",
@@ -35976,8 +35959,8 @@
         "properties": {
           "source": {
             "type": "string",
-            "enum": ["live", "upcoming", "stored"],
-            "description": "What produced this game: live or upcoming, the board half that carried it, or stored, the stored record of a finished game that has left the board (GET /api/v1/games/{event_slug}, and GET /api/v1/games with a finished status)."
+            "enum": ["live", "upcoming"],
+            "description": "Which board half produced this game."
           },
           "source_status": {
             "type": "string",
@@ -35992,12 +35975,12 @@
           "source_freshness": {
             "type": "string",
             "enum": ["fresh", "stale", "unknown", "not_applicable"],
-            "description": "Freshness of the cached source body, never inferred from the response clock or the row count. not_applicable for a stored game, whose record is final."
+            "description": "Freshness of the cached source body, never inferred from the response clock or the row count."
           },
           "source_observed_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. For a stored game, the later of its last live-score write and its last leg settlement."
+            "description": "The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero."
           },
           "source_age_seconds": {
             "type": "integer",
@@ -36027,7 +36010,7 @@
           "scores": {
             "type": "string",
             "enum": ["available", "unavailable"],
-            "description": "available when a live-score frame supplied a score for this game. A game no live-score feed has reported yet, as most scheduled games are, reads unavailable."
+            "description": "available when a live-score frame supplied this game's scores."
           },
           "competitors": {
             "type": "string",
@@ -36058,7 +36041,7 @@
             "items": {
               "type": "string"
             },
-            "description": "League tags served, sorted. EuroLeague is euroleague and NCAA men's college basketball is cbb, both under the Basketball sport bucket."
+            "description": "League tags served, sorted. EuroLeague is euroleague under the Basketball sport bucket."
           },
           "sources_unavailable": {
             "type": "array",
@@ -36267,7 +36250,15 @@
           },
           "grade": {
             "type": ["string", "null"],
-            "enum": ["S", "A", "B", "C", "D", "F", null],
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F",
+              null
+            ],
             "description": "The wallet's grade when the event was published; `null` when it has none."
           },
           "size_usd": {
@@ -36284,7 +36275,10 @@
           },
           "side": {
             "type": "string",
-            "enum": ["BUY", "SELL"]
+            "enum": [
+              "BUY",
+              "SELL"
+            ]
           },
           "outcome_index": {
             "type": "integer",
@@ -36304,7 +36298,9 @@
       "LargeTradesInsertedData": {
         "type": "object",
         "description": "`large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object until its sunset on 2027-02-01 (#29352).",
-        "required": ["count"],
+        "required": [
+          "count"
+        ],
         "properties": {
           "count": {
             "type": "integer",
@@ -36315,7 +36311,10 @@
       "LiveSportsScoreEntry": {
         "type": "object",
         "description": "One side's score line inside a `live_sports_updated` pulse.",
-        "required": ["team", "score"],
+        "required": [
+          "team",
+          "score"
+        ],
         "properties": {
           "team": {
             "type": "string",
@@ -36372,7 +36371,13 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["scores", "status", "period", "live", "ended"]
+              "enum": [
+                "scores",
+                "status",
+                "period",
+                "live",
+                "ended"
+              ]
             },
             "description": "Material fields that moved since this game's previous delivered pulse."
           },
@@ -36426,7 +36431,10 @@
       "TraderSyncedData": {
         "type": "object",
         "description": "`trader_synced` data: a tracked wallet finished a sync pass and has a fresh grade. The deprecated spelling `whale_trader_synced` delivers the same object until its sunset on 2027-02-01 (#29352).",
-        "required": ["trader_id", "wallet"],
+        "required": [
+          "trader_id",
+          "wallet"
+        ],
         "properties": {
           "trader_id": {
             "type": "integer",
@@ -36441,7 +36449,9 @@
       "LargePositionsUpdatedData": {
         "type": "object",
         "description": "`large_positions_updated` data: one large-positions refresh finished.",
-        "required": ["count"],
+        "required": [
+          "count"
+        ],
         "properties": {
           "count": {
             "type": "integer",
@@ -36473,16 +36483,33 @@
           },
           "old_grade": {
             "type": "string",
-            "enum": ["S", "A", "B", "C", "D", "F"],
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
             "description": "The grade before the move. Never equal to `new_grade`."
           },
           "new_grade": {
             "type": "string",
-            "enum": ["S", "A", "B", "C", "D", "F"]
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
           },
           "direction": {
             "type": "string",
-            "enum": ["upgrade", "downgrade"],
+            "enum": [
+              "upgrade",
+              "downgrade"
+            ],
             "description": "`upgrade` when `new_grade` is better than `old_grade`, else `downgrade`."
           },
           "skill_index": {
@@ -36537,12 +36564,19 @@
           },
           "track": {
             "type": "string",
-            "enum": ["whale", "fresh_conviction", "sliced_position"],
+            "enum": [
+              "whale",
+              "fresh_conviction",
+              "sliced_position"
+            ],
             "description": "The scoring track that raised the flag."
           },
           "side": {
             "type": "string",
-            "enum": ["yes", "no"],
+            "enum": [
+              "yes",
+              "no"
+            ],
             "description": "Outcome side the flagged fill took."
           },
           "size": {
@@ -36582,12 +36616,22 @@
           },
           "dominant_side": {
             "type": "string",
-            "enum": ["yes", "no"],
+            "enum": [
+              "yes",
+              "no"
+            ],
             "description": "`yes` when `net_flow_usd` is 0 or more, else `no`."
           },
           "grade_floor": {
             "type": "string",
-            "enum": ["S", "A", "B", "C", "D", "F"],
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
             "description": "Minimum trader grade included in the flow."
           },
           "whale_trade_count": {
@@ -36649,7 +36693,13 @@
       "ExportJobFailedData": {
         "type": "object",
         "description": "`export_job_failed` data: the owner's asynchronous export reached a terminal failure.",
-        "required": ["job_id", "status", "format", "next_action", "failure_reason"],
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action",
+          "failure_reason"
+        ],
         "properties": {
           "job_id": {
             "type": "integer"
@@ -36675,7 +36725,12 @@
       "ExportJobExpiredData": {
         "type": "object",
         "description": "`export_job_expired` data: the owner's ready export passed retention.",
-        "required": ["job_id", "status", "format", "next_action"],
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action"
+        ],
         "properties": {
           "job_id": {
             "type": "integer"
@@ -36698,7 +36753,12 @@
       "ExportJobCancelledData": {
         "type": "object",
         "description": "`export_job_cancelled` data: the owner's export stopped because its owner cancelled it.",
-        "required": ["job_id", "status", "format", "next_action"],
+        "required": [
+          "job_id",
+          "status",
+          "format",
+          "next_action"
+        ],
         "properties": {
           "job_id": {
             "type": "integer"
@@ -37417,43 +37477,50 @@
           }
         }
       },
-      "PnlCorrection": {
-        "type": "object",
-        "required": ["basis", "amount", "as_of", "markets_measured"],
-        "description": "A derived 0xinsider correction to Polymarket's P&L, never a Polymarket value. Polymarket misbooks neg-risk conversions, in both directions: it puts cost on placeholder YES outcomes minted by a conversion and never books it as a loss (negative amount), and its position records leave out shares the wallet really got, such as YES minted by a conversion, so it books no P&L on them (positive amount). Per neg-risk market the wallet converted in, 0xinsider measures Polymarket's own activity cash against the sum of its position P&L, and sums the difference over every measured market whose shares did not move by direct transfer: transferred shares have no activity row, so such a market keeps Polymarket's figure and is counted in markets_excluded. It is published once every neg-risk market with a sports or esports event that the wallet converted in is measured and checked for transfers, and stays as last published until then; a market with no sports or esports event is not measured, and counts only when it was measured before (on the trader body, pnl.correction_pending says so); a sum under $1 either way publishes nothing. The body's own P&L fields keep Polymarket's figures; this object adds the amount and the corrected figures. Money is truncated toward zero to cents.",
-        "properties": {
-          "basis": {
-            "type": "string",
-            "enum": ["neg_risk_conversion_v1"],
-            "description": "The correction method."
-          },
-          "amount": {
-            "type": "number",
-            "description": "The correction in USD. Negative when Polymarket overstates the wallet."
-          },
-          "realized": {
-            "type": "number",
-            "description": "Polymarket's net realized P&L plus amount. Since 2026-10-22 the grade reads this figure's sports and esports share. Omitted when Polymarket's figure is."
-          },
-          "net_total": {
-            "type": "number",
-            "description": "Polymarket's net total P&L over every Polymarket market of the wallet, plus amount. Omitted when Polymarket's figure is, and on leaderboard entries."
-          },
-          "as_of": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The newest measurement among the measured markets."
-          },
-          "markets_measured": {
-            "type": "integer",
-            "description": "Neg-risk markets whose measurement amount sums."
-          },
-          "markets_excluded": {
-            "type": "integer",
-            "description": "Measured neg-risk markets left out because shares moved in or out of the wallet by direct transfer; they keep Polymarket's figure. Omitted when none."
+        "PnlCorrection": {
+          "type": "object",
+          "required": [
+            "basis",
+            "amount",
+            "as_of",
+            "markets_measured"
+          ],
+          "description": "A derived 0xinsider correction to Polymarket's P&L, never a Polymarket value. Polymarket misbooks neg-risk conversions, in both directions: it puts cost on placeholder YES outcomes minted by a conversion and never books it as a loss (negative amount), and its position records leave out shares the wallet really got, such as YES minted by a conversion, so it books no P&L on them (positive amount). Per neg-risk market the wallet converted in, 0xinsider measures Polymarket's own activity cash against the sum of its position P&L, and sums the difference over every measured market whose shares did not move by direct transfer: transferred shares have no activity row, so such a market keeps Polymarket's figure and is counted in markets_excluded. It is published once every neg-risk market with a sports or esports event that the wallet converted in is measured and checked for transfers, and stays as last published until then; a market with no sports or esports event is not measured, and counts only when it was measured before (on the trader body, pnl.correction_pending says so); a sum under $1 either way publishes nothing. The body's own P&L fields keep Polymarket's figures; this object adds the amount and the corrected figures. Money is truncated toward zero to cents.",
+          "properties": {
+            "basis": {
+              "type": "string",
+              "enum": [
+                "neg_risk_conversion_v1"
+              ],
+              "description": "The correction method."
+            },
+            "amount": {
+              "type": "number",
+              "description": "The correction in USD. Negative when Polymarket overstates the wallet."
+            },
+            "realized": {
+              "type": "number",
+              "description": "Polymarket's net realized P&L plus amount. Since 2026-10-22 the grade reads this figure's sports and esports share. Omitted when Polymarket's figure is."
+            },
+            "net_total": {
+              "type": "number",
+              "description": "Polymarket's net total P&L over every Polymarket market of the wallet, plus amount. Omitted when Polymarket's figure is, and on leaderboard entries."
+            },
+            "as_of": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The newest measurement among the measured markets."
+            },
+            "markets_measured": {
+              "type": "integer",
+              "description": "Neg-risk markets whose measurement amount sums."
+            },
+            "markets_excluded": {
+              "type": "integer",
+              "description": "Measured neg-risk markets left out because shares moved in or out of the wallet by direct transfer; they keep Polymarket's figure. Omitted when none."
+            }
           }
-        }
-      },
+        },
       "TraderPnlInScope": {
         "type": "object",
         "required": [
@@ -37622,7 +37689,7 @@
               },
               "unrealized": {
                 "type": "number",
-                "description": "Unrealized P&L in USD of the wallet's open positions on its synced sports and esports markets, from the open-position aggregate (dated by the positions data_quality group). Each open position's market is judged when the aggregate is read (#32119), so a stored position on a market of another category (one that moved out of sports and esports, or one stored before its category was known) is left out. Before 2026-10-27 (#29366) it covered every Polymarket market."
+                "description": "Unrealized P&L in USD of the wallet's open positions on its synced markets, from the open-position aggregate (dated by the positions data_quality group). Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so this covers those positions; before, it covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted."
               },
               "exact": {
                 "$ref": "#/components/schemas/TraderPnlExact",
@@ -37782,7 +37849,7 @@
           },
           "position_summary": {
             "type": "object",
-            "description": "Aggregate position and P&L coverage for the trader, over its synced markets. markets_open, unrealized_mtm and cost_basis_locked cover the open positions on sports and esports markets, each market judged when the summary is read (#32119). markets_synced, markets_resolved and the resolved win figures count every stored market: since 2026-10-27 (#29366) those are mostly sports and esports markets, but a market that moved out of sports and esports, or one stored before its category was known, stays in them, and sync_coverage counts every category on both sides. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero.",
+            "description": "Aggregate position and P&L coverage for the trader, over its synced markets. Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so markets_synced, markets_resolved, markets_open, unrealized_mtm, cost_basis_locked and the resolved win figures cover those markets; before, they covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero.",
             "required": [
               "markets_total",
               "markets_synced",
@@ -37828,7 +37895,7 @@
               },
               "markets_open": {
                 "type": "integer",
-                "description": "Synced sports and esports markets still open with residual value (open positions with current value > 0); a stored market of another category is left out (#32119)."
+                "description": "Synced markets still open with residual value (open positions with current value > 0)."
               },
               "sync_coverage": {
                 "type": "number",
@@ -37846,11 +37913,11 @@
               },
               "unrealized_mtm": {
                 "type": "number",
-                "description": "Mark-to-market unrealized P&L (USD) on open positions in synced sports and esports markets (#32119)."
+                "description": "Mark-to-market unrealized P&L (USD) on open positions in synced markets."
               },
               "cost_basis_locked": {
                 "type": "number",
-                "description": "Cost basis (USD) currently tied up in open positions in synced sports and esports markets (#32119)."
+                "description": "Cost basis (USD) currently tied up in open positions in synced markets."
               },
               "resolved_win_rate": {
                 "type": ["number", "null"],
@@ -40681,25 +40748,6 @@
           }
         }
       },
-      "MarketHoldersSideGradeUsd": {
-        "type": "object",
-        "required": ["s", "a", "b"],
-        "description": "Polymarket currentValue in USD per grade on one side, over the same wallets as that side's usd total. Each value is rounded to the cent after summing, so s + a + b can differ from the side total by up to 2 cents.",
-        "properties": {
-          "s": {
-            "type": "number",
-            "description": "USD held by S-grade wallets netting this side."
-          },
-          "a": {
-            "type": "number",
-            "description": "USD held by A-grade wallets netting this side."
-          },
-          "b": {
-            "type": "number",
-            "description": "USD held by B-grade wallets netting this side."
-          }
-        }
-      },
       "MarketHoldersTotals": {
         "type": "object",
         "required": [
@@ -40711,9 +40759,7 @@
           "yes_usd",
           "no_usd",
           "yes_grades",
-          "no_grades",
-          "yes_grade_usd",
-          "no_grade_usd"
+          "no_grades"
         ],
         "description": "Roster totals BEFORE any `outcome` or `min_grade` filter, so a page always knows the whole market it was cut from.",
         "properties": {
@@ -40746,14 +40792,6 @@
           },
           "no_grades": {
             "$ref": "#/components/schemas/MarketHoldersSideGrades"
-          },
-          "yes_grade_usd": {
-            "$ref": "#/components/schemas/MarketHoldersSideGradeUsd",
-            "description": "yes_usd split by grade: where the S, A and B money on YES sits."
-          },
-          "no_grade_usd": {
-            "$ref": "#/components/schemas/MarketHoldersSideGradeUsd",
-            "description": "no_usd split by grade: where the S, A and B money on NO sits."
           }
         }
       },
@@ -41672,6 +41710,85 @@
           }
         }
       },
+      "BatchGameHoldersItem": {
+        "type": "object",
+        "required": [
+          "index",
+          "input",
+          "status"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Zero-based request index. Duplicate inputs keep separate result rows."
+          },
+          "input": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/GameHoldersItem"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiErrorBody"
+          }
+        }
+      },
+      "GameHoldersItem": {
+        "type": "object",
+        "description": "One market of a game holders batch: GET /api/v1/market/{condition_id}/holders unfiltered and cut to the batch limit.",
+        "required": [
+          "data",
+          "has_more",
+          "total",
+          "market",
+          "scan",
+          "totals",
+          "computed_at",
+          "cached"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "The roster's top holders by current value, at most limit.",
+            "items": {
+              "$ref": "#/components/schemas/MarketHolder"
+            }
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More graded holders than limit: page them on GET /api/v1/market/{condition_id}/holders."
+          },
+          "total": {
+            "type": "integer",
+            "description": "Graded holders in the roster, across every page."
+          },
+          "market": {
+            "$ref": "#/components/schemas/MarketHoldersMarket"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/MarketHoldersScan"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/MarketHoldersTotals"
+          },
+          "computed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this roster was computed. A cached roster is at most 60 seconds old."
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "true when the roster came from the 60-second roster cache."
+          }
+        }
+      },
       "ApiError": {
         "type": "object",
         "required": ["object", "error", "meta"],
@@ -42154,7 +42271,10 @@
           },
           "market_scope": {
             "type": "string",
-            "enum": ["all_markets", "sports_and_esports"],
+            "enum": [
+              "all_markets",
+              "sports_and_esports"
+            ],
             "description": "Which markets the report counts. sports_and_esports for a period that ends on or after 2026-10-21: totals, categories, top trades and the grade cohort cover sports and esports markets only. all_markets for an earlier period, whose stored report keeps every Polymarket market it published."
           }
         }
@@ -47008,11 +47128,11 @@
               "cold_unavailable",
               "deadline_unavailable"
             ],
-            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently women's college basketball and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available."
+            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available."
           },
           "board_upcoming_unavailable_scopes": {
             "type": "array",
-            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
+            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
             "items": {
               "type": "string",
               "enum": [
@@ -47022,7 +47142,6 @@
                 "nba",
                 "wnba",
                 "euroleague-basketball",
-                "ncaa-basketball",
                 "nhl",
                 "mls",
                 "valorant",
@@ -47154,7 +47273,10 @@
       "EdgeHunterObservationDegradationReason": {
         "type": "object",
         "description": "One observed cause of operational degradation in the canonical all-sports observation generation. Reasons are independent of the one-terminal-per-input funnel and remain unchanged through category, cohort and selector projection. Intentional capacity limits and an unconfigured upcoming source are not degradation reasons.",
-        "required": ["reason", "sport"],
+        "required": [
+          "reason",
+          "sport"
+        ],
         "properties": {
           "reason": {
             "type": "string",

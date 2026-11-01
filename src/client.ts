@@ -312,6 +312,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/games/{event_slug}/holders",
+    operationId: "getGameHolders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/large-trades",
     operationId: "listLargeTrades",
     auth: "bearer",
@@ -2791,6 +2797,7 @@ export class OxinsiderApiClient {
    * events: spreads, totals, team totals, period lines and player props, each
    * with its `condition_id`, `sports_market_type`, typed `line` and outcome
    * token ids. `families` counts every market type the event holds.
+   * `expand: ["sharp_money"]` adds each row's per-line sharp-money split.
    */
   listGameMarkets(
     eventSlug: OperationPath["listGameMarkets"]["event_slug"],
@@ -2817,6 +2824,24 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getGameSharpMoney", { ...options, path: { event_slug: eventSlug } });
+  }
+
+  /**
+   * The graded holders of up to 25 of one game's markets in one request
+   * (`GET /api/v1/games/{event_slug}/holders`): each item is
+   * {@link getMarketHolders} for one market, unfiltered and cut to `limit`.
+   * Batch envelope, so `meta` is the batch's own.
+   */
+  getGameHolders(
+    eventSlug: OperationPath["getGameHolders"]["event_slug"],
+    params: OperationQuery["getGameHolders"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getGameHolders", {
+      ...options,
+      path: { event_slug: eventSlug },
+      query: params,
+    });
   }
 
   searchMarkets(
