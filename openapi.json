@@ -5051,6 +5051,22 @@
             }
           },
           {
+            "name": "condition_id",
+            "in": "query",
+            "description": "Only this market's large trades: an exact raw provider condition_id. The page is read from the market's own index, newest first, and pages with cursor; it cannot be combined with since or with event_slug (400). An unknown market returns an empty list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), pages with cursor, and cannot be combined with since or with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "If-None-Match",
             "in": "header",
             "required": false,
@@ -5536,6 +5552,22 @@
             "name": "since",
             "in": "query",
             "description": "Return only the trades recorded after this one. Pass the id of a large trade this API returned (wt_<n>, or the bare integer). The answer keeps the list shape and newest-first order, and next_cursor pages within it. After means commit order: a trade recorded late with an earlier traded_at is still returned, and a trade whose write has not committed yet is returned on a later poll, never skipped. To poll, send the id of the first trade on the first page of your last answer that had trades, with If-None-Match set to the ETag you last received; when nothing new was recorded the answer is 304 with an empty body. A late trade can come back once, so deduplicate on id. Only with sort=recent. An id that names no trade, or one more than 10000 trades behind the newest, answers 400 with error.param since; request the list without since and continue from its first trade.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "query",
+            "description": "Only this market's large trades: an exact raw provider condition_id. The page is read from the market's own index, newest first, and pages with cursor; it cannot be combined with since or with event_slug (400). An unknown market returns an empty list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), pages with cursor, and cannot be combined with since or with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
             "schema": {
               "type": "string"
             }
@@ -6051,6 +6083,14 @@
               "type": "string",
               "enum": ["recent", "market_volume_share"],
               "default": "recent"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), and cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -6642,6 +6682,14 @@
               "type": "string",
               "enum": ["recent", "market_volume_share"],
               "default": "recent"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), and cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -10983,7 +11031,7 @@
       "get": {
         "operationId": "searchMarkets",
         "summary": "Search markets",
-        "description": "Search prediction markets by keyword. Returns one representative market per matching event, preferring a winner market over a spread, total or prop, with status, category, platform metadata and the event_slug. Cursor pagination advances over grouped market results rather than raw sub-market rows. To list every market of a game, pass the event_slug to GET /api/v1/games/{event_slug}/markets. Returns sports and esports markets only (#27411).",
+        "description": "Search prediction markets by keyword. Returns one representative market per matching event, preferring a winner market over a spread, total or prop, with status, category, platform metadata and the event_slug. Cursor pagination advances over grouped market results rather than raw sub-market rows. To list every market of a game, pass the event_slug to GET /api/v1/games/{event_slug}/markets. Returns sports and esports markets only (#27411). Searches every unresolved game market (a game's winner market, or an outright) whether or not it has traded, and every market that has had a single trade of $10,000 or more, resolved or not; a resolved market that never had such a trade is not returned (#32215).",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -12348,6 +12396,22 @@
             }
           },
           {
+            "name": "condition_id",
+            "in": "query",
+            "description": "Only this market's flow: an exact raw provider condition_id. Cannot be combined with event_slug (400). An unknown market returns an empty list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the markets of one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them, ranked as the unfiltered list ranks. Matched case-insensitively; cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "If-None-Match",
             "in": "header",
             "required": false,
@@ -12784,6 +12848,22 @@
             "schema": {
               "type": "string",
               "enum": ["YES", "NO"]
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "query",
+            "description": "Only this market's flow: an exact raw provider condition_id. Cannot be combined with event_slug (400). An unknown market returns an empty list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "description": "Only the markets of one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them, ranked as the unfiltered list ranks. Matched case-insensitively; cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -17147,6 +17227,366 @@
         }
       }
     },
+    "/api/v1/market/{condition_id}/wallets-in-out": {
+      "get": {
+        "operationId": "getMarketWalletsInOut",
+        "summary": "Get a market's net buyers and sellers",
+        "description": "One market's net buyers and net sellers over the last 24 hours or 7 days, live: the body the 0xinsider market page's wallets in/out panel reads for a Pro viewer, from the same aggregate and cache (reads are cached for up to 60 seconds). A wallet's net is its buys minus its sells in the window across both outcomes, in USD of matched notional, fees excluded. summary counts every wallet that traded the market in the window; net_buyers and net_sellers list the top 25 on each side. A wallet that bought and sold the same amount nets zero and is on neither list.",
+        "tags": ["Markets"],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": ["strict"]
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "path",
+            "required": true,
+            "description": "Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "description": "The window the nets are summed over, ending at the read's clock: 24h (the default) or 7d.",
+            "schema": {
+              "type": "string",
+              "enum": ["24h", "7d"],
+              "default": "24h"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Conditional GET validator from a previous ETag. Matching values return 304 Not Modified with an empty body.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The market's net buyers and sellers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["object", "data", "meta"],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "market_wallets_in_out"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MarketWalletsInOut"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Successful response",
+                    "value": {
+                      "object": "market_wallets_in_out",
+                      "data": {
+                        "condition_id": "0xcond",
+                        "window": "24h",
+                        "window_start": "2026-10-31T23:00:00Z",
+                        "window_end": "2026-11-01T23:00:00Z",
+                        "summary": {
+                          "wallets_in": 412,
+                          "wallets_out": 288,
+                          "net_usd": 18342.57
+                        },
+                        "net_buyers": [
+                          {
+                            "address": "0x1111111111111111111111111111111111111111",
+                            "display_name": "sharpwallet",
+                            "grade": "A",
+                            "net_usd": 52310.4,
+                            "trades": 14,
+                            "last_traded_at": "2026-11-01T22:58:41Z"
+                          }
+                        ],
+                        "net_sellers": [
+                          {
+                            "address": "0x2222222222222222222222222222222222222222",
+                            "display_name": "0x2222...2222",
+                            "grade": null,
+                            "net_usd": -30115.02,
+                            "trades": 6,
+                            "last_traded_at": "2026-11-01T22:58:41Z"
+                          }
+                        ]
+                      },
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "cost": 1
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Invalid request parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found. error.reason=\"market_out_of_scope\" (#27303): the market is real but outside product scope -- 0xinsider serves sports and esports markets only. This is terminal: stop requesting this market. Without error.reason, no stored market with a market page has this condition_id (error.param=\"condition_id\"). Both carry error.code=\"not_found\".",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user on Pro, 200 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 5000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 5000 = 200 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/market/{condition_id}/wallets-in-out?window=24h'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
     "/api/v1/suspicious-trades": {
       "get": {
         "operationId": "listSuspiciousTrades",
@@ -17881,7 +18321,7 @@
       "get": {
         "operationId": "listGames",
         "summary": "List covered games",
-        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. A finished status (ended, cancelled, postponed) also lists the games the board has dropped, from their stored records (freshness.source stored, as GET /api/v1/games/{event_slug} serves them), for kickoffs from starts_after (default 7 days before starts_before) to starts_before (default and cap: now); such a page can hold fewer than limit games, or none, while has_more is true, so follow next_cursor until has_more is false. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport or status outside the published vocabulary returns an empty page rather than a 400. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. The event-level sharp-money split is opt-in through expand=sharp_money (Pro and Max); holder identities remain on their own gated routes.",
+        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. A finished status (ended, cancelled, postponed) also lists the games the board has dropped, from their stored records (freshness.source stored, as GET /api/v1/games/{event_slug} serves them), for kickoffs from starts_after (default 7 days before starts_before) to starts_before (default and cap: now); such a page can hold fewer than limit games, or none, while has_more is true, so follow next_cursor until has_more is false. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. For what is on now, pass window=now: without it the list starts at the oldest game still open, which can be weeks old. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport or status outside the published vocabulary returns an empty page rather than a 400. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. Each game also carries its traded volume (volume: value, unit, basis, source, observed_at) and each market its provider liquidity, so games can be ranked by activity without a Gamma call; a figure the board does not hold is omitted, never 0. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. The event-level sharp-money split is opt-in through expand=sharp_money (Pro and Max); holder identities remain on their own gated routes.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -17907,7 +18347,7 @@
             "name": "league",
             "in": "query",
             "required": false,
-            "description": "League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's college basketball games use sport=Basketball and league=cbb. Omit for every league inside the selected sports.",
+            "description": "League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports.",
             "schema": {
               "type": "string"
             }
@@ -17950,6 +18390,17 @@
             "schema": {
               "type": "string",
               "format": "date-time"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "description": "Which games to read. all, the default, lists the whole covered catalog, which can start with games the provider still holds open weeks after kickoff. now lists what is on now: every game the provider reports in play (live or paused), plus any other game whose kickoff was at most 3 hours ago or is still to come; ended, postponed and cancelled games are left out, and a game with no published kickoff stays and sorts last. Combines with every other filter. A value other than all or now returns 400 invalid_query with error.param=window.",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "now"],
+              "default": "all"
             }
           },
           {
@@ -18156,9 +18607,22 @@
                           "outcome_token_ids": [
                             "21742633143463906290569050155826241533067272736897614950488156847949938836455",
                             "48331043336612883890938759509493159234755048973500640148014422747788308965732"
-                          ]
+                          ],
+                          "liquidity": {
+                            "value": 688004.1279,
+                            "source": "gamma",
+                            "observed_at": "2026-09-23T01:12:04Z"
+                          }
                         }
                       ],
+                      "volume": {
+                        "value": 2491187.344521,
+                        "unit": "taker_shares",
+                        "basis": "game_lines",
+                        "source": "polymarket_data",
+                        "observed_at": "2026-09-23T01:11:41Z",
+                        "fresh_for_seconds": 300
+                      },
                       "freshness": {
                         "source": "live",
                         "source_status": "ok",
@@ -18409,7 +18873,7 @@
       "get": {
         "operationId": "getGame",
         "summary": "Get one game",
-        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices and no title. A game the board dropped while it was still in play returns 404. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
+        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices, title, volume or liquidity. A game the board dropped while it was still in play returns 404. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -18566,9 +19030,22 @@
                         "outcome_token_ids": [
                           "21742633143463906290569050155826241533067272736897614950488156847949938836455",
                           "48331043336612883890938759509493159234755048973500640148014422747788308965732"
-                        ]
+                        ],
+                        "liquidity": {
+                          "value": 688004.1279,
+                          "source": "gamma",
+                          "observed_at": "2026-09-23T01:12:04Z"
+                        }
                       }
                     ],
+                    "volume": {
+                      "value": 2491187.344521,
+                      "unit": "taker_shares",
+                      "basis": "game_lines",
+                      "source": "polymarket_data",
+                      "observed_at": "2026-09-23T01:11:41Z",
+                      "fresh_for_seconds": 300
+                    },
                     "freshness": {
                       "source": "live",
                       "source_status": "ok",
@@ -18773,7 +19250,7 @@
       "get": {
         "operationId": "listGameMarkets",
         "summary": "List a game's markets",
-        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, and active or closed status. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. No price, no sharp-money split, no holder identity: pass a condition_id to GET /api/v1/market/{condition_id}/holders or /snapshot.",
+        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, and active or closed status. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a closed or settled line), unavailable when the read failed or was not ready within 120 ms (the first read of a game while its split is built; retry after a few seconds). No price and no holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -18836,6 +19313,40 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "description": "sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. Repeatable: sharp_money.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sharp_money"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "expand[]",
+            "in": "query",
+            "required": false,
+            "description": "Backward-compatible alias for expand. Repeatable: sharp_money.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sharp_money"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
           },
           {
             "name": "If-None-Match",
@@ -18965,6 +19476,53 @@
                           },
                           "title": {
                             "type": "string"
+                          },
+                          "sharp_money": {
+                            "type": "object",
+                            "required": ["status", "trader_count", "outcomes", "money_as_of"],
+                            "properties": {
+                              "money_as_of": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "outcomes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["index", "usd", "wallets"],
+                                  "properties": {
+                                    "index": {
+                                      "type": "integer"
+                                    },
+                                    "usd": {
+                                      "type": "number"
+                                    },
+                                    "wallets": {
+                                      "type": "object",
+                                      "required": ["s", "a", "b"],
+                                      "properties": {
+                                        "a": {
+                                          "type": "integer"
+                                        },
+                                        "b": {
+                                          "type": "integer"
+                                        },
+                                        "s": {
+                                          "type": "integer"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["computed", "not_computed", "unavailable"]
+                              },
+                              "trader_count": {
+                                "type": ["integer", "null"]
+                              }
+                            }
                           }
                         }
                       }
@@ -19614,6 +20172,781 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/games/{event_slug}/trades": {
+      "get": {
+        "operationId": "listGameTrades",
+        "summary": "List a game's trades",
+        "description": "A game's newest fills across every market in it, newest first and live: the moneyline, spreads, totals and every prop, player props included. The same rows the 0xinsider game page's activity list shows a Pro viewer, read from the same live stream. Every fill, not only large ones: GET /api/v1/large-trades?event_slug= lists the game's large trades with their review scores, and GET /api/v1/markets/sharp-money-flows?event_slug= its sharp-money flow. The list is the newest limit fills and does not page (has_more is always false); to follow a game, poll it with If-None-Match and deduplicate on id. source_stale true means the rows are the game's last complete read, served while a refresh runs; read again in a few seconds for the live rows. While a game's first read is still running the answer is 503 with error.reason read_model_warming and a Retry-After of 2 seconds.",
+        "tags": ["Games"],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": ["strict"]
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "path",
+            "required": true,
+            "description": "The game's event slug, for example nfl-buf-nyj-2026-09-22. Matched case-insensitively.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Newest fills to return. Out-of-range values are clamped to 1..200.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 100
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Conditional GET validator from a previous ETag. A matching payload returns 304 Not Modified with an empty body; meta is excluded from the validator.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/games/nfl-buf-nyj-2026-09-22/trades?limit=50'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        },
+        "responses": {
+          "200": {
+            "description": "The game's newest fills",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["object", "data", "has_more", "event_slug", "source_stale", "meta"],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "description": "Newest first.",
+                      "items": {
+                        "$ref": "#/components/schemas/GameTrade"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Always false: the list is the game's newest limit fills, not a walk. Poll again for newer fills."
+                    },
+                    "event_slug": {
+                      "type": "string",
+                      "description": "The game the rows were read for, lowercased."
+                    },
+                    "source_stale": {
+                      "type": "boolean",
+                      "description": "true when the rows are the game's last complete read, served while its refresh runs. Read again in a few seconds for the live rows."
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "object": "list",
+                  "data": [
+                    {
+                      "id": "0x8f2b6c1d4e5a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c:21742633143463906290569050155826241533067272736897614950488156847949938836455:0x3c5d8e1f2a4b6c7d9e0f1a2b3c4d5e6f7a8b9c0d:1500",
+                      "traded_at": "2026-09-23T01:11:58Z",
+                      "side": "BUY",
+                      "outcome": "Buffalo Bills",
+                      "outcome_index": 0,
+                      "price": 0.71,
+                      "shares": 1500,
+                      "size_usd": 1065,
+                      "point": null,
+                      "trader": {
+                        "address": "0x3c5d8e1f2a4b6c7d9e0f1a2b3c4d5e6f7a8b9c0d",
+                        "display_name": "northshore",
+                        "grade": "A"
+                      },
+                      "market": {
+                        "id": "mkt_0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
+                        "condition_id": "0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
+                        "title": "Bills vs. Jets",
+                        "slug": "nfl-buf-nyj-2026-09-22",
+                        "line_label": "Moneyline"
+                      }
+                    }
+                  ],
+                  "has_more": false,
+                  "event_slug": "nfl-buf-nyj-2026-09-22",
+                  "source_stale": false,
+                  "meta": {
+                    "request_id": "req_2f8c1a4e9b3d47f0",
+                    "cached": false,
+                    "cost": 1
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No game has that event_slug (error.param event_slug), or the event is outside sports and esports (error.reason market_out_of_scope, terminal). GET /api/v1/games lists covered games.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user on Pro, 200 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 5000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 5000 = 200 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable; branch on error.reason. (1) read_model_warming: the game's first read is still running, or neither the live stream nor the provider has answered yet; retry after Retry-After (2 s). (2) database_unavailable: the API's database is briefly unreachable; retry after Retry-After (5 s). (3) no error.reason: the Redis-backed authenticated rate limiter is unavailable and the middleware failed closed; Retry-After is the per-process outage cooldown.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until a retry is worth making.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/games/{event_slug}/holders": {
+      "get": {
+        "operationId": "getGameHolders",
+        "summary": "Get a game's holders",
+        "description": "The S, A and B graded holders of up to 25 markets of one game in one call. Each item is GET /api/v1/market/{condition_id}/holders for one market, unfiltered and cut to limit, with the same market, scan and totals beside it. Pass condition_ids from GET /api/v1/games/{event_slug}/markets; a market that is not one of the game's is that item's not_found. A batch route: results preserve request order, duplicate inputs return duplicate rows, and each requested condition_id costs one batch item unit, reserved before any item is read. Each market loads its roster as the single-market route does (a 60-second cache over a complete provider holder scan). The request waits at most 150 ms for all of them together: a market whose roster is not ready by then is an item error with code rate_limit_unavailable, reason read_model_warming and retry_at, and its scan keeps running, so a retry after that time reads the cached roster. Page a market past limit on its own holders route. Pro and Max.",
+        "tags": [
+          "Games"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "event_slug",
+            "in": "path",
+            "required": true,
+            "description": "The game's event slug from GET /api/v1/games, for example nba-bos-orl-2026-11-01. Matched case-insensitively.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "condition_ids",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "explode": false,
+            "description": "1 to 25 condition_id values of this game's markets, comma-separated. The key may also repeat (condition_ids=a&condition_ids=b). A raw provider condition_id or the mkt_-prefixed market id.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 25,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Holders per market. Out-of-range values are clamped to 1..100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered batch results, one per requested condition_id",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "X-Request-Cost": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Number of batch item units charged for this request."
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Batch-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Batch item units allowed per minute."
+              },
+              "X-Batch-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Batch item units remaining in the current sliding window."
+              },
+              "X-Batch-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Unix timestamp when the batch item window resets."
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "game_holders_batch"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BatchGameHoldersItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/BatchResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "One ready market and one still warming",
+                    "value": {
+                      "object": "game_holders_batch",
+                      "data": [
+                        {
+                          "index": 0,
+                          "input": "0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                          "status": "ok",
+                          "data": {
+                            "data": [
+                              {
+                                "id": "pos_0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b:0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807:0",
+                                "trader_id": "trd_0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b",
+                                "address": "0x4b1c9a2e7d3f5a6b8c0d1e2f3a4b5c6d7e8f9a0b",
+                                "name": "courtside",
+                                "side": "YES",
+                                "token_id": "71321045679252212594626385532706912750332728571942532289631379312455583992563",
+                                "grade": "S",
+                                "shares": 18250.0,
+                                "current_value_usd": 9672.5,
+                                "last_traded_at": "2026-11-01T22:41:07Z",
+                                "category_win_rate_status": "measured",
+                                "category_win_rate": 0.6097,
+                                "category_win_record": {
+                                  "wins": 214,
+                                  "decided": 351
+                                }
+                              }
+                            ],
+                            "has_more": true,
+                            "total": 14,
+                            "market": {
+                              "id": "mkt_0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                              "condition_id": "0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                              "title": "Celtics vs. Magic: O/U 219.5",
+                              "slug": "nba-bos-orl-2026-11-01-total-219pt5",
+                              "event_slug": "nba-bos-orl-2026-11-01",
+                              "category": "Sports",
+                              "outcome_yes": "Over",
+                              "outcome_no": "Under",
+                              "token_id_yes": "71321045679252212594626385532706912750332728571942532289631379312455583992563",
+                              "token_id_no": "52114319501245915516055106046884209969926127482827954674443846427813813222426",
+                              "end_date": "2026-11-02T03:00:00Z",
+                              "status": "open"
+                            },
+                            "scan": {
+                              "source": "cached",
+                              "complete": true,
+                              "fetched_at": "2026-11-01T23:02:11Z",
+                              "wallet_count": 412
+                            },
+                            "totals": {
+                              "graded_count": 14,
+                              "yes_count": 9,
+                              "no_count": 5,
+                              "yes_shares": 61840.0,
+                              "no_shares": 20115.0,
+                              "yes_usd": 32775.2,
+                              "no_usd": 9454.05,
+                              "yes_grades": {
+                                "s": 2,
+                                "a": 3,
+                                "b": 4
+                              },
+                              "no_grades": {
+                                "s": 0,
+                                "a": 2,
+                                "b": 3
+                              },
+                              "yes_grade_usd": {
+                                "s": 14210.0,
+                                "a": 10380.5,
+                                "b": 8184.7
+                              },
+                              "no_grade_usd": {
+                                "s": 0.0,
+                                "a": 5120.3,
+                                "b": 4333.75
+                              }
+                            },
+                            "computed_at": "2026-11-01T23:02:14Z",
+                            "cached": true
+                          }
+                        },
+                        {
+                          "index": 1,
+                          "input": "0x9a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b",
+                          "status": "error",
+                          "error": {
+                            "code": "rate_limit_unavailable",
+                            "message": "This read model is still warming. Retry after 3s.",
+                            "reason": "read_model_warming",
+                            "retry_at": "2026-11-01T23:02:20Z",
+                            "doc_url": "https://docs.0xinsider.com/api-reference/introduction"
+                          }
+                        }
+                      ],
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "total_items": 2,
+                        "successful_items": 1,
+                        "failed_items": 1,
+                        "request_cost": 2,
+                        "rate_limit": {
+                          "basis": "batch_items_per_minute",
+                          "limit": 2500,
+                          "remaining": 2489,
+                          "reset": 1790047440
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. error.param names the parameter: condition_ids missing, empty or over 25 items, or a limit that is not an integer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found. error.reason=\"market_out_of_scope\": the event is real but outside product scope -- 0xinsider serves sports and esports markets only. This is terminal: stop requesting this event. Without error.reason, no stored market carries this event_slug. Both carry error.code=\"not_found\".",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user on Pro, 200 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 5000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 5000 = 200 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable. error.reason=database_unavailable means the market read could not reach the database; retry after Retry-After. The authenticated rate limiter being unavailable answers the same status with its own per-process cooldown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/games/nba-bos-orl-2026-11-01/holders?condition_ids=0x5e1f...,0x9a7b...&limit=10'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
         }
       }
     },
@@ -35335,9 +36668,149 @@
           }
         }
       },
+      "MarketWalletsInOut": {
+        "type": "object",
+        "description": "One market's net buyers and net sellers over a 24h or 7d window, as the market page's wallets in/out panel shows a Pro viewer.",
+        "required": [
+          "condition_id",
+          "window",
+          "window_start",
+          "window_end",
+          "summary",
+          "net_buyers",
+          "net_sellers"
+        ],
+        "properties": {
+          "condition_id": {
+            "type": "string",
+            "description": "The market's raw provider condition id."
+          },
+          "window": {
+            "type": "string",
+            "description": "The window the nets are summed over: 24h or 7d."
+          },
+          "window_start": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The window's inclusive start; null only when the bounds are unknown."
+          },
+          "window_end": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The window's inclusive end, the read's clock; null only when the bounds are unknown."
+          },
+          "summary": {
+            "type": "object",
+            "description": "Totals over every wallet that traded the market in the window, not only the listed 50.",
+            "required": ["wallets_in", "wallets_out", "net_usd"],
+            "properties": {
+              "wallets_in": {
+                "type": "integer",
+                "description": "Wallets with a positive net in the window."
+              },
+              "wallets_out": {
+                "type": "integer",
+                "description": "Wallets with a negative net in the window."
+              },
+              "net_usd": {
+                "type": "number",
+                "description": "The sum of every wallet's net, in USD. A fully rotated wallet nets zero and is on neither side."
+              }
+            }
+          },
+          "net_buyers": {
+            "type": "array",
+            "description": "Wallets whose net is positive, largest first, at most 25.",
+            "items": {
+              "type": "object",
+              "description": "One wallet's net in the window.",
+              "required": ["address", "display_name", "grade", "net_usd", "trades", "last_traded_at"],
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "description": "Lowercase proxy wallet."
+                },
+                "display_name": {
+                  "type": "string",
+                  "description": "The name the site shows: the 0xinsider username, else the shortened address."
+                },
+                "grade": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["S", "A", "B", "C", "D", "F"]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Today's grade; null for an ungraded or untracked wallet."
+                },
+                "net_usd": {
+                  "type": "number",
+                  "description": "Buys minus sells in the window, both outcomes, in USD: the matched notional, fees excluded."
+                },
+                "trades": {
+                  "type": "integer",
+                  "description": "Fills in the window."
+                },
+                "last_traded_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time",
+                  "description": "The wallet's newest trade on any market, at or before window_end; null when unknown."
+                }
+              }
+            }
+          },
+          "net_sellers": {
+            "type": "array",
+            "description": "Wallets whose net is negative, most negative first, at most 25.",
+            "items": {
+              "type": "object",
+              "description": "One wallet's net in the window.",
+              "required": ["address", "display_name", "grade", "net_usd", "trades", "last_traded_at"],
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "description": "Lowercase proxy wallet."
+                },
+                "display_name": {
+                  "type": "string",
+                  "description": "The name the site shows: the 0xinsider username, else the shortened address."
+                },
+                "grade": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["S", "A", "B", "C", "D", "F"]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Today's grade; null for an ungraded or untracked wallet."
+                },
+                "net_usd": {
+                  "type": "number",
+                  "description": "Buys minus sells in the window, both outcomes, in USD: the matched notional, fees excluded."
+                },
+                "trades": {
+                  "type": "integer",
+                  "description": "Fills in the window."
+                },
+                "last_traded_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time",
+                  "description": "The wallet's newest trade on any market, at or before window_end; null when unknown."
+                }
+              }
+            }
+          }
+        }
+      },
       "Game": {
         "type": "object",
-        "description": "One sports or esports game: both sides, its schedule, provider status, its winner markets (the moneyline, or the soccer 1X2 legs) and their available provider moneyline price states. The event's other markets are on GET /api/v1/games/{event_slug}/markets. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out.",
+        "description": "One sports or esports game: both sides, its schedule, provider status, its winner markets (the moneyline, or the soccer 1X2 legs) with their available provider moneyline price states and liquidity, and the game's traded volume. The event's other markets are on GET /api/v1/games/{event_slug}/markets. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out.",
         "required": [
           "object",
           "event_slug",
@@ -35416,6 +36889,46 @@
           },
           "sharp_money": {
             "$ref": "#/components/schemas/GameSharpMoney"
+          },
+          "volume": {
+            "$ref": "#/components/schemas/GameVolume",
+            "description": "The game's traded volume, the figure the sports board carries for it, with its source, basis, unit and observation clock. A client can rank or filter games by volume.value. Omitted when the board carries no volume for the game, and on a finished game read from its stored record (freshness.source stored); never 0 in place of a missing figure."
+          }
+        }
+      },
+      "GameVolume": {
+        "type": "object",
+        "description": "A game's traded volume as Polymarket reports it, read by the sports board with no request-time provider call. A one-side taker share count, the number Polymarket's own pages print behind a dollar sign, not the cash that changed hands.",
+        "required": ["value", "source", "fresh_for_seconds"],
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "The volume at full precision, in unit."
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["taker_shares"],
+            "description": "taker_shares: cumulative one-side taker volume in shares. One share pays $1 at settlement, so this is not cash traded. Omitted only on a figure observed before units were recorded; never assume cash."
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["game_lines", "event_total"],
+            "description": "game_lines: the game volume Polymarket's game page states, summed over the game's own lines. event_total: the whole event's volume, stated when no game volume was readable. The two can differ in either direction. Omitted when the basis is unknown."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["polymarket_data", "gamma"],
+            "description": "The Polymarket API the figure was read from: polymarket_data (the Data API's live volume) or gamma (the Gamma API)."
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When 0xinsider read the figure from the provider, never a provider-authored timestamp. Omitted when no read time is held for it."
+          },
+          "fresh_for_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How long after observed_at 0xinsider treats the figure as current: 60 or 300 by source and basis, or 3600 for an older figure kept because a later read of the same total was lower or missing (a cumulative volume never falls)."
           }
         }
       },
@@ -35728,6 +37241,108 @@
           }
         }
       },
+      "GameTrade": {
+        "type": "object",
+        "description": "One fill in a game, as the game page's activity list shows it.",
+        "required": [
+          "id",
+          "traded_at",
+          "side",
+          "outcome",
+          "outcome_index",
+          "price",
+          "shares",
+          "size_usd",
+          "point",
+          "trader",
+          "market"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable fill identity: {transaction_hash}:{token_id}:{wallet}:{shares}. Deduplicate on it across polls."
+          },
+          "traded_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the fill happened, to the second."
+          },
+          "side": {
+            "type": "string",
+            "enum": ["BUY", "SELL"],
+            "description": "The provider's side of the fill."
+          },
+          "outcome": {
+            "type": ["string", "null"],
+            "description": "The traded outcome's label; null when the provider named none."
+          },
+          "outcome_index": {
+            "type": ["integer", "null"],
+            "description": "0 for the first (Yes) outcome token, 1 for the second (No); null when the provider did not say."
+          },
+          "price": {
+            "type": "number",
+            "description": "Fill price, 0 to 1."
+          },
+          "shares": {
+            "type": "number",
+            "description": "Shares filled."
+          },
+          "size_usd": {
+            "type": "number",
+            "description": "USDC notional of the fill."
+          },
+          "point": {
+            "type": ["number", "null"],
+            "description": "The signed handicap the fill's side carries on a spread line, for example -1.5 or 1.5; null off spreads."
+          },
+          "trader": {
+            "type": "object",
+            "required": ["address", "display_name", "grade"],
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Lowercase proxy wallet."
+              },
+              "display_name": {
+                "type": "string",
+                "description": "The name the site shows: the 0xinsider username, else the provider's name or pseudonym, else the shortened address."
+              },
+              "grade": {
+                "type": ["string", "null"],
+                "enum": ["S", "A", "B", "C", "D", "F", null],
+                "description": "The trader's grade today; null for an ungraded or untracked wallet."
+              }
+            }
+          },
+          "market": {
+            "type": "object",
+            "required": ["id", "condition_id", "title", "slug", "line_label"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The market's v1 id, mkt_ plus the condition_id."
+              },
+              "condition_id": {
+                "type": "string",
+                "description": "The raw provider condition_id."
+              },
+              "title": {
+                "type": ["string", "null"],
+                "description": "The market's question."
+              },
+              "slug": {
+                "type": ["string", "null"],
+                "description": "The market's page slug."
+              },
+              "line_label": {
+                "type": ["string", "null"],
+                "description": "The market's name within the game, for example Draw, O/U 2.5, First to Score: CD Guadalajara, Game 2: Any Player Quadra Kill."
+              }
+            }
+          }
+        }
+      },
       "GameMarketPriceCompetitor": {
         "type": "object",
         "description": "One competitor-bound provider moneyline price. No YES/NO inference is required.",
@@ -35960,6 +37575,31 @@
           "prices": {
             "$ref": "#/components/schemas/GameMarketPrices",
             "description": "Default provider moneyline state. Omitted when this market has no classified moneyline projection; incomplete and invalid projections remain explicit."
+          },
+          "liquidity": {
+            "$ref": "#/components/schemas/GameMarketLiquidity",
+            "description": "Polymarket's reported liquidity for this market. Omitted when the provider read carried none, and on a finished game read from its stored record; never 0 in place of a missing figure."
+          }
+        }
+      },
+      "GameMarketLiquidity": {
+        "type": "object",
+        "description": "One market's liquidity as Polymarket reports it (Gamma liquidityNum), verbatim. Polymarket documents it only as reported market liquidity, with no unit. It describes the market's resting order book, not traded volume.",
+        "required": ["value", "source"],
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "The provider's figure at full precision."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["gamma"],
+            "description": "Always gamma: the Polymarket Gamma API."
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When 0xinsider read the sports board body this figure came from, never a provider-authored timestamp. Omitted when that read has no clock."
           }
         }
       },
@@ -36058,7 +37698,7 @@
             "items": {
               "type": "string"
             },
-            "description": "League tags served, sorted. EuroLeague is euroleague and NCAA men's college basketball is cbb, both under the Basketball sport bucket."
+            "description": "League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb and NCAA women's college basketball cwbb, all under the Basketball sport bucket."
           },
           "sources_unavailable": {
             "type": "array",
@@ -41672,6 +43312,85 @@
           }
         }
       },
+      "BatchGameHoldersItem": {
+        "type": "object",
+        "required": [
+          "index",
+          "input",
+          "status"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Zero-based request index. Duplicate inputs keep separate result rows."
+          },
+          "input": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/GameHoldersItem"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiErrorBody"
+          }
+        }
+      },
+      "GameHoldersItem": {
+        "type": "object",
+        "description": "One market of a game holders batch: GET /api/v1/market/{condition_id}/holders unfiltered and cut to the batch limit.",
+        "required": [
+          "data",
+          "has_more",
+          "total",
+          "market",
+          "scan",
+          "totals",
+          "computed_at",
+          "cached"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "The roster's top holders by current value, at most limit.",
+            "items": {
+              "$ref": "#/components/schemas/MarketHolder"
+            }
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More graded holders than limit: page them on GET /api/v1/market/{condition_id}/holders."
+          },
+          "total": {
+            "type": "integer",
+            "description": "Graded holders in the roster, across every page."
+          },
+          "market": {
+            "$ref": "#/components/schemas/MarketHoldersMarket"
+          },
+          "scan": {
+            "$ref": "#/components/schemas/MarketHoldersScan"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/MarketHoldersTotals"
+          },
+          "computed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this roster was computed. A cached roster is at most 60 seconds old."
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "true when the roster came from the 60-second roster cache."
+          }
+        }
+      },
       "ApiError": {
         "type": "object",
         "required": ["object", "error", "meta"],
@@ -47008,11 +48727,11 @@
               "cold_unavailable",
               "deadline_unavailable"
             ],
-            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently women's college basketball and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available."
+            "description": "Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available."
           },
           "board_upcoming_unavailable_scopes": {
             "type": "array",
-            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
+            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, cwbb, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
             "items": {
               "type": "string",
               "enum": [
@@ -47023,6 +48742,7 @@
                 "wnba",
                 "euroleague-basketball",
                 "ncaa-basketball",
+                "cwbb",
                 "nhl",
                 "mls",
                 "valorant",

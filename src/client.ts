@@ -312,6 +312,18 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/games/{event_slug}/trades",
+    operationId: "listGameTrades",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/games/{event_slug}/holders",
+    operationId: "getGameHolders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/large-trades",
     operationId: "listLargeTrades",
     auth: "bearer",
@@ -411,6 +423,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/market/{condition_id}/candles",
     operationId: "getMarketCandles",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/wallets-in-out",
+    operationId: "getMarketWalletsInOut",
     auth: "bearer",
   },
   {
@@ -1351,6 +1369,12 @@ export type GamesListParams = OperationQuery["listGames"];
 
 /** Query parameters accepted by {@link OxinsiderApiClient.listGameMarkets}. */
 export type GameMarketsListParams = OperationQuery["listGameMarkets"];
+
+/** Query parameters accepted by {@link OxinsiderApiClient.listGameTrades}. */
+export type GameTradesParams = OperationQuery["listGameTrades"];
+
+/** One fill in a game, as the game page's activity list shows it. */
+export type { GameTrade } from "./schema.js";
 
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
@@ -2767,7 +2791,10 @@ export class OxinsiderApiClient {
    * UTC kickoff, the provider's own status, and the winner markets (the
    * moneyline, or a soccer game's three 1X2 legs) with their condition ids and
    * outcome token ids; `listGameMarkets` lists the rest. Ordered by kickoff, then by
-   * `event_slug`, with unscheduled games last. An unknown `sport` or `status`
+   * `event_slug`, with unscheduled games last. Pass `window: "now"` for what is
+   * on now (games in play, plus any game whose kickoff was at most 3 hours ago
+   * or is still to come); the default, `"all"`, is the whole catalog, which can
+   * start with games weeks old. An unknown `sport` or `status`
    * returns an empty page rather than an error, and the response's `coverage`
    * names what this deployment serves.
    */
@@ -2791,6 +2818,7 @@ export class OxinsiderApiClient {
    * events: spreads, totals, team totals, period lines and player props, each
    * with its `condition_id`, `sports_market_type`, typed `line` and outcome
    * token ids. `families` counts every market type the event holds.
+   * `expand: ["sharp_money"]` adds each row's per-line sharp-money split.
    */
   listGameMarkets(
     eventSlug: OperationPath["listGameMarkets"]["event_slug"],
@@ -2817,6 +2845,63 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getGameSharpMoney", { ...options, path: { event_slug: eventSlug } });
+  }
+
+  /**
+   * List a game's newest fills across every market in it, newest first and
+   * live: the moneyline, spreads, totals and every prop. The list does not
+   * page (`has_more` is always `false`); deduplicate on `id`. This method
+   * throws on a 304, so poll with {@link listGameTradesConditional} and
+   * `If-None-Match`; it returns the typed `not_modified` result instead.
+   * `source_stale` is `true` while the game's refresh runs. A 503
+   * `read_model_warming` means the first read is still running.
+   */
+  listGameTrades(
+    eventSlug: OperationPath["listGameTrades"]["event_slug"],
+    params: GameTradesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listGameTrades", {
+      ...options,
+      path: { event_slug: eventSlug },
+      query: params,
+    });
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listGameTrades}, for polling.
+   * Returns the list envelope on 200 or the typed `not_modified` result on
+   * 304, where {@link listGameTrades} throws on a 304. Send the last `ETag`
+   * as the `If-None-Match` header in `options.headers`.
+   */
+  listGameTradesConditional(
+    eventSlug: OperationPath["listGameTrades"]["event_slug"],
+    params: GameTradesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("listGameTrades", {
+      ...options,
+      path: { event_slug: eventSlug },
+      query: params,
+    });
+  }
+
+  /**
+   * The graded holders of up to 25 of one game's markets in one request
+   * (`GET /api/v1/games/{event_slug}/holders`): each item is
+   * {@link getMarketHolders} for one market, unfiltered and cut to `limit`.
+   * Batch envelope, so `meta` is the batch's own.
+   */
+  getGameHolders(
+    eventSlug: OperationPath["getGameHolders"]["event_slug"],
+    params: OperationQuery["getGameHolders"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getGameHolders", {
+      ...options,
+      path: { event_slug: eventSlug },
+      query: params,
+    });
   }
 
   searchMarkets(
@@ -2893,6 +2978,24 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getMarketCandles", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * Fetch one market's net buyers and net sellers over the last 24 hours
+   * (the default) or 7 days: the window totals and the top 25 wallets on each
+   * side, live, as the market page's wallets in/out panel shows a Pro viewer.
+   * Pass `params.window` as `"24h"` or `"7d"`.
+   */
+  getMarketWalletsInOut(
+    conditionId: OperationPath["getMarketWalletsInOut"]["condition_id"],
+    params: OperationQuery["getMarketWalletsInOut"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getMarketWalletsInOut", {
       ...options,
       path: { condition_id: conditionId },
       query: params,
