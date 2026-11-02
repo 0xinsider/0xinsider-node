@@ -300,6 +300,18 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/games/{event_slug}/markets",
+    operationId: "listGameMarkets",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/games/{event_slug}/sharp-money",
+    operationId: "getGameSharpMoney",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/large-trades",
     operationId: "listLargeTrades",
     auth: "bearer",
@@ -1337,6 +1349,9 @@ export interface CategorySkillStatusCounts {
 /** Query parameters accepted by {@link OxinsiderApiClient.listGames}. */
 export type GamesListParams = OperationQuery["listGames"];
 
+/** Query parameters accepted by {@link OxinsiderApiClient.listGameMarkets}. */
+export type GameMarketsListParams = OperationQuery["listGameMarkets"];
+
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
 
@@ -1828,20 +1843,10 @@ export interface ListParams {
 
 /** `GET /api/v1/leaderboard` -> parameters -> strategy (`web/public/api/v1/openapi.json`). */
 export const LEADERBOARD_STRATEGIES = [
-  "accumulator",
-  "algo_trader",
-  "arbitrageur",
   "category_focused",
-  "directional",
   "diversified",
-  "event_driven",
   "high_activity",
-  "market_maker",
   "mixed",
-  "momentum",
-  "scalper",
-  "speculator",
-  "swing_trader",
   "two_sided",
   "unclassified",
 ] as const;
@@ -2759,8 +2764,9 @@ export class OxinsiderApiClient {
 
   /**
    * List covered games: both sides with their provider ids and live scores, the
-   * UTC kickoff, the provider's own status, and every linked Polymarket market
-   * with its condition id and outcome token ids. Ordered by kickoff, then by
+   * UTC kickoff, the provider's own status, and the winner markets (the
+   * moneyline, or a soccer game's three 1X2 legs) with their condition ids and
+   * outcome token ids; `listGameMarkets` lists the rest. Ordered by kickoff, then by
    * `event_slug`, with unscheduled games last. An unknown `sport` or `status`
    * returns an empty page rather than an error, and the response's `coverage`
    * names what this deployment serves.
@@ -2778,6 +2784,39 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getGame", { ...options, path: { event_slug: eventSlug } });
+  }
+
+  /**
+   * List every stored market of one game's `event_slug` and of its child
+   * events: spreads, totals, team totals, period lines and player props, each
+   * with its `condition_id`, `sports_market_type`, typed `line` and outcome
+   * token ids. `families` counts every market type the event holds.
+   */
+  listGameMarkets(
+    eventSlug: OperationPath["listGameMarkets"]["event_slug"],
+    params: GameMarketsListParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listGameMarkets", {
+      ...options,
+      path: { event_slug: eventSlug },
+      query: params,
+    });
+  }
+
+  /**
+   * Read where the graded money sits on one whole game: S, A and B grade USD per
+   * outcome summed across the game's markets, each outcome's share, the leader,
+   * wallet counts by grade and the backend's verdict. Every aggregate field is
+   * `null` unless `status` is `computed`. A game still computing answers 503
+   * `read_model_warming` with `Retry-After`, which the client's retries honour.
+   * Pro and Max.
+   */
+  getGameSharpMoney(
+    eventSlug: OperationPath["getGameSharpMoney"]["event_slug"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getGameSharpMoney", { ...options, path: { event_slug: eventSlug } });
   }
 
   searchMarkets(

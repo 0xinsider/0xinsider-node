@@ -78,7 +78,7 @@ function typeOf(schema, depth, path) {
   }
   // The document is OpenAPI 3.1, whose JSON Schema ignores the 3.0 keyword:
   // null is a type-array member or a `{"type": "null"}` branch (#28202).
-  // `tools/run check-openapi-nullability --fix` respells a stray one.
+  // A stray one is respelled by hand; `tools/run openapi-schemas` reports it.
   if ("nullable" in schema) {
     throw new Error(`${path}: OpenAPI 3.0 nullable keyword in a 3.1 document`);
   }

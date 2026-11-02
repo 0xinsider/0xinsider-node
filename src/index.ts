@@ -10,7 +10,7 @@
  * import { OxinsiderApiClient, paginate, streamFeed, verifySignature } from "@0xinsider/sdk";
  *
  * const client = new OxinsiderApiClient({ apiKey: process.env.OXINSIDER_API_KEY });
- * const board = await client.listLeaderboard({ strategy: "swing_trader", limit: 100 });
+ * const board = await client.listLeaderboard({ strategy: "category_focused", limit: 100 });
  */
 
 // One default decision over a response's data_quality block (#16965)
@@ -83,6 +83,7 @@ export type {
   EnvelopeOperationId,
   ExploreMarketsParams,
   Game,
+  GameMarketsListParams,
   GamesListParams,
   Grade,
   IdempotentWriteOperationId,
@@ -382,6 +383,7 @@ export type {
   GameMarketPricePaired,
   GameMarketPrices,
   GameMarketProviderPrices,
+  GameSharpMoney,
   GameStatus,
   GamesCoverage,
   HolderCategoryEvidence,
@@ -397,6 +399,7 @@ export type {
   MarketHolder,
   MarketHoldersMarket,
   MarketHoldersScan,
+  MarketHoldersSideGradeUsd,
   MarketHoldersSideGrades,
   MarketHoldersTotals,
   MarketSearchResult,
