@@ -1295,7 +1295,7 @@ export type FreshnessFailure = {
   data_quality_status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
 };
 
-/** One sports or esports game: both sides, its schedule, provider status, linked Polymarket markets and their available provider moneyline price states. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out. */
+/** One sports or esports game: both sides, its schedule, provider status, its winner markets (the moneyline, or the soccer 1X2 legs) and their available provider moneyline price states. The event's other markets are on GET /api/v1/games/{event_slug}/markets. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out. */
 export type Game = {
   object: "game";
   /** The game's identity, for example mlb-mil-cin-2026-06-22. The same key the live_sports_updated webhook pulse carries and the same key /api/v1/games/{event_slug} takes. */
@@ -1317,7 +1317,7 @@ export type Game = {
   series_format?: string;
   /** Whether this read includes a market classified as paying on a draw, including soccer's independent 1X2 draw leg. Read this instead of assuming a two-outcome moneyline. */
   draw_offered: boolean;
-  /** Every market this read linked to the game, ordered by condition_id. */
+  /** The game's winner markets the sports board binds to its sides (the moneyline, or a soccer game's three 1X2 legs), ordered by condition_id. Spreads, totals, period lines and props are on GET /api/v1/games/{event_slug}/markets. */
   markets: GameMarket[];
   freshness: GameFreshness;
   coverage: GameCoverage;
@@ -1351,15 +1351,15 @@ export type GameCoverage = {
 
 /** How current this game's facts are. Independent per source: the board half that produced the game, and the live-score frame that produced its scores. */
 export type GameFreshness = {
-  /** Which board half produced this game. */
-  source: "live" | "upcoming";
+  /** What produced this game: live or upcoming, the board half that carried it, or stored, the stored record of a finished game that has left the board (GET /api/v1/games/{event_slug} only). */
+  source: "live" | "upcoming" | "stored";
   /** Whether that half returned a truthful source body for this read. */
   source_status: "ok" | "unavailable";
   /** Whether that half had a source body at all. not_applicable means the sport has no configured source for that half. */
   source_availability: "available" | "unavailable" | "not_applicable";
-  /** Freshness of the cached source body, never inferred from the response clock or the row count. */
+  /** Freshness of the cached source body, never inferred from the response clock or the row count. not_applicable for a stored game, whose record is final. */
   source_freshness: "fresh" | "stale" | "unknown" | "not_applicable";
-  /** The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. */
+  /** The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. For a stored game, the later of its last live-score write and its last leg settlement. */
   source_observed_at?: string;
   /** Age of source_observed_at in seconds, capped at 600. Omitted past the cap or with no anchor. */
   source_age_seconds?: number;
@@ -2000,6 +2000,16 @@ export type MarketHoldersSideGrades = {
   b: number;
 };
 
+/** Polymarket currentValue in USD per grade on one side, over the same wallets as that side's usd total. Each value is rounded to the cent after summing, so s + a + b can differ from the side total by up to 2 cents. */
+export type MarketHoldersSideGradeUsd = {
+  /** USD held by S-grade wallets netting this side. */
+  s: number;
+  /** USD held by A-grade wallets netting this side. */
+  a: number;
+  /** USD held by B-grade wallets netting this side. */
+  b: number;
+};
+
 /** Roster totals BEFORE any `outcome` or `min_grade` filter, so a page always knows the whole market it was cut from. */
 export type MarketHoldersTotals = {
   /** Distinct graded wallets with net exposure; a two-sided wallet counts once. */
@@ -2014,6 +2024,10 @@ export type MarketHoldersTotals = {
   no_usd: number;
   yes_grades: MarketHoldersSideGrades;
   no_grades: MarketHoldersSideGrades;
+  /** yes_usd split by grade: where the S, A and B money on YES sits. */
+  yes_grade_usd: MarketHoldersSideGradeUsd;
+  /** no_usd split by grade: where the S, A and B money on NO sits. */
+  no_grade_usd: MarketHoldersSideGradeUsd;
 };
 
 export type MarketSearchResult = {
@@ -2026,6 +2040,7 @@ export type MarketSearchResult = {
   platform: "polymarket" | null;
   /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
+  event_slug?: string;
 };
 
 export type MarketSnapshot = {
@@ -3958,7 +3973,7 @@ export type Trader = {
      * @deprecated
      */
     realized?: number;
-    /** Unrealized P&L in USD of the wallet's open positions on its synced markets, from the open-position aggregate (dated by the positions data_quality group). Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so this covers those positions; before, it covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted. */
+    /** Unrealized P&L in USD of the wallet's open positions on its synced sports and esports markets, from the open-position aggregate (dated by the positions data_quality group). Each open position's market is judged when the aggregate is read (#32119), so a stored position on a market of another category (one that moved out of sports and esports, or one stored before its category was known) is left out. Before 2026-10-27 (#29366) it covered every Polymarket market. */
     unrealized?: number;
     /**
      * Deprecated since 2026-10-27 and never sent: its one member was the lossless counterpart of the retired pnl.realized (#29830).
@@ -4061,7 +4076,7 @@ export type TraderCategoryRecords = {
 
 export type TraderContext = {
   trader: Trader;
-  /** Aggregate position and P&L coverage for the trader, over its synced markets. Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so markets_synced, markets_resolved, markets_open, unrealized_mtm, cost_basis_locked and the resolved win figures cover those markets; before, they covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
+  /** Aggregate position and P&L coverage for the trader, over its synced markets. markets_open, unrealized_mtm and cost_basis_locked cover the open positions on sports and esports markets, each market judged when the summary is read (#32119). markets_synced, markets_resolved and the resolved win figures count every stored market: since 2026-10-27 (#29366) those are mostly sports and esports markets, but a market that moved out of sports and esports, or one stored before its category was known, stays in them, and sync_coverage counts every category on both sides. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
   position_summary?: {
     /** Polymarket's count of the markets the wallet traded, every category, when known; null when the provider total is unavailable. */
     markets_total: number | null;
@@ -4075,7 +4090,7 @@ export type TraderContext = {
     markets_combo: number;
     /** Synced markets the wallet has settled: it closed its position by selling out, or the market resolved. Its P&L there is final. */
     markets_resolved: number;
-    /** Synced markets still open with residual value (open positions with current value > 0). */
+    /** Synced sports and esports markets still open with residual value (open positions with current value > 0); a stored market of another category is left out (#32119). */
     markets_open: number;
     /** markets_synced plus markets_pruned plus markets_unstored plus markets_combo, divided by markets_total when the provider total is known (capped at 1.0); 0.0-1.0. Both sides count every category: no Polymarket count of a wallet's sports and esports markets exists, so the ratio does not estimate one. When markets_total is unknown or not positive (null, 0, or negative), this is 1.0 if that sum is positive (else 0.0), so cross-check markets_total before treating 1.0 as full coverage. */
     sync_coverage: number;
@@ -4083,9 +4098,9 @@ export type TraderContext = {
     synced_realized_pnl: number;
     /** Native net realized P&L (USD) over every Polymarket market of the wallet, including credited rebates, read directly from the accounting snapshot. For the sports and esports figure read trader.pnl.in_scope.realized_pnl. Position sync_coverage is separate from this accounting basis. */
     total_realized_pnl: number;
-    /** Mark-to-market unrealized P&L (USD) on open positions in synced markets. */
+    /** Mark-to-market unrealized P&L (USD) on open positions in synced sports and esports markets (#32119). */
     unrealized_mtm: number;
-    /** Cost basis (USD) currently tied up in open positions in synced markets. */
+    /** Cost basis (USD) currently tied up in open positions in synced sports and esports markets (#32119). */
     cost_basis_locked: number;
     /** Win rate as a percentage (0-100): resolved_wins over resolved_decided. A settled market that closed at exactly zero realized P&L (a void, a refund, a fully hedged position) is neither a win nor a loss and is not in the denominator, the same rule the leaderboard applies; null when no resolved market was decided. It is the rule of trader.stats.win_rate, read from the synced rows at request time; stats.win_rate is the stored figure the profile shows, refreshed by each sync and a few minutes after a closed-history write. context.md prints one Market win rate, stats.win_rate. */
     resolved_win_rate: number | null;
@@ -5261,6 +5276,25 @@ export interface OperationData {
   };
   getWhaleTrade: LargeTradeDetail;
   listComboFills: ComboFill[];
+  listGameMarkets: {
+    condition_id: string;
+    event_slug: string;
+    group_item_title?: string;
+    id: string;
+    line?: number;
+    line_outcome_index?: number;
+    negative_risk?: boolean;
+    outcomes: {
+      index: number;
+      label?: string;
+      token_id?: string;
+    }[];
+    platform?: string;
+    slug?: string;
+    sports_market_type?: string;
+    status: string;
+    title?: string;
+  }[];
   listGames: Game[];
   listInsiderRadar: SuspiciousTrade[];
   listLargePositions: LargePosition[];
@@ -5653,6 +5687,16 @@ export interface OperationQuery {
     cursor?: string;
     /** Offset for ranked largest or payout ordering; use returned next_offset. */
     offset?: number;
+  };
+  listGameMarkets: {
+    /** Comma-separated provider market types to keep, case-insensitive: spreads, totals, points, first_half_totals. Omitted keeps every type. An unknown type returns an empty page, not a 400; families lists the event's types. */
+    sports_market_type?: string;
+    /** active, closed or all. closed means the provider closed the market or it resolved. */
+    status?: "active" | "closed" | "all";
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque gmk_v1_ cursor from next_cursor, sent with the same filters. It pins the page position (sports_market_type, line, condition_id), not a snapshot. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
   };
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
@@ -6048,7 +6092,7 @@ export interface OperationPath {
   getReports: Record<string, never>;
   getResolutionReport: Record<string, never>;
   getSportLeaderboard: {
-    /** The sport slug, for example soccer, nba, nfl or esports. Matched case-insensitively. */
+    /** The sport slug, for example soccer, basketball, football or esports. Matched case-insensitively. A league or title alias such as nba, epl or cs2 reads its sport's board, and the body's sport is that board's slug; pass league for one league's board. */
     sport: string;
   };
   getStream: Record<string, never>;
@@ -6109,6 +6153,10 @@ export interface OperationPath {
     id: string;
   };
   listComboFills: Record<string, never>;
+  listGameMarkets: {
+    /** The event slug from GET /api/v1/games, GET /api/v1/games/{event_slug} or a markets/search result's event_slug, for example nba-bos-orl-2026-11-01. Matched case-insensitively. */
+    event_slug: string;
+  };
   listGames: Record<string, never>;
   listInsiderRadar: Record<string, never>;
   listLargePositions: Record<string, never>;
@@ -6269,6 +6317,7 @@ export interface OperationBody {
   getWhaleDatasetStatus: never;
   getWhaleTrade: never;
   listComboFills: never;
+  listGameMarkets: never;
   listGames: never;
   listInsiderRadar: never;
   listLargePositions: never;
@@ -6589,6 +6638,19 @@ export interface OperationResponse {
     meta: ResponseMeta;
   };
   listComboFills: ComboFillsResponse;
+  listGameMarkets: {
+    data: OperationData["listGameMarkets"];
+    event_slug: string;
+    families: {
+      active: number;
+      markets: number;
+      sports_market_type?: string;
+    }[];
+    has_more: boolean;
+    meta: ResponseMeta;
+    next_cursor?: string;
+    object: string;
+  };
   listGames: {
     object: "list";
     data: OperationData["listGames"];
