@@ -282,6 +282,18 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/leaderboard/leagues",
+    operationId: "listLeaderboardLeagues",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/leaderboard/sports/{sport}",
+    operationId: "getSportLeaderboard",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/edge-hunter",
     operationId: "getEdgeHunter",
     auth: "bearer",
@@ -585,6 +597,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/reports/resolutions",
+    operationId: "getResolutionReport",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/trader/{address}/export",
     operationId: "getTraderExportSnapshot",
     auth: "bearer",
@@ -605,6 +623,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/pick-of-the-day/archive",
     operationId: "getPickOfTheDayArchive",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day/stats",
+    operationId: "getPickOfTheDayStats",
     auth: "bearer",
   },
   {
@@ -2742,6 +2766,24 @@ export class OxinsiderApiClient {
     return this.list("listTrendingWallets", { ...options, query: params });
   }
 
+  /** List the leagues that have their own skill leaderboard (single-object envelope). */
+  listLeaderboardLeagues(options: ConvenienceOptions = {}) {
+    return this.call("listLeaderboardLeagues", options);
+  }
+
+  /**
+   * Fetch one sport's skill leaderboard, or with `league` one league's
+   * (single-object envelope). `sport` is a slug such as `soccer`; the leagues
+   * come from {@link listLeaderboardLeagues}.
+   */
+  getSportLeaderboard(
+    sport: OperationPath["getSportLeaderboard"]["sport"],
+    params: OperationQuery["getSportLeaderboard"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getSportLeaderboard", { ...options, path: { sport }, query: params });
+  }
+
   listLargeTrades(params: LargeTradeListParams = {}, options: ConvenienceOptions = {}) {
     return this.list("listLargeTrades", { ...options, query: params });
   }
@@ -3228,6 +3270,24 @@ export class OxinsiderApiClient {
   /** Fetch the Pick of the Day archive with hit-rate (single-object envelope). */
   getPickOfTheDayArchive(options: ConvenienceOptions = {}) {
     return this.call("getPickOfTheDayArchive", options);
+  }
+
+  /** Fetch the Pick of the Day track-record breakdown the stats page shows (single-object envelope). */
+  getPickOfTheDayStats(options: ConvenienceOptions = {}) {
+    return this.call("getPickOfTheDayStats", options);
+  }
+
+  /**
+   * Fetch one UTC day's resolution report (single-object envelope): how often
+   * the profitable wallets' side won on the day's resolved sports and esports
+   * markets. `view: "totals"` drops the per-market list.
+   */
+  getResolutionReport(
+    date: OperationQuery["getResolutionReport"]["date"],
+    params: Omit<OperationQuery["getResolutionReport"], "date"> = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getResolutionReport", { ...options, query: { ...params, date } });
   }
 
   /**
