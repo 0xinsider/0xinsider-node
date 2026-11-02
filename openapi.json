@@ -45187,8 +45187,8 @@
           },
           "category_win_rate_status": {
             "type": "string",
-            "enum": ["measured", "not_enough_data", "unavailable"],
-            "description": "Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the settled-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample."
+            "enum": ["measured", "not_enough_data", "unavailable", "untracked"],
+            "description": "Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the settled-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Never `untracked`: every recorded holder is a graded wallet 0xinsider has on file. Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample."
           },
           "wallet_age_days": {
             "type": ["number", "null"],
@@ -47326,8 +47326,8 @@
           },
           "category_win_rate_status": {
             "type": "string",
-            "enum": ["measured", "not_enough_data", "unavailable"],
-            "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Always present on this route."
+            "enum": ["measured", "not_enough_data", "unavailable", "untracked"],
+            "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Never `untracked`: this route lists S, A and B wallets only, all on file. Always present on this route."
           },
           "category_evidence": {
             "$ref": "#/components/schemas/HolderCategoryEvidence"
@@ -47694,12 +47694,8 @@
           },
           "category_win_rate_status": {
             "type": "string",
-            "enum": [
-              "measured",
-              "not_enough_data",
-              "unavailable"
-            ],
-            "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the read failed; retry later). Absent when the market has no canonical category."
+            "enum": ["measured", "not_enough_data", "unavailable", "untracked"],
+            "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (the wallet is on file and under the floor of 5 decided markets in the category), `untracked` (0xinsider has no record of the wallet, so nothing was measured; `grade`, `in_scope_realized_pnl` and `in_scope_volume` are null too), or `unavailable` (a read failed; retry later). Absent when the market has no canonical category."
           },
           "wallet_age_days": {
             "type": [
