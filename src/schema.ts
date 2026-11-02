@@ -1932,10 +1932,13 @@ export type LeaderboardEntry = {
   win_rate?: number;
   /** Additive (#27859): the wallet's sports and esports record, the same object as GET /api/v1/trader/{address} pnl.in_scope, as of the leaderboard's last refresh. The 0xinsider leaderboard page shows and sorts by in_scope.realized_pnl and in_scope.win_rate. Omitted until 0xinsider has computed the wallet's record; absent means not computed yet, never zero. */
   in_scope?: TraderPnlInScope;
+  /** Additive (#32270): the wallet's edge over the price paid on its sports and esports markets, the figures the 0xinsider leaderboard page's Edge column states for the row. sort=edge orders by price_edge.edge. Omitted when the wallet has no settled sports or esports market of $20 or more at a known entry price. */
+  price_edge?: LeaderboardPriceEdge;
   /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified, counted over the wallet's sports and esports markets only. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
   strategy_type?: string;
   /** Provider platform. Always polymarket. */
   platform: "polymarket";
+  /** When the wallet last traded: its most recent recorded trade, as of the leaderboard row's last refresh, which re-reads it hourly, so a new trade can take about an hour to show. It agrees with the activity filter: every wallet listed under activity=inactive last traded more than 30 days ago. Since 2026-11-02 (#32322); before, it carried the time 0xinsider last synced the wallet, usually within the past week whether or not the wallet traded. Omitted when the wallet has no recorded trade. */
   last_active?: string;
 };
 
@@ -1951,6 +1954,22 @@ export type LeaderboardLeagues = {
   min_ranked: number;
   min_resolved: number;
   refreshed_at: string;
+};
+
+/** Edge over the price paid (#32270): how often the side a wallet bought won, minus the average price it paid, over its settled sports and esports markets of $20 or more at a known entry price. Probabilities throughout: edge 0.12 is 12 percentage points. A wallet buying at 99 cents that wins every market has an edge of about 0.01. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. */
+export type LeaderboardPriceEdge = {
+  /** Settled sports and esports markets of $20 or more at a known entry price that the edge is measured over. */
+  markets: number;
+  /** Share of those markets whose bought side won, 0-1. */
+  hit_rate: number;
+  /** Mean entry price paid, 0-1. */
+  avg_price: number;
+  /** hit_rate minus avg_price, full precision. The value sort=edge orders by. */
+  edge: number;
+  /** Whether the edge ranks. ranked: at least 30 such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate over the same markets. too_few_markets: fewer than 30. sample_mismatch: that share is more than 10 points away, so these markets do not describe the wallet's record. Only a ranked edge with no hold orders on sort=edge. */
+  status: "ranked" | "too_few_markets" | "sample_mismatch";
+  /** Why the leaderboard does not rank a ranked edge. record_incomplete: the wallet's stored sports and esports record shows more profit than Polymarket reports for it, so some losing markets are likely missing. Omitted when nothing holds the edge, and always omitted unless status is ranked. */
+  hold?: "record_incomplete";
 };
 
 /** One side's score line inside a `live_sports_updated` pulse. */
@@ -2303,6 +2322,96 @@ export type MarketSnapshotTopOfBook = {
 export type MarketSnapshotTrust = {
   current_price: TrustMetadata;
   spread_bps: TrustMetadata;
+};
+
+export type MarketTopHolder = {
+  /** 1-based position on this outcome, by shares. */
+  rank: number;
+  /** `trd_`-prefixed trader id, accepted by `GET /api/v1/trader/{address}`. */
+  trader_id: string;
+  /** Lowercased proxy wallet. */
+  address: string;
+  /** The wallet's display name; null when it shows none. */
+  name: string | null;
+  /** All-time trader grade, S to F. Null for a wallet 0xinsider has not graded: this route lists every holder whatever its grade. */
+  grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** Shares held on this outcome. */
+  shares: number;
+  /** Polymarket's current value of this position, in USD. Null when the provider served none. */
+  current_value_usd: number | null;
+  /** Average price paid for the shares still held, as a 0..1 fraction of $1. Null when the provider served none. */
+  avg_entry_price: number | null;
+  /** Shares on the other outcome when the wallet holds both; the wallet is then listed on both sides. Absent when it is one-sided. */
+  other_outcome_shares?: number;
+  /** Polymarket's realized P&L of this position (sells and redemptions), in USD. Null when the provider served no economics for the row. */
+  position_realized_pnl: number | null;
+  /** Polymarket's mark-to-market P&L of the shares still held, in USD. On a resolved market the mark is the settlement price. */
+  position_unrealized_pnl: number | null;
+  /** `position_realized_pnl` plus `position_unrealized_pnl`, in USD. */
+  position_total_pnl: number | null;
+  /** The wallet's realized P&L on sports and esports markets, in USD, the figure on its 0xinsider profile. Null until 0xinsider has computed the record, never 0 in its place, and null for every row when `profiles_status` is `unavailable`. */
+  in_scope_realized_pnl: number | null;
+  /** The wallet's volume traded on sports and esports markets, in USD. Null under the same rule as `in_scope_realized_pnl`. */
+  in_scope_volume: number | null;
+  /** The wallet's stored trading-style label (see Wallet trading styles); null when it has none. */
+  strategy_type: string | null;
+  /** The wallet's last recorded trade anywhere, null when unknown. */
+  last_traded_at: string | null;
+  /** This wallet's win rate in the market's canonical category (`market.category`): the share of its settled markets in that category (it closed its position by selling out, or the market resolved) whose realized P&L closed positive, as a 0..1 fraction. Present only with `category_win_rate_status` = `measured`. The same read `GET /api/v1/trader/{address}/categories` serves per wallet. */
+  category_win_rate?: number;
+  /** The two counts `category_win_rate` is the ratio of, from the same row: `wins / decided` equals the rate. Every settled Polymarket market the wallet traded (it closed its position by selling out, or the market resolved) in the market's canonical category, at any position size, rebuilt daily. Present only with `category_win_rate_status` = `measured`. */
+  category_win_record?: {
+    /** Settled markets in the category that this wallet closed with a profit. */
+    wins: number;
+    /** Settled markets in the category that this wallet closed with a profit or a loss. A market resolved at zero realized P&L is in neither count. */
+    decided: number;
+  };
+  /** The wallet's average entry price in the market's canonical category, as a 0..1 fraction of $1 (0.98 is 98 cents). Its sample is the wallet's markets in that category that resolved to a winning side, of $20 or more where it bought one side at a known price, so it can differ from the `category_win_record` sample. A wallet that buys near-certain outcomes wins almost every time, so read the win rate beside this price. Present only with `category_win_rate_status` = `measured`, and only when that sample has at least 5 markets. When `category_win_rate_game` is present the price is still the whole `category` bucket's: this field has no per-game or per-league price. Absent otherwise and on payloads predating the field. */
+  category_avg_price?: number;
+  /** Where `category_win_rate` and `category_win_record` were measured: for an esports market the game (`LoL`, `CS2`, `Dota 2`, `Valorant`, `Call of Duty`, `Honor of Kings`, `Mobile Legends: Bang Bang`, `Overwatch`, `Rainbow Six Siege`, `Rocket League` or `StarCraft II`), and for a market in a registered league that league, by the name Pick of the Day uses for it (`NBA`, `NFL`, `NHL`, `MLB`, `UFC`, `ATP`, `WTA`, `LaLiga`, `Premier League`, `Serie A`, `UEFA Champions League`, `MLS` and the other registered leagues). Present only when the wallet's record there clears the 5-settled-market floor, in which case the rate and record are the game's or league's rather than the whole `category` bucket's. Absent when the rate is the bucket's (the wallet's history there is under the floor, or the competition is not a registered league), on every other market, and beside every non-measured status. Label the rate with this when present and with the market's `category` otherwise. */
+  category_win_rate_game?: string;
+  /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the read failed; retry later). Absent when the market has no canonical category. */
+  category_win_rate_status?: "measured" | "not_enough_data" | "unavailable";
+  /** Whole days since this wallet's first trade, rounded down (3.6 days reads 3), so it changes once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
+  wallet_age_days?: number | null;
+  /** True when the wallet's first trade was under 30 days ago. */
+  is_new_wallet?: boolean;
+  /** Distinct markets the wallet has traded. */
+  markets_traded?: number | null;
+  /** True when the wallet is flagged as automated. */
+  is_bot?: boolean;
+  /** The wallet's X handle without the @, when linked. */
+  x_username?: string | null;
+};
+
+export type MarketTopHolders = {
+  market: MarketHoldersMarket;
+  /** The largest YES holders, by shares, up to `limit`. */
+  yes: MarketTopHolder[];
+  /** The largest NO holders, by shares, up to `limit`. */
+  no: MarketTopHolder[];
+  totals: MarketTopHoldersTotals;
+  /** `unavailable` when the wallet record read failed: `in_scope_realized_pnl`, `in_scope_volume` and `strategy_type` are then null for every row because they were not read, not because they are unknown. */
+  profiles_status: "available" | "unavailable";
+  /** When the daily pass behind the rows' category win records began. Absent when the market has no category or the read answered no row. */
+  category_records_as_of?: string;
+  /** When this holder sample was built. */
+  computed_at?: string;
+  /** When Polymarket's holder board behind this sample was fetched: up to 120 s before `computed_at` on an open market. Absent on a resolved market, whose sample reads no live board, and when the fetch stamp could not be read. */
+  positions_as_of?: string;
+};
+
+export type MarketTopHoldersTotals = {
+  /** Holders in the YES sample, before `limit`. Equal to `sample_cap` means that many or more. */
+  yes_count: number;
+  /** Holders in the NO sample, before `limit`. */
+  no_count: number;
+  /** Shares summed over the YES sample. */
+  yes_shares: number;
+  /** Shares summed over the NO sample. */
+  no_shares: number;
+  /** The most holders the sample keeps per outcome (100). */
+  sample_cap: number;
 };
 
 /** One market's net buyers and net sellers over a 24h or 7d window, as the market page's wallets in/out panel shows a Pro viewer. */
@@ -4247,11 +4356,13 @@ export type Trader = {
     /** Cross-sectional percentile rank of edge consistency versus all traders, 0-100. null when insufficient history. */
     consistency_percentile: number | null;
   };
+  /** When the wallet last traded: its most recent recorded trade, the same value the leaderboard entry's last_active carries (which re-reads it hourly). A cached body (meta.cached true) can lag a new trade by up to 60 seconds. No data_quality group dates it: the value is itself a trade time. Since 2026-11-02 (#32324); before, it carried the time 0xinsider last synced the wallet, the same value as synced_at. Omitted when the wallet has no recorded trade. */
   last_active?: string;
+  /** When 0xinsider last completed a sync of the wallet (traders.last_synced), dated by the sync data_quality group. Not when the wallet traded: read last_active for that. */
   synced_at?: string;
   /** synced, unknown, or pending. */
   sync_status?: string;
-  /** Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering last_active, synced_at and sync_status), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
+  /** Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering synced_at and sync_status; it covered last_active until 2026-11-02, #32324, and no group covers last_active now, since the value is itself a trade time), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
   data_quality: DataQuality;
   /** Field-level trust metadata. Present only when expand=trust or expand[]=trust is requested. */
   trust?: TraderTrust;
@@ -5330,6 +5441,7 @@ export interface OperationData {
   getMarketHolders: MarketHolder[];
   getMarketIntel: MarketFlow;
   getMarketSnapshot: MarketSnapshot;
+  getMarketTopHolders: MarketTopHolders;
   getMarketWalletsInOut: MarketWalletsInOut;
   getMonthlyReportSnapshot: ReportSnapshot;
   getPickOfTheDay: PickOfTheDay | PickOfTheDayNoEntitledPicks;
@@ -5808,6 +5920,10 @@ export interface OperationQuery {
     /** Include trust metadata for current_price and spread_bps. Repeatable: trust. */
     expand?: "trust"[];
   };
+  getMarketTopHolders: {
+    /** Maximum holders per outcome. Out-of-range values are clamped to 1..100. `totals` covers the whole sample whatever the limit. */
+    limit?: number;
+  };
   getMarketWalletsInOut: {
     /** The window the nets are summed over, ending at the read's clock: 24h (the default) or 7d. */
     window?: "24h" | "7d";
@@ -5816,7 +5932,10 @@ export interface OperationQuery {
     /** UTC report month in YYYY-MM format. A month that ends before 2024-03-01, the first day report data covers, or starts after tomorrow UTC returns 400 bad_request with error.param=month. */
     month: string;
   };
-  getPickOfTheDay: Record<string, never>;
+  getPickOfTheDay: {
+    /** A product day (America/New_York) in YYYY-MM-DD format, on or before today. Omit it, or send today, for the current read. A past day with no published pick returns 404 not_found with error.param=date; a date after today, or a value that is not a date, returns 400 bad_request with error.param=date. */
+    date?: string;
+  };
   getPickOfTheDayArchive: Record<string, never>;
   getPickOfTheDayLedger: Record<string, never>;
   getPickOfTheDayLedgerEntry: Record<string, never>;
@@ -6085,12 +6204,18 @@ export interface OperationQuery {
   listLeaderboard: {
     /** Maximum number of ranked traders to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the committed leaderboard generation and the effective category/strategy filters; legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
+    /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the committed leaderboard generation and the effective category/strategy filters, and on a sorted page to its sort, dir and activity. A cursor from another sort or dir is a 400 bad_request on cursor; one from another activity, category, strategy or generation is cursor_expired. Legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
     cursor?: string;
     /** Filter by category: a sport or esports bucket. Values are matched to canonical category buckets: league values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Mapped buckets are case-insensitive; passthrough buckets (Cricket, Sports) match case-sensitively against the provider-native bucket key, so use exact casing. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
     category?: string;
     /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. Current styles count the wallet's sports and esports markets only. The ten archetype keys retired on 2026-10-01 (accumulator, algo_trader, arbitrageur, directional, event_driven, market_maker, momentum, scalper, speculator, swing_trader) are still accepted and match no wallet. Style describes recorded behavior; grade measures performance. */
     strategy?: "category_focused" | "diversified" | "high_activity" | "mixed" | "two_sided" | "unclassified";
+    /** Order of the list, the sort columns of the site's leaderboard (/skill-leaderboard). rank (default) is the board's own order, the rank the site and the trader profile show. grade orders by score. volume orders by sports and esports USD volume, the figure GET /api/v1/trader/{address} serves as stats.total_volume. predictions orders by markets_traded. pnl orders by in_scope.realized_pnl. win_rate orders by win_rate among wallets with at least 5 decided sports and esports markets; a wallet with fewer sorts as having none. edge orders by price_edge.edge among wallets whose price_edge.status is ranked and that carry no price_edge.hold; any other wallet sorts as having none. The site's Edge column ranks those same wallets by their edge pulled toward the sports and esports average, a figure the API does not send, so the two orders can differ. A wallet without the value sorts as the lowest, so last in the natural direction and first with the direction reversed. Ties fall to address ascending. With ?category= a sort still orders by these whole-record figures; the category only decides which wallets are listed. Since 2026-11-02 (#32237; edge, #32270). */
+    sort?: "rank" | "grade" | "volume" | "predictions" | "pnl" | "win_rate" | "edge";
+    /** Direction of sort. Omitted, each sort reads in its natural direction: rank 1 first for rank (asc), largest first for every other sort (desc). The opposite value reverses the list. Since 2026-11-02 (#32237). */
+    dir?: "asc" | "desc";
+    /** Limit the list to wallets by recent trading, the site leaderboard's split. active: the wallet's last trade, as its current grade recorded it and aged to today, is 30 days old or less. inactive: older than 30 days, or no trade on record. all (default): every ranked wallet. Since 2026-11-02 (#32237). */
+    activity?: "all" | "active" | "inactive";
   };
   listLeaderboardLeagues: Record<string, never>;
   listPositions: {
@@ -6265,7 +6390,7 @@ export interface OperationQuery {
     limit?: number;
   };
   searchMarkets: {
-    /** Search query. Must be 1-512 characters before whitespace trimming and non-empty after trimming. */
+    /** Search query. Must be 2-512 characters before whitespace trimming and hold at least 2 letters or digits after trimming; a query with fewer letters or digits (a, 7, ?) returns 400 bad_request with param q (#32309). */
     q: string;
     /** Maximum number of matching markets to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
@@ -6373,6 +6498,10 @@ export interface OperationPath {
   };
   getMarketSnapshot: {
     /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses. */
+    condition_id: string;
+  };
+  getMarketTopHolders: {
+    /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or the mkt_-prefixed market.id emitted by V1 responses. */
     condition_id: string;
   };
   getMarketWalletsInOut: {
@@ -6604,6 +6733,7 @@ export interface OperationBody {
   getMarketHolders: never;
   getMarketIntel: never;
   getMarketSnapshot: never;
+  getMarketTopHolders: never;
   getMarketWalletsInOut: never;
   getMonthlyReportSnapshot: never;
   getPickOfTheDay: never;
@@ -6845,6 +6975,11 @@ export interface OperationResponse {
   getMarketSnapshot: {
     object: "market_snapshot";
     data: OperationData["getMarketSnapshot"];
+    meta: ResponseMeta;
+  };
+  getMarketTopHolders: {
+    object: "market_top_holders";
+    data: OperationData["getMarketTopHolders"];
     meta: ResponseMeta;
   };
   getMarketWalletsInOut: {

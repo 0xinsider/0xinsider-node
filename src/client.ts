@@ -420,6 +420,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/market/{condition_id}/top-holders",
+    operationId: "getMarketTopHolders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/market/{condition_id}/flow",
     operationId: "getMarketFlow",
     auth: "bearer",
@@ -3045,6 +3051,26 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * A market's largest holders on each outcome, every grade from S to F and
+   * ungraded wallets included: the event page's Top holders table (#32238).
+   * `params.limit` is holders per outcome (1-100). `data.yes` and `data.no`
+   * are largest `shares` first; `data.totals` covers the whole sample, at
+   * most 100 per outcome. For the complete S/A/B roster use
+   * `getMarketHolders`.
+   */
+  getMarketTopHolders(
+    conditionId: OperationPath["getMarketTopHolders"]["condition_id"],
+    params: OperationQuery["getMarketTopHolders"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getMarketTopHolders", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
    * Fetch bucketed OHLC candles for a market's outcome tokens.
    * Resolution defaults to the server default; pass `params.resolution` as
    * `"1d"` or `"1w"` to override. `params.from` is exclusive and `params.to`
@@ -3302,6 +3328,21 @@ export class OxinsiderApiClient {
   /** Fetch today's editorial Pick of the Day (single-object envelope). */
   getPickOfTheDay(options: ConvenienceOptions = {}) {
     return this.call("getPickOfTheDay", options);
+  }
+
+  /**
+   * Fetch a past product day's Pick of the Day slate (single-object envelope),
+   * gated by the key's tier the same way the dated web page is. `date` is a
+   * product day in America/New_York, `YYYY-MM-DD`; today's date is the same
+   * read as `getPickOfTheDay`. A past day with no published pick throws the
+   * 404 `not_found` with `error.param` `date`, which a retry cannot change;
+   * a date after today throws the 400 `bad_request`.
+   */
+  getPickOfTheDayForDate(
+    date: NonNullable<OperationQuery["getPickOfTheDay"]["date"]>,
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getPickOfTheDay", { ...options, query: { date } });
   }
 
   /** Fetch the Pick of the Day archive with hit-rate (single-object envelope). */

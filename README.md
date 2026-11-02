@@ -160,6 +160,17 @@ Keep the same filters while paging. For `sort: "recent"`, send `next_cursor` as 
 
 Read `coverage` before treating the observed fills as a complete history. An unavailable live count is `null`, not zero; the response types preserve nullable and optional provider values.
 
+## A past day's Pick of the Day
+
+SDK 0.35.0 adds `getPickOfTheDayForDate(date)`. It reads a past product day's slate (America/New_York, `YYYY-MM-DD`), gated by your key's tier the same way the dated web page is. `getPickOfTheDay()` still reads today.
+
+```ts
+const slate = await client.getPickOfTheDayForDate("2026-10-30");
+if (slate.object === "pick_of_the_day") console.log(slate.data.pick_date, slate.data.picks);
+```
+
+A past day with no published pick throws the 404 `not_found` with `error.param` `date`. A past day does not change, so do not retry it. A date after today throws the 400 `bad_request`.
+
 ## Pick proof by stable identity
 
 `getPickOfTheDayLedgerEntry(pickId)` reads the public proof for one pick without an API key. Keep `pick_id` as its decimal string; converting it to `Number` can lose precision.
