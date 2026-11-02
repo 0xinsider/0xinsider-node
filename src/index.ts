@@ -313,6 +313,7 @@ export type {
   BatchResponseMeta,
   BatchTraderItem,
   Candle,
+  CategoryLeader,
   CategorySkillModelReadiness,
   CategorySkillV2,
   Combo,

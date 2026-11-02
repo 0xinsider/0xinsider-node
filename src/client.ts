@@ -294,6 +294,18 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/leaderboard/categories",
+    operationId: "listCategoryLeaders",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/leaderboard/categories/{slug}",
+    operationId: "getCategoryLeaderboard",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/edge-hunter",
     operationId: "getEdgeHunter",
     auth: "bearer",
@@ -2782,6 +2794,31 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getSportLeaderboard", { ...options, path: { sport }, query: params });
+  }
+
+  /**
+   * Every sports and esports category's top three edge leaders, by category
+   * and then rank (one list page, not paginated): the categories index on the
+   * site. Same row shape as {@link getCategoryLeaderboard}.
+   */
+  listCategoryLeaders(options: ConvenienceOptions = {}) {
+    return this.list("listCategoryLeaders", options);
+  }
+
+  /**
+   * One page of a category's edge leaderboard: wallets ranked by the 95% lower
+   * bound of their edge over the price they paid in the category. `slug` is a
+   * category such as `soccer` or `esports`; `params.active_within` (`all` |
+   * `7d` | `30d` | `90d`), `params.min_events`, `params.limit` and
+   * `params.cursor` (the previous page's opaque `next_cursor`). `total` counts
+   * the listed wallets across every page.
+   */
+  getCategoryLeaderboard(
+    slug: OperationPath["getCategoryLeaderboard"]["slug"],
+    params: OperationQuery["getCategoryLeaderboard"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("getCategoryLeaderboard", { ...options, path: { slug }, query: params });
   }
 
   listLargeTrades(params: LargeTradeListParams = {}, options: ConvenienceOptions = {}) {
