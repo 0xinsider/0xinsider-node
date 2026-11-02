@@ -945,10 +945,10 @@ export type EdgeHunterSportFunnelReport = {
   board_upcoming_configured: boolean;
   /** Whether every configured upcoming-board scope completed as available. False with board_upcoming_configured=false means not applicable. When board_upcoming_configured is true and this flag is false, read board_upcoming_status for the cause (unknown means no cause was recorded, which no computed snapshot reports): the board_source_unavailable and board_deadline_unavailable terminals are assigned only to already-started rows (the live half) and are structurally 0 for the upcoming source, so they never explain this flag. */
   board_upcoming_available: boolean;
-  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently NCAAB and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available. */
+  /** Why the upcoming-board source is (un)available. Board supply is one canonical-sport union: the bare category owns live truth and every configured composed league scope contributes upcoming rows; folded leagues without a configured board (currently women's college basketball and CFL) are not in the upcoming union. available: every configured scope completed truthfully (a successful empty schedule still counts). capacity_limited: provider pagination or a configured upcoming cache published an intentionally bounded complete-event prefix; those rows are excluded from diagnostic-universe input and must not be treated as a complete upcoming universe. Cache-bound prefixes are limited to an exact 5,000,000-byte final envelope. source_unavailable: composition failed before a truthful union; resolved scope readers turn half failures into cold_unavailable, so fresh producers are whole-union identity reconciliation or a registry contract failure and carry zero rows. cold_unavailable: every scope completed but at least one reported its upcoming half unavailable because no servable entry was inside the stale-serve bound and the background warm did not land in time; it is not by itself proof of a provider outage. deadline_unavailable: an internal configured-scope deadline or the outer bounded fair wave expired. An internal deadline may retain healthy bare-category or sibling-scope rows; the outer wave records zero rows. These upcoming fields do not describe league live-membership availability. If the bare-category live scope fails, all live rows are dropped even when a league scope completed, because the bare category is the sole live-truth owner. not_configured: no upcoming scope applies to the sport. unknown: no cause was recorded; every computed snapshot reports a concrete status, so none reads unknown. board_upcoming_available is exactly board_upcoming_status == available. */
   board_upcoming_status: "unknown" | "not_configured" | "available" | "capacity_limited" | "source_unavailable" | "cold_unavailable" | "deadline_unavailable";
-  /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
-  board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "euroleague-basketball" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
+  /** Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read. */
+  board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "euroleague-basketball" | "ncaa-basketball" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
   /** Stored-universe rows plus provider-board rows missing from storage. */
   input: number;
   /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means the view=signals snapshot named by signals_as_of lists the market at its widest selection (horizon_hours=48, min_grade=B, no selector), so it is not a wider_holder candidate; when no view=signals snapshot could be read (signals_as_of null), no market takes it. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means a holder read sent to the provider failed and the market had no reusable holder page; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline, or local capacity never sent the holder read, and the market had no reusable holder page; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable. */
@@ -1295,7 +1295,7 @@ export type FreshnessFailure = {
   data_quality_status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
 };
 
-/** One sports or esports game: both sides, its schedule, provider status, linked Polymarket markets and their available provider moneyline price states. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out. */
+/** One sports or esports game: both sides, its schedule, provider status, its winner markets (the moneyline, or the soccer 1X2 legs) and their available provider moneyline price states. The event's other markets are on GET /api/v1/games/{event_slug}/markets. Assembled from the same provider-first live and upcoming projections the site's boards use, with no request-time provider fan-out. */
 export type Game = {
   object: "game";
   /** The game's identity, for example mlb-mil-cin-2026-06-22. The same key the live_sports_updated webhook pulse carries and the same key /api/v1/games/{event_slug} takes. */
@@ -1317,7 +1317,7 @@ export type Game = {
   series_format?: string;
   /** Whether this read includes a market classified as paying on a draw, including soccer's independent 1X2 draw leg. Read this instead of assuming a two-outcome moneyline. */
   draw_offered: boolean;
-  /** Every market this read linked to the game, ordered by condition_id. */
+  /** The game's winner markets the sports board binds to its sides (the moneyline, or a soccer game's three 1X2 legs), ordered by condition_id. Spreads, totals, period lines and props are on GET /api/v1/games/{event_slug}/markets. */
   markets: GameMarket[];
   freshness: GameFreshness;
   coverage: GameCoverage;
@@ -1342,7 +1342,7 @@ export type GameCompetitor = {
 
 /** What this game's read actually supplied, so a client branches on coverage instead of on a missing key. */
 export type GameCoverage = {
-  /** available when a live-score frame supplied this game's scores. */
+  /** available when a live-score frame supplied a score for this game. A game no live-score feed has reported yet, as most scheduled games are, reads unavailable. */
   scores: "available" | "unavailable";
   /** provider_ids when every side carries a provider id, labels when only the provider's names identify them, unavailable when neither exists. Do not join on names when this reads labels. */
   competitors: "provider_ids" | "labels" | "unavailable";
@@ -1352,15 +1352,15 @@ export type GameCoverage = {
 
 /** How current this game's facts are. Independent per source: the board half that produced the game, and the live-score frame that produced its scores. */
 export type GameFreshness = {
-  /** Which board half produced this game. */
-  source: "live" | "upcoming";
+  /** What produced this game: live or upcoming, the board half that carried it, or stored, the stored record of a finished game that has left the board (GET /api/v1/games/{event_slug}, and GET /api/v1/games with a finished status). */
+  source: "live" | "upcoming" | "stored";
   /** Whether that half returned a truthful source body for this read. */
   source_status: "ok" | "unavailable";
   /** Whether that half had a source body at all. not_applicable means the sport has no configured source for that half. */
   source_availability: "available" | "unavailable" | "not_applicable";
-  /** Freshness of the cached source body, never inferred from the response clock or the row count. */
+  /** Freshness of the cached source body, never inferred from the response clock or the row count. not_applicable for a stored game, whose record is final. */
   source_freshness: "fresh" | "stale" | "unknown" | "not_applicable";
-  /** The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. */
+  /** The source body's data vintage. Omitted when the read has no vintage anchor, which is not age zero. For a stored game, the later of its last live-score write and its last leg settlement. */
   source_observed_at?: string;
   /** Age of source_observed_at in seconds, capped at 600. Omitted past the cap or with no anchor. */
   source_age_seconds?: number;
@@ -1462,7 +1462,7 @@ export type GameMarketProviderPrices = GameMarketPricePaired | GameMarketPriceIn
 export type GamesCoverage = {
   /** Canonical sport buckets served, sorted. */
   sports: string[];
-  /** League tags served, sorted. EuroLeague is euroleague under the Basketball sport bucket. */
+  /** League tags served, sorted. EuroLeague is euroleague and NCAA men's college basketball is cbb, both under the Basketball sport bucket. */
   leagues: string[];
   /** Scopes whose source half was unavailable for this read, as <sport>:<half>. Empty means every scope answered. */
   sources_unavailable: string[];
@@ -1519,11 +1519,11 @@ export type GameSharpMoney = {
 
 /** Where the game is in its own life, as the provider reports it. A postponement, a cancellation and a suspension each keep their own state, so a client can tell a game that will be played later from one that never will be. */
 export type GameStatus = {
-  /** scheduled: kickoff is ahead or the provider still calls it scheduled. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own. */
+  /** scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own. */
   state: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
-  /** The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status. */
+  /** The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet. */
   match_status?: "scheduled" | "in_progress" | "halftime" | "penalty_shootout" | "delayed" | "suspended" | "final" | "final_overtime" | "final_shootout" | "awarded" | "forfeit" | "not_necessary" | "postponed" | "cancelled" | "unknown";
-  /** The provider's status string, verbatim. Omitted when the provider sent none. */
+  /** The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game. */
   provider_status?: string;
   /** The provider's period label, for example Q3, End Q2 or T5. Omitted when the provider sent none. */
   period?: string;
@@ -2036,6 +2036,16 @@ export type MarketHoldersSideGrades = {
   b: number;
 };
 
+/** Polymarket currentValue in USD per grade on one side, over the same wallets as that side's usd total. Each value is rounded to the cent after summing, so s + a + b can differ from the side total by up to 2 cents. */
+export type MarketHoldersSideGradeUsd = {
+  /** USD held by S-grade wallets netting this side. */
+  s: number;
+  /** USD held by A-grade wallets netting this side. */
+  a: number;
+  /** USD held by B-grade wallets netting this side. */
+  b: number;
+};
+
 /** Roster totals BEFORE any `outcome` or `min_grade` filter, so a page always knows the whole market it was cut from. */
 export type MarketHoldersTotals = {
   /** Distinct graded wallets with net exposure; a two-sided wallet counts once. */
@@ -2050,6 +2060,10 @@ export type MarketHoldersTotals = {
   no_usd: number;
   yes_grades: MarketHoldersSideGrades;
   no_grades: MarketHoldersSideGrades;
+  /** yes_usd split by grade: where the S, A and B money on YES sits. */
+  yes_grade_usd: MarketHoldersSideGradeUsd;
+  /** no_usd split by grade: where the S, A and B money on NO sits. */
+  no_grade_usd: MarketHoldersSideGradeUsd;
 };
 
 export type MarketSearchResult = {
@@ -2062,6 +2076,7 @@ export type MarketSearchResult = {
   platform: "polymarket" | null;
   /** closed once Polymarket has closed trading or the market has resolved; active otherwise. The same rule labels a market on markets/search, markets/explore and market/{condition_id}/snapshot. */
   status: "active" | "closed";
+  event_slug?: string;
 };
 
 export type MarketSnapshot = {
@@ -3494,7 +3509,7 @@ export type Trader = {
      * @deprecated
      */
     realized?: number;
-    /** Unrealized P&L in USD of the wallet's open positions on its synced markets, from the open-position aggregate (dated by the positions data_quality group). Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so this covers those positions; before, it covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted. */
+    /** Unrealized P&L in USD of the wallet's open positions on its synced sports and esports markets, from the open-position aggregate (dated by the positions data_quality group). Each open position's market is judged when the aggregate is read (#32119), so a stored position on a market of another category (one that moved out of sports and esports, or one stored before its category was known) is left out. Before 2026-10-27 (#29366) it covered every Polymarket market. */
     unrealized?: number;
     /**
      * Deprecated since 2026-10-27 and never sent: its one member was the lossless counterpart of the retired pnl.realized (#29830).
@@ -3597,7 +3612,7 @@ export type TraderCategoryRecords = {
 
 export type TraderContext = {
   trader: Trader;
-  /** Aggregate position and P&L coverage for the trader, over its synced markets. Since 2026-10-27 (#29366) a wallet that holds a sports or esports market has only sports and esports markets synced, so markets_synced, markets_resolved, markets_open, unrealized_mtm, cost_basis_locked and the resolved win figures cover those markets; before, they covered every Polymarket market. A wallet with no sports or esports market can still carry older markets of other categories until they are deleted. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
+  /** Aggregate position and P&L coverage for the trader, over its synced markets. markets_open, unrealized_mtm and cost_basis_locked cover the open positions on sports and esports markets, each market judged when the summary is read (#32119). markets_synced, markets_resolved and the resolved win figures count every stored market: since 2026-10-27 (#29366) those are mostly sports and esports markets, but a market that moved out of sports and esports, or one stored before its category was known, stays in them, and sync_coverage counts every category on both sides. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
   position_summary?: {
     /** Polymarket's count of the markets the wallet traded, every category, when known; null when the provider total is unavailable. */
     markets_total: number | null;
@@ -3611,7 +3626,7 @@ export type TraderContext = {
     markets_combo: number;
     /** Synced markets the wallet has settled: it closed its position by selling out, or the market resolved. Its P&L there is final. */
     markets_resolved: number;
-    /** Synced markets still open with residual value (open positions with current value > 0). */
+    /** Synced sports and esports markets still open with residual value (open positions with current value > 0); a stored market of another category is left out (#32119). */
     markets_open: number;
     /** markets_synced plus markets_pruned plus markets_unstored plus markets_combo, divided by markets_total when the provider total is known (capped at 1.0); 0.0-1.0. Both sides count every category: no Polymarket count of a wallet's sports and esports markets exists, so the ratio does not estimate one. When markets_total is unknown or not positive (null, 0, or negative), this is 1.0 if that sum is positive (else 0.0), so cross-check markets_total before treating 1.0 as full coverage. */
     sync_coverage: number;
@@ -3619,9 +3634,9 @@ export type TraderContext = {
     synced_realized_pnl: number;
     /** Native net realized P&L (USD) over every Polymarket market of the wallet, including credited rebates, read directly from the accounting snapshot. For the sports and esports figure read trader.pnl.in_scope.realized_pnl. Position sync_coverage is separate from this accounting basis. */
     total_realized_pnl: number;
-    /** Mark-to-market unrealized P&L (USD) on open positions in synced markets. */
+    /** Mark-to-market unrealized P&L (USD) on open positions in synced sports and esports markets (#32119). */
     unrealized_mtm: number;
-    /** Cost basis (USD) currently tied up in open positions in synced markets. */
+    /** Cost basis (USD) currently tied up in open positions in synced sports and esports markets (#32119). */
     cost_basis_locked: number;
     /** Win rate as a percentage (0-100): resolved_wins over resolved_decided. A settled market that closed at exactly zero realized P&L (a void, a refund, a fully hedged position) is neither a win nor a loss and is not in the denominator, the same rule the leaderboard applies; null when no resolved market was decided. It is the rule of trader.stats.win_rate, read from the synced rows at request time; stats.win_rate is the stored figure the profile shows, refreshed by each sync and a few minutes after a closed-history write. context.md prints one Market win rate, stats.win_rate. */
     resolved_win_rate: number | null;
@@ -4795,6 +4810,25 @@ export interface OperationData {
   };
   getWhaleTrade: LargeTradeDetail;
   listComboFills: ComboFill[];
+  listGameMarkets: {
+    condition_id: string;
+    event_slug: string;
+    group_item_title?: string;
+    id: string;
+    line?: number;
+    line_outcome_index?: number;
+    negative_risk?: boolean;
+    outcomes: {
+      index: number;
+      label?: string;
+      token_id?: string;
+    }[];
+    platform?: string;
+    slug?: string;
+    sports_market_type?: string;
+    status: string;
+    title?: string;
+  }[];
   listGames: Game[];
   listInsiderRadar: SuspiciousTrade[];
   listLargePositions: LargePosition[];
@@ -5173,20 +5207,30 @@ export interface OperationQuery {
     /** Offset for ranked largest or payout ordering; use returned next_offset. */
     offset?: number;
   };
+  listGameMarkets: {
+    /** Comma-separated provider market types to keep, case-insensitive: spreads, totals, points, first_half_totals. Omitted keeps every type. An unknown type returns an empty page, not a 400; families lists the event's types. */
+    sports_market_type?: string;
+    /** active, closed or all. closed means the provider closed the market or it resolved. */
+    status?: "active" | "closed" | "all";
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque gmk_v1_ cursor from next_cursor, sent with the same filters. It pins the page position (sports_market_type, line, condition_id), not a snapshot. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
+  };
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
     sport?: string;
-    /** League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague. EuroLeague games use sport=Basketball and league=euroleague. Omit for every league inside the selected sports. */
+    /** League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's college basketball games use sport=Basketball and league=cbb. Omit for every league inside the selected sports. */
     league?: string;
-    /** Keep only games in this state. A value outside the enum returns an empty page. */
+    /** Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). Without status, or with any other state, the list is the live and upcoming board. A value outside the enum returns an empty page. */
     status?: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
-    /** RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. */
+    /** RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. With a finished status, the stored games' look-back starts here; omitted, it starts 7 days before starts_before, and nothing caps an earlier value. */
     starts_after?: string;
     /** RFC 3339 instant. Keep only games whose kickoff is at or before it. Must be at or after starts_after. */
     starts_before?: string;
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
     /** Backward-compatible alias for expand. Repeatable: sharp_money. */
     "expand[]"?: "sharp_money"[];
@@ -5629,6 +5673,10 @@ export interface OperationPath {
     id: string;
   };
   listComboFills: Record<string, never>;
+  listGameMarkets: {
+    /** The event slug from GET /api/v1/games, GET /api/v1/games/{event_slug} or a markets/search result's event_slug, for example nba-bos-orl-2026-11-01. Matched case-insensitively. */
+    event_slug: string;
+  };
   listGames: Record<string, never>;
   listInsiderRadar: Record<string, never>;
   listLargePositions: Record<string, never>;
@@ -5786,6 +5834,7 @@ export interface OperationBody {
   getWhaleDatasetStatus: never;
   getWhaleTrade: never;
   listComboFills: never;
+  listGameMarkets: never;
   listGames: never;
   listInsiderRadar: never;
   listLargePositions: never;
@@ -6095,13 +6144,26 @@ export interface OperationResponse {
     meta: ResponseMeta;
   };
   listComboFills: ComboFillsResponse;
+  listGameMarkets: {
+    data: OperationData["listGameMarkets"];
+    event_slug: string;
+    families: {
+      active: number;
+      markets: number;
+      sports_market_type?: string;
+    }[];
+    has_more: boolean;
+    meta: ResponseMeta;
+    next_cursor?: string;
+    object: string;
+  };
   listGames: {
     object: "list";
     data: OperationData["listGames"];
     has_more: boolean;
     /** Pass as cursor for the next page. Present only when has_more is true. */
     next_cursor?: string;
-    /** When this read assembled the catalog. Per-source vintage is on each game's freshness. */
+    /** When this read assembled the catalog; with status ended, cancelled or postponed, when it read the stored records. Per-source vintage is on each game's freshness. */
     as_of: string;
     coverage: GamesCoverage;
     meta: ResponseMeta;
