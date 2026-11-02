@@ -12511,6 +12511,794 @@
         }
       }
     },
+    "/api/v1/leaderboard/categories": {
+      "get": {
+        "operationId": "listCategoryLeaders",
+        "summary": "List every category's top edge leaders",
+        "description": "Every sports and esports category's top three edge leaders in one read, the board the site's categories index shows. In each category, wallets are ranked as GET /api/v1/leaderboard/categories/{slug} ranks them, by the 95% lower bound of their edge over the price they paid; only wallets whose lower bound is above zero are listed, so a category can carry fewer than three, or none. Rows come by category, then rank, in the same row shape as the per-category board. Not paginated. 503 read_model_warming, with Retry-After, while the category-skill ranking is being rebuilt or its model is degraded: never an empty 200.",
+        "tags": [
+          "Leaderboard"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Conditional GET validator from a previous ETag. Matching values return 304 Not Modified with an empty body.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Top three edge leaders of every sports and esports category",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Stable validator for the current categories index. Re-send it via If-None-Match for conditional GETs.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CategoryLeader"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Number of rows returned: up to three per category."
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "object": "list",
+                      "data": [
+                        {
+                          "rank": 1,
+                          "category": "Soccer",
+                          "id": "trd_0x1234567890abcdef1234567890abcdef12345678",
+                          "address": "0x1234567890abcdef1234567890abcdef12345678",
+                          "username": "example",
+                          "platform": "polymarket",
+                          "grade": "A",
+                          "edge_lower_bound": 0.184,
+                          "independent_events": 31,
+                          "unresolved_events": 0,
+                          "n_resolved": 479,
+                          "win_rate": 0.7286,
+                          "pnl": 18076.35,
+                          "as_of": "2026-11-01T22:59:07.413338Z"
+                        },
+                        {
+                          "rank": 1,
+                          "category": "Tennis",
+                          "id": "trd_0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+                          "address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+                          "username": null,
+                          "platform": "polymarket",
+                          "grade": "S",
+                          "edge_lower_bound": 0.1412,
+                          "independent_events": 58,
+                          "unresolved_events": 2,
+                          "n_resolved": 611,
+                          "win_rate": 0.6907,
+                          "pnl": 9420.1,
+                          "as_of": "2026-11-01T22:59:07.413338Z"
+                        }
+                      ],
+                      "has_more": false,
+                      "total": 2,
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "cost": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current categories index payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Validator for the unchanged leaderboard payload.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Bad request. With X-Query-Validation: strict, an unknown query name returns error.reason=unknown_query_parameter; this route takes no query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user on Pro, 200 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 5000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 5000 = 200 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable. On this route a 503 has TWO distinct causes; branch on error.reason. (1) error.reason=\"read_model_warming\": the requested endpoint cannot serve its read model yet. Exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh; consult that endpoint's contract and do not infer dependency health from this shared reason. This is endpoint-local unavailability, not rate limiting: retry only this route after Retry-After (or error.retry_at), and do not feed it into a rate-limit backoff shared with other endpoints. (2) no error.reason: the Redis-backed authenticated rate limiter is unavailable and the middleware failed closed; Retry-After is the seconds until it probes Redis again. Both carry error.code=\"rate_limit_unavailable\" (a FROZEN contract value, so it cannot be split per cause) and X-Request-Id -- which is why error.reason, not error.code, is the discriminator.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retrying is worth doing. With error.reason=\"read_model_warming\" this is the endpoint-local read-model retry interval; without a reason it is the rate-limiter outage cooldown. Always >= 1.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/leaderboard/categories'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
+    "/api/v1/leaderboard/categories/{slug}": {
+      "get": {
+        "operationId": "getCategoryLeaderboard",
+        "summary": "Get a category's edge leaderboard",
+        "description": "One sports or esports category's edge leaderboard, the board the site's category pages show. Wallets are ranked by edge_lower_bound, the 95% lower bound of their edge over the price they paid in the category, counted over independent events (independent_events breaks ties, then the wallet). Only wallets whose lower bound is above zero are listed; total counts them across every page. active_within keeps wallets that traded in the category within 7d, 30d or 90d, and min_events sets the independent events a wallet needs. A sibling of GET /api/v1/leaderboard and GET /api/v1/leaderboard/sports/{sport}, which rank the grade score and the settled-record edge; this ranking is the category-skill model's lower bound, with its own cursor. A slug outside sports and esports is 404 with error.param=slug. 503 read_model_warming, with Retry-After, while the category-skill ranking is being rebuilt or its model is degraded: never an empty 200.",
+        "tags": [
+          "Leaderboard"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "description": "The category slug, for example soccer, basketball, tennis or esports, as GET /api/v1/leaderboard/categories lists it lowercased. Matched case-insensitively.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active_within",
+            "in": "query",
+            "description": "Keep wallets that traded in the category within this window. all (the default) keeps every ranked wallet.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "min_events",
+            "in": "query",
+            "description": "Independent events a wallet needs in the category to be listed. The site offers 0, 50, 100 and 250. Clamped to 0..1000000.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of leaders to return. Out-of-range values are clamped to 1..100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cel_ pagination cursor from a prior response. It binds the lower-bound/independent-event/wallet boundary to the committed category-skill ranking and to the slug, active_within and min_events of the request that issued it; a cursor from another filter is 400 on cursor, and one issued before the ranking refreshed is 400 with error.reason=cursor_expired.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Conditional GET validator from a previous ETag. Matching values return 304 Not Modified with an empty body.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One category's edge leaders, best lower bound first",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Stable validator for the current page. Re-send it via If-None-Match for conditional GETs.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CategoryLeader"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Wallets in the category whose edge lower bound is above zero, Wallets in the full walk across every page: those in the category, under this request's active_within and min_events, whose edge lower bound is above zero. The same on every page."
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "object": "list",
+                      "data": [
+                        {
+                          "rank": 1,
+                          "category": "Soccer",
+                          "id": "trd_0x1234567890abcdef1234567890abcdef12345678",
+                          "address": "0x1234567890abcdef1234567890abcdef12345678",
+                          "username": "example",
+                          "platform": "polymarket",
+                          "grade": "A",
+                          "edge_lower_bound": 0.184,
+                          "independent_events": 31,
+                          "unresolved_events": 0,
+                          "n_resolved": 479,
+                          "win_rate": 0.7286,
+                          "pnl": 18076.35,
+                          "as_of": "2026-11-01T22:59:07.413338Z"
+                        },
+                        {
+                          "rank": 2,
+                          "category": "Soccer",
+                          "id": "trd_0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+                          "address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+                          "username": null,
+                          "platform": "polymarket",
+                          "grade": "S",
+                          "edge_lower_bound": 0.1223,
+                          "independent_events": 66,
+                          "unresolved_events": 0,
+                          "n_resolved": 829,
+                          "win_rate": 0.7503,
+                          "pnl": 31907.45,
+                          "as_of": "2026-11-01T22:59:07.413338Z"
+                        }
+                      ],
+                      "has_more": true,
+                      "next_cursor": "cel_example",
+                      "total": 412,
+                      "meta": {
+                        "request_id": "req_example",
+                        "cached": false,
+                        "cost": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current page of the category's ranking.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "description": "Validator for the unchanged leaderboard payload.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Bad request: active_within outside all, 7d, 30d, 90d (error.param=active_within), or a malformed cursor or one from another filter (error.param=cursor). error.reason=cursor_expired with error.param=cursor means the category-skill ranking refreshed since the cursor was issued: discard accumulated rows, request the first page again, and continue with its next_cursor. There is no retry delay.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no active Pro subscription; error.reason is subscription_inactive and error.message names the reactivation URL (https://0xinsider.com/billing). Permanent until a person reactivates: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The slug is not a sports or esports category (error.param=slug). GET /api/v1/leaderboard/categories lists the categories with leaders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Three independent budgets. (1) 100 requests/minute per user on Pro, 200 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 5000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 5000 = 200 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable. On this route a 503 has TWO distinct causes; branch on error.reason. (1) error.reason=\"read_model_warming\": the requested endpoint cannot serve its read model yet. Exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh; consult that endpoint's contract and do not infer dependency health from this shared reason. This is endpoint-local unavailability, not rate limiting: retry only this route after Retry-After (or error.retry_at), and do not feed it into a rate-limit backoff shared with other endpoints. (2) no error.reason: the Redis-backed authenticated rate limiter is unavailable and the middleware failed closed; Retry-After is the seconds until it probes Redis again. Both carry error.code=\"rate_limit_unavailable\" (a FROZEN contract value, so it cannot be split per cause) and X-Request-Id -- which is why error.reason, not error.code, is the discriminator.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until retrying is worth doing. With error.reason=\"read_model_warming\" this is the endpoint-local read-model retry interval; without a reason it is the rate-limiter outage cooldown. Always >= 1.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/leaderboard/categories/soccer?limit=20'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
     "/api/v1/markets/search": {
       "get": {
         "operationId": "searchMarkets",
@@ -38124,6 +38912,79 @@
       }
     },
     "schemas": {
+      "CategoryLeader": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "type": "string"
+          },
+          "edge_lower_bound": {
+            "type": ["number", "null"]
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["S", "A", "B", "C", "D", "F"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "independent_events": {
+            "type": "integer"
+          },
+          "n_resolved": {
+            "type": ["integer", "null"]
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["polymarket"]
+          },
+          "pnl": {
+            "type": ["number", "null"]
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "unresolved_events": {
+            "type": "integer"
+          },
+          "username": {
+            "type": ["string", "null"]
+          },
+          "win_rate": {
+            "type": ["number", "null"]
+          }
+        },
+        "required": [
+          "rank",
+          "category",
+          "id",
+          "address",
+          "username",
+          "platform",
+          "grade",
+          "edge_lower_bound",
+          "independent_events",
+          "unresolved_events",
+          "n_resolved",
+          "win_rate",
+          "pnl",
+          "as_of"
+        ]
+      },
       "LeaderboardLeagues": {
         "type": "object",
         "properties": {

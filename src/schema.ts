@@ -167,6 +167,23 @@ export type Candle = {
   c: number;
 };
 
+export type CategoryLeader = {
+  address: string;
+  as_of: string;
+  category: string;
+  edge_lower_bound: number | null;
+  grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  id: string;
+  independent_events: number;
+  n_resolved: number | null;
+  platform: "polymarket";
+  pnl: number | null;
+  rank: number;
+  unresolved_events: number;
+  username: string | null;
+  win_rate: number | null;
+};
+
 /** Model-wide readiness, read in the same database snapshot as category_records. Individual category rows retain their own status. */
 export type CategorySkillModelReadiness = {
   status: "live" | "insufficient" | "stale" | "unknown" | "degraded";
@@ -5273,6 +5290,7 @@ export interface OperationData {
     scopes: string[] | null;
   };
   getApiDiscovery: ApiDiscovery;
+  getCategoryLeaderboard: CategoryLeader[];
   getCombo: ComboDetail;
   getCombosSummary: CombosSummary;
   getCoverage: Platforms;
@@ -5477,6 +5495,7 @@ export interface OperationData {
     filters: WhaleDatasetFilters;
   };
   getWhaleTrade: LargeTradeDetail;
+  listCategoryLeaders: CategoryLeader[];
   listComboFills: ComboFill[];
   listGameMarkets: ({
     condition_id: string;
@@ -5678,6 +5697,16 @@ export interface OperationQuery {
   };
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCategoryLeaderboard: {
+    /** Keep wallets that traded in the category within this window. all (the default) keeps every ranked wallet. */
+    active_within?: "all" | "7d" | "30d" | "90d";
+    /** Independent events a wallet needs in the category to be listed. The site offers 0, 50, 100 and 250. Clamped to 0..1000000. */
+    min_events?: number;
+    /** Maximum number of leaders to return. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque cel_ pagination cursor from a prior response. It binds the lower-bound/independent-event/wallet boundary to the committed category-skill ranking and to the slug, active_within and min_events of the request that issued it; a cursor from another filter is 400 on cursor, and one issued before the ranking refreshed is 400 with error.reason=cursor_expired. */
+    cursor?: string;
+  };
   getCombo: Record<string, never>;
   getCombosSummary: Record<string, never>;
   getCoverage: Record<string, never>;
@@ -5892,6 +5921,7 @@ export interface OperationQuery {
   };
   getWhaleDatasetStatus: Record<string, never>;
   getWhaleTrade: Record<string, never>;
+  listCategoryLeaders: Record<string, never>;
   listComboFills: {
     /** CSV of pending, won, or lost; all clears the filter. Unknown results appear only in unfiltered lists. */
     result?: string;
@@ -6287,6 +6317,10 @@ export interface OperationPath {
   exploreMarkets: Record<string, never>;
   getAccountIdentity: Record<string, never>;
   getApiDiscovery: Record<string, never>;
+  getCategoryLeaderboard: {
+    /** The category slug, for example soccer, basketball, tennis or esports, as GET /api/v1/leaderboard/categories lists it lowercased. Matched case-insensitively. */
+    slug: string;
+  };
   getCombo: {
     /** Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID. */
     condition_id: string;
@@ -6426,6 +6460,7 @@ export interface OperationPath {
     /** Raw whale_alerts.id or wt_-prefixed whale trade id. */
     id: string;
   };
+  listCategoryLeaders: Record<string, never>;
   listComboFills: Record<string, never>;
   listGameMarkets: {
     /** The event slug from GET /api/v1/games, GET /api/v1/games/{event_slug} or a markets/search result's event_slug, for example nba-bos-orl-2026-11-01. Matched case-insensitively. */
@@ -6550,6 +6585,7 @@ export interface OperationBody {
   exploreMarkets: never;
   getAccountIdentity: never;
   getApiDiscovery: never;
+  getCategoryLeaderboard: never;
   getCombo: never;
   getCombosSummary: never;
   getCoverage: never;
@@ -6597,6 +6633,7 @@ export interface OperationBody {
   getWeeklyReportSnapshot: never;
   getWhaleDatasetStatus: never;
   getWhaleTrade: never;
+  listCategoryLeaders: never;
   listComboFills: never;
   listGameMarkets: never;
   listGames: never;
@@ -6713,6 +6750,15 @@ export interface OperationResponse {
   getApiDiscovery: {
     object: "api_discovery";
     data: OperationData["getApiDiscovery"];
+    meta: ResponseMeta;
+  };
+  getCategoryLeaderboard: {
+    object: "list";
+    data: OperationData["getCategoryLeaderboard"];
+    has_more: boolean;
+    next_cursor?: string;
+    /** Wallets in the category whose edge lower bound is above zero, Wallets in the full walk across every page: those in the category, under this request's active_within and min_events, whose edge lower bound is above zero. The same on every page. */
+    total?: number;
     meta: ResponseMeta;
   };
   getCombo: ComboResponse;
@@ -6932,6 +6978,15 @@ export interface OperationResponse {
   getWhaleTrade: {
     object: "whale_trade";
     data: OperationData["getWhaleTrade"];
+    meta: ResponseMeta;
+  };
+  listCategoryLeaders: {
+    object: "list";
+    data: OperationData["listCategoryLeaders"];
+    has_more: boolean;
+    next_cursor?: string;
+    /** Number of rows returned: up to three per category. */
+    total?: number;
     meta: ResponseMeta;
   };
   listComboFills: ComboFillsResponse;
