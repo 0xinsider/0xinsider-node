@@ -391,6 +391,8 @@ export type {
   GameMarketProviderPrices,
   GameSharpMoney,
   GameStatus,
+  GameTournament,
+  GameTournamentLocation,
   GameVolume,
   GamesCoverage,
   HolderCategoryEvidence,

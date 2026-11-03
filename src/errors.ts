@@ -87,6 +87,10 @@ export const API_ERROR_REASONS = [
   // subscription has lapsed. Permanent until a person reactivates; the
   // message names the URL. Carried on SubscriptionRequiredError.reason.
   "subscription_inactive",
+  // 402 `subscription_required` refinement (#32592): the account has a plan but
+  // its latest subscription invoice is unpaid. Permanent until a person pays at
+  // `billing_url`. Carried on SubscriptionRequiredError (`paymentOverdue`).
+  "payment_overdue",
   // 429 `rate_limited` refinement (#16111): the account has used the requests
   // Pro includes for the UTC calendar month. `retry_at` is the first of next
   // month; pay as you go is turned on at https://0xinsider.com/developers.
@@ -145,7 +149,7 @@ export interface FreshnessFailure {
   max_age_s: number;
   actual_age_s?: number;
   as_of?: string;
-  data_quality_status: "fresh" | "partial" | "unknown" | "untracked" | "unavailable";
+  data_quality_status: "fresh" | "stale" | "partial" | "unknown" | "untracked" | "unavailable";
 }
 
 /** Parsed `error` object from the V1 error envelope. */
@@ -160,6 +164,8 @@ export interface ApiErrorBody {
   retry_at?: string | null;
   /** Requested and measured ages for `freshness_ceiling_unsatisfied`. */
   freshness?: FreshnessFailure | null;
+  /** Where a person clears a 402: pays the overdue invoice or reactivates (#32592). */
+  billing_url?: string | null;
   [key: string]: unknown;
 }
 
@@ -453,18 +459,28 @@ export class ApiKeyInQueryError extends InvalidApiKeyError {
 }
 
 /**
- * 402 - the key is valid but the account has no active Pro subscription.
+ * 402 - the key is valid but the account has no paid access.
  *
- * Permanent until a person reactivates (`reason: subscription_inactive`,
- * #14283): there is no `Retry-After`, and a retry on a schedule never clears
- * it. Stop the loop and surface `reactivationUrl` to your own user. The key
- * and its settings are unchanged and work again the moment Pro is active;
- * the owner is emailed once per lapse.
+ * Two causes, told apart by `reason`. `subscription_inactive` (#14283): the
+ * Pro subscription has lapsed, and the owner is emailed once per lapse.
+ * `payment_overdue` (#32592): the account still has its plan, but the latest
+ * invoice is unpaid (`paymentOverdue` is `true`). Both are permanent until a
+ * person acts: there is no `Retry-After`, and a retry on a schedule never
+ * clears either. Stop the loop and surface `billingUrl` to your own user. The
+ * key and its settings are unchanged and work again the moment the plan is
+ * active or the invoice is paid.
  */
 export class SubscriptionRequiredError extends OxinsiderApiError {
   override readonly code = "subscription_required" as const;
-  /** Where the account reactivates Pro. */
+  /** Where the account reactivates Pro or pays the overdue invoice. */
   readonly reactivationUrl = "https://0xinsider.com/billing";
+  /**
+   * Where a person clears this 402: the body's `billing_url`, or
+   * `reactivationUrl` when the server did not send one (#32592).
+   */
+  readonly billingUrl: string;
+  /** `true` when the account owes an invoice rather than having lapsed (#32592). */
+  readonly paymentOverdue: boolean;
   constructor(
     status: number,
     body: unknown,
@@ -472,6 +488,10 @@ export class SubscriptionRequiredError extends OxinsiderApiError {
   ) {
     super(status, body, transport);
     this.name = "SubscriptionRequiredError";
+    const billingUrl = this.error?.billing_url;
+    this.billingUrl =
+      typeof billingUrl === "string" && billingUrl.length > 0 ? billingUrl : this.reactivationUrl;
+    this.paymentOverdue = this.reason === "payment_overdue";
   }
 }
 

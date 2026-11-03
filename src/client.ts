@@ -1432,7 +1432,9 @@ export type EdgeHunterSignalsParams = EdgeHunterSelectionParams & Pick<Operation
 /**
  * Full observation evidence; cohort is required, including for empty pages.
  * admission "most_held_48h" (cohort "wider_holder" only) opts in to the
- * most-held selection; the read then requires the server to echo it.
+ * most-held selection, and "most_held_48h_by_type" (which requires
+ * market_types) to the same rule within each named market type; the read
+ * then requires the server to echo it.
  */
 export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "admission"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
 export type EdgeHunterAdvancedParams = EdgeHunterSignalsParams | EdgeHunterObservationsParams;

@@ -241,14 +241,17 @@ if (!verdict.ok) {
 }
 ```
 
-A group passes only when its `status` is `fresh`, it carries `as_of`, and
-that clock is within `maxAgeMs`. `fresh` means tracked and clocked, not
-current enough for you. `unknown` fails: the read cannot date that group, and
+A group passes only when its `status` is `fresh` or `stale`, it carries
+`as_of`, and that clock is within `maxAgeMs`. `stale` says `as_of` is older
+than the writer's own refresh budget, the group's `max_age_s`; your `maxAgeMs`
+takes that budget's place, as the API's `max_age_s` ceiling does. `fresh` alone
+is not current enough for you. `unknown` fails: the read cannot date that group, and
 missing is never recent. `untracked` groups are listed in `verdict.untracked`
 and left out of the verdict. Pass `groups: ["ranking", "volume"]` to judge only the
 groups you read; a named group the body does not carry fails as `missing`.
 The Python (`assess_data_quality`) and Go (`AssessDataQuality`) SDKs apply the
-same rule.
+same rule; a release of either that predates `stale` fails it as an
+unrecognized status.
 
 // Keep compatibility by default, or opt into rejection of unsupported query
 // names. The SDK exposes the server's diagnostics on response metadata.
@@ -830,7 +833,7 @@ An owned JSON/text body that fails during consumption throws `ResponseBodyReadEr
 | --- | --- |
 | `bad_request` | `BadRequestError` |
 | `invalid_api_key` | `InvalidApiKeyError` |
-| `subscription_required` | `SubscriptionRequiredError` |
+| `subscription_required` | `SubscriptionRequiredError` (`billingUrl` names where a person clears it; `paymentOverdue` is `true` for `reason: payment_overdue`, an unpaid invoice on an account that still has its plan, and `false` for `subscription_inactive`, a lapsed plan) |
 | `forbidden` | `ForbiddenError` |
 | `not_found` | `NotFoundError` |
 | `account_locked` | `AccountLockedError` |
