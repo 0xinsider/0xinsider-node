@@ -171,6 +171,13 @@ if (slate.object === "pick_of_the_day") console.log(slate.data.pick_date, slate.
 
 A past day with no published pick throws the 404 `not_found` with `error.param` `date`. A past day does not change, so do not retry it. A date after today throws the 400 `bad_request`.
 
+SDK 0.38.0 types the smaller Pick of the Day reads (#32659): `view: "summary"` and `pick_id` on the pick, `view`, `limit` and `cursor` on the archive, `view` and `sections` on the stats. The archive and stats `data` are now typed as the full body or the smaller one. Only the smaller one carries `view`, so check `"view" in data` before you read a full-only field. A call without these parameters returns the same full body as before.
+
+```ts
+const page = await client.call("getPickOfTheDayArchive", { query: { view: "summary", limit: 50 } });
+if ("view" in page.data) console.log(page.data.page.next_cursor);
+```
+
 ## Pick proof by stable identity
 
 `getPickOfTheDayLedgerEntry(pickId)` reads the public proof for one pick without an API key. Keep `pick_id` as its decimal string; converting it to `Number` can lose precision.
