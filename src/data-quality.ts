@@ -5,12 +5,17 @@
  * that is old enough to act on, because the tolerance belongs to the caller.
  * This helper applies one: a pure function over the response, with no request
  * of its own. The Python SDK (`assess_data_quality`) and the Go SDK
- * (`AssessDataQuality`) carry the same rule under the same name.
+ * (`AssessDataQuality`) carry the same rule under the same name; a release of
+ * either that predates `stale` fails it as a status it does not recognize,
+ * which errs toward refusing a body.
  *
  * The rule:
- * - A group passes only when its `status` is `fresh`, it carries `as_of`, and
- *   that clock is within `maxAgeMs` of `now`. `fresh` alone means tracked and
- *   clocked, not current enough for you.
+ * - A group passes only when its `status` is `fresh` or `stale`, it carries
+ *   `as_of`, and that clock is within `maxAgeMs` of `now`. Both statuses mean
+ *   tracked and clocked; `stale` adds that `as_of` is older than the writer's
+ *   own refresh budget (the group's `max_age_s`), and your `maxAgeMs` takes
+ *   that budget's place here, as the API's own `max_age_s` ceiling does
+ *   (#32458). `fresh` alone is not current enough for you.
  * - `untracked` groups are left out of the verdict: 0xinsider does not track
  *   them for this subject by design, so there is no age to hold them to. They
  *   are listed in `untracked` so a caller that needs one can refuse the body.
@@ -47,7 +52,7 @@ export interface DataQualityFailure {
 export interface DataQualityAssessment {
   /**
    * True when at least one group was judged and every judged group is fresh
-   * and within `maxAgeMs`. A body with nothing to judge (every group
+   * or stale and within `maxAgeMs`. A body with nothing to judge (every group
    * `untracked`) is not ok: nothing in it could be dated.
    */
   ok: boolean;
@@ -117,10 +122,10 @@ export function assessDataQuality(
       oldestAsOf = entry.as_of;
     }
     const base = { group: entry.group, status: entry.status, as_of: entry.as_of, ageMs };
-    if (entry.status !== "fresh") {
+    if (entry.status !== "fresh" && entry.status !== "stale") {
       failing.push({ ...base, reason: entry.reason ?? `status is ${entry.status}` });
     } else if (!hasClock) {
-      failing.push({ ...base, reason: "fresh but carries no as_of, so no age can be measured" });
+      failing.push({ ...base, reason: `${entry.status} but carries no as_of, so no age can be measured` });
     } else if (ageMs !== undefined && ageMs > options.maxAgeMs) {
       failing.push({ ...base, reason: `older than maxAgeMs (${options.maxAgeMs})` });
     }
