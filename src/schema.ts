@@ -59,6 +59,25 @@ export type AgentRegistration = {
   };
 };
 
+/** A computed count with its truth state; the same envelope as AnalyticNumber. */
+export type AnalyticInteger = {
+  state: "computed" | "known_zero" | "not_computed" | "not_applicable" | "stale" | "unavailable" | "insufficient_data";
+  source: "provider" | "insert_time" | "cache" | "computed";
+  value?: number;
+  freshness_at?: string;
+};
+
+/** A computed number with its truth state. value is present when state is computed or known_zero and may be present when stale; any other state says why there is no number, never a stand-in zero. */
+export type AnalyticNumber = {
+  /** computed: a measured value. known_zero: a measured zero. stale: a value past its freshness window. not_computed: an input is unknown. not_applicable: the measure does not apply. unavailable: the source could not be read. insufficient_data: too few observations. */
+  state: "computed" | "known_zero" | "not_computed" | "not_applicable" | "stale" | "unavailable" | "insufficient_data";
+  /** Where the value came from, for diagnostics: cache is a stored aggregate, computed a request-time aggregate. Decide on state, not source. */
+  source: "provider" | "insert_time" | "cache" | "computed";
+  value?: number;
+  /** When the stored inputs behind the value were written or last confirmed (cache), or the request time (computed). */
+  freshness_at?: string;
+};
+
 export type ApiDiscovery = {
   /** Canonical API origin for public V1 requests. */
   api_base_url: string;
@@ -4413,6 +4432,19 @@ export type Trader = {
   /** Current evidence for observed and known categories (expand=categories or expand[]=categories). Omitted unless expanded. Includes insufficient, stale, unknown and degraded rows; absence of a category is not proof of skill. The global grade is unchanged. Sports and esports only (#28827): a category outside them is omitted, as on GET /api/v1/trader/{address}/categories. */
   category_records?: CategorySkillV2[];
   category_skill_model?: CategorySkillModelReadiness;
+  /** Edge over the price paid: the profile's Edge badge and the leaderboard's Edge measure (#32622). Present on every read of a wallet with at least one settled sports or esports market of $20 or more at a known entry price; omitted for a wallet with none, where there is nothing to measure. */
+  price_edge?: TraderPriceEdge;
+  /** The profile's strategy measures over the wallet's sports and esports markets: P&L and win rate by UTC hour, hold-time and first-trade-hour bands, position sizes with category concentration, and entry-price buckets (#32622). Present only when expand=breakdowns or expand[]=breakdowns is requested, on GET /api/v1/trader/{address} only: POST /api/v1/traders/batch refuses the expand. Computed on the read from the wallet's whole sports and esports history, so a large wallet can take seconds; a read that cannot finish answers 503 with Retry-After. */
+  breakdowns?: TraderBreakdowns;
+};
+
+/** The profile's strategy measures (expand=breakdowns, #32622), the same figures as the wallet profile's Insights and Performance breakdown cards. Every figure counts the wallet's sports and esports markets only, from the same read the profile makes. */
+export type TraderBreakdowns = {
+  hourly_performance: TraderHourlyPerformance;
+  time_breakdowns: TraderTimeBreakdowns;
+  /** Position sizes and category concentration. null when the wallet has no sports or esports position with trades, or its stored markets carry no freshness clock yet. */
+  risk_metrics: TraderRiskMetrics | null;
+  entry_price_analysis: TraderEntryPriceAnalysis;
 };
 
 export type TraderCategoryRecord = {
@@ -4486,6 +4518,34 @@ export type TraderContext = {
   data_as_of: string | null;
   /** Human-readable statement of the point-in-time snapshot semantics (data_as_of is the open-position clock -- the latest /positions snapshot, else the last completed sync; the snapshot advances only open positions, so resolved counts and win rate can include settled markets recorded after the last full sync; native realized P&L follows its accounting snapshot -- not a live feed; re-fetch for fresher data). */
   freshness_note: string;
+};
+
+/** Results by the entry price the wallet paid for the side it held, over its sports and esports markets with a known held entry price. */
+export type TraderEntryPriceAnalysis = {
+  /** One bucket per price band that has a market, in bucket_order. */
+  buckets: TraderEntryPriceBucket[];
+  /** The bucket with the highest win rate among buckets of at least 3 markets. null when no bucket has 3. */
+  best_bucket: string | null;
+  /** The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3. */
+  worst_bucket: string | null;
+};
+
+/** One entry-price band. Each measure is an analytic value: read state before value. */
+export type TraderEntryPriceBucket = {
+  /** The band: $0.01-$0.19, $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. The last also holds any price below $0.01. */
+  bucket: string;
+  /** Display position, 0 first, from the lowest price up. */
+  bucket_order: number;
+  /** Markets in the band. */
+  markets: AnalyticInteger;
+  /** Of those, the markets that made money. */
+  wins: AnalyticInteger;
+  /** wins over decided markets (a nonzero P&L), as a percentage 0-100. */
+  win_rate: AnalyticNumber;
+  /** Realized P&L of the band's markets, USD. */
+  total_pnl: AnalyticNumber;
+  /** Mean realized P&L of a market in the band, USD. */
+  avg_pnl: AnalyticNumber;
 };
 
 export type TraderEsportsGameRecord = {
@@ -4672,6 +4732,37 @@ export type TraderGradeAt = {
   } | null;
 };
 
+/** P&L and win rate by the UTC hour of the wallet's first trade in each settled sports or esports market. */
+export type TraderHourlyPerformance = {
+  /** One entry per UTC hour that has a settled market; an hour with none is absent. */
+  entries: ({
+    /** UTC hour of the first trade, 0-23. */
+    hour: number;
+    /** Settled markets first traded in this hour. */
+    markets: number;
+    /** Of those, the markets that made money at settlement. */
+    wins: number;
+    /** wins over the decided markets (settled with a nonzero P&L), as a percentage 0-100. 0 when no market of the hour is decided: read it with wins and markets. */
+    win_rate: number;
+    /** Realized P&L of those markets, USD. */
+    total_pnl: number;
+    /** total_pnl over markets, USD. */
+    avg_pnl: number;
+  })[];
+  /** The hour with the highest win_rate. null when no entry exists. */
+  best_hour: number | null;
+  /** best_hour's win_rate, percentage 0-100. null exactly when best_hour is. */
+  best_win_rate: number | null;
+  /** The hour with the lowest win_rate. null when no entry exists. */
+  worst_hour: number | null;
+  /** worst_hour's win_rate, percentage 0-100. null exactly when worst_hour is. */
+  worst_win_rate: number | null;
+  /** best_win_rate minus worst_win_rate, percentage points. null when either is null. */
+  spread_pp: number | null;
+  /** true when at least 12 hours have markets and every one of them has the same P&L sign, so the hour-to-hour spread says little about timing. */
+  is_approximate: boolean;
+};
+
 /** A trader's sports and esports daily P&L object. `id`, `freshness_at`, `series_status` and `realized` are always present. The five sections -- `entries`, `stats`, `monthly`, `year_totals`, `drawdown` -- are present unless the request's `sections` parameter excluded them, so a request that sends no `sections` always carries all five. An excluded section is absent from the object, never null and never an empty array. While `series_status` is `pending` the sections are empty and never mean zero. */
 export type TraderPnl = {
   /** Prefixed trader ID (`trd_...`). */
@@ -4828,6 +4919,42 @@ export type TraderPnlInScope = {
   as_of: string;
 };
 
+/** Edge over the price paid (#32270, #32622): how often the side a wallet bought won, minus the average price it paid, over its settled sports and esports markets of $20 or more at a known entry price. Probabilities throughout: edge 0.012 is 1.2 percentage points. The same figures as LeaderboardPriceEdge, plus the shrunk edge the profile badge and the leaderboard show. No hold: a hold is a fact of a leaderboard row, not of the wallet. */
+export type TraderPriceEdge = {
+  /** Settled sports and esports markets of $20 or more at a known entry price that the edge is measured over. */
+  markets: number;
+  /** Share of those markets whose bought side won, 0-1. */
+  hit_rate: number;
+  /** Mean entry price paid, 0-1. */
+  avg_price: number;
+  /** hit_rate minus avg_price, full precision, before any shrink. */
+  edge: number;
+  /** Whether the edge ranks. ranked: at least 30 such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate over the same markets. too_few_markets: fewer than 30. sample_mismatch: that share is more than 10 points away, so these markets do not describe the wallet's record. */
+  status: "ranked" | "too_few_markets" | "sample_mismatch";
+  /** The edge the profile badge shows and the leaderboard ranks: edge pulled toward field_average by how short the record is. A short record moves most of the way to the average; a long one keeps nearly all of its own edge. Present only when status is ranked. */
+  shrunk_edge?: number;
+  /** The mean edge of every ranked wallet that traded in the last 180 days, the value shrunk_edge is pulled toward. Present only with shrunk_edge. */
+  field_average?: number;
+};
+
+/** Position sizes over the wallet's sports and esports positions with trades, and how concentrated its volume is across categories. Each measure is an analytic value: read state before value. The four size measures are not_computed while any position's cost is unknown; the counts are always measured. */
+export type TraderRiskMetrics = {
+  /** Mean cost basis of a position, USD. */
+  avg_position_size: AnalyticNumber;
+  /** Median cost basis of a position, USD. */
+  median_position_size: AnalyticNumber;
+  /** Largest cost basis of a position, USD. */
+  max_position_size: AnalyticNumber;
+  /** Population standard deviation of the cost basis, USD. */
+  position_size_stddev: AnalyticNumber;
+  /** Sports and esports positions with trades. */
+  total_positions: number;
+  /** Positions whose cost is more than twice the mean. */
+  large_position_count: number;
+  /** Herfindahl index of the wallet's volume across sports and esports categories: each category's share of the volume, squared and summed. 1.0 is a single category; lower is more spread. not_computed while any category's cost is unknown, and no value without volume. */
+  concentration: AnalyticNumber;
+};
+
 /** Lossless counterparts for trader statistics. The object is present exactly when stats.total_volume is. */
 export type TraderStatsExact = {
   /** stats.total_volume as an exact decimal: the sports and esports USD volume, the sum of every stored trade day's `trader_trade_daily_rollups.in_scope_volume_total` (#29830). Polymarket's full-history wallet-wide user volume before 2026-10-27. */
@@ -4840,6 +4967,32 @@ export type TraderSyncedData = {
   trader_id: number;
   /** Proxy wallet address. */
   wallet: string;
+};
+
+/** One band of a time breakdown. */
+export type TraderTimeBreakdownBand = {
+  /** The band's label. */
+  category_value: string;
+  /** Markets with a realized P&L in the band. */
+  n_markets: number;
+  /** Resolved markets that made money over resolved markets with a nonzero P&L, 0-1. null when none is decided. */
+  win_rate: number | null;
+  /** total_pnl over n_markets, USD. */
+  expectancy: number | null;
+  /** Gross profit over gross loss. null when the band has no loss. */
+  profit_factor: number | null;
+  /** Realized P&L of the band's markets, USD. */
+  total_pnl: number | null;
+};
+
+/** The hold-time and first-trade-hour bands of the profile's Performance breakdown card, over the wallet's sports and esports markets with a realized P&L. */
+export type TraderTimeBreakdowns = {
+  /** One row per band of time from the wallet's first to its last trade in a market: < 1h, 1h – 1d, 1 – 3d, 3 – 7d, 1 – 4w, > 4w. A band with no market is absent. */
+  by_duration: TraderTimeBreakdownBand[];
+  /** One row per four-hour UTC band of the wallet's first trade in a market: 00-03, 04-07, 08-11, 12-15, 16-19, 20-23. A band with no market is absent. */
+  by_hour_bucket: TraderTimeBreakdownBand[];
+  /** One-line summaries keyed by breakdown (by_duration, by_hour_bucket), from bands of at least 5 markets with a known P&L. A key is present only when there is a summary. */
+  insights: Record<string, string>;
 };
 
 /** Field-level trust metadata returned only when GET /api/v1/trader/{address} includes expand=trust. */
@@ -6039,10 +6192,10 @@ export interface OperationQuery {
   };
   getSuspiciousTrade: Record<string, never>;
   getTrader: {
-    /** Backward-compatible alias for expand. Repeatable: strategy, categories, trust. quant_metrics is accepted and returns nothing since 2026-10-27. */
-    "expand[]"?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
-    /** Include heavy fields and trust metadata. Repeatable: strategy, categories, trust. quant_metrics is accepted and returns nothing since 2026-10-27. */
-    expand?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
+    /** Backward-compatible alias for expand. Repeatable: strategy, categories, trust, breakdowns. quant_metrics is accepted and returns nothing since 2026-10-27. */
+    "expand[]"?: ("strategy" | "categories" | "quant_metrics" | "trust" | "breakdowns")[];
+    /** Include heavy fields and trust metadata. Repeatable: strategy, categories, trust, breakdowns. breakdowns adds the profile's strategy measures (Trader.breakdowns), computed on the read, and is served on this route only. quant_metrics is accepted and returns nothing since 2026-10-27. */
+    expand?: ("strategy" | "categories" | "quant_metrics" | "trust" | "breakdowns")[];
     /** Opt into a whole-response freshness ceiling in seconds. The server returns 200 only when data_quality.status is fresh or stale and data_quality.as_of is no older than this value; otherwise it returns 409 with error.reason=freshness_ceiling_unsatisfied. No refresh or alternate read is attempted. */
     max_age_s?: number;
   };
@@ -6737,7 +6890,7 @@ export interface OperationBody {
   batchGetTraders: {
     /** Trader identities to resolve in input order. */
     traders: string[];
-    /** Shared expand flags applied to every trader item. */
+    /** Shared expand flags applied to every trader item. breakdowns is refused with 400 (param expand): it computes on the read per wallet, so GET /api/v1/trader/{address} serves it one wallet at a time. */
     expand?: ("strategy" | "categories" | "quant_metrics" | "trust")[];
   };
   cancelTraderExport: never;

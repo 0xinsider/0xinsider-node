@@ -20,7 +20,8 @@
  * reconnect resumes from the right place.
  *
  * Filters (per-connection, subscribe-time): `event` (comma-separated frame
- * types), `condition_id`, and `min_grade` (S|A|B|C|D|F).
+ * types), `condition_id`, `min_grade` (S|A|B|C|D|F), and, for
+ * `LargeTradeInsertedV2` frames, `wallet` and `min_size` (#32642).
  *
  * Protocol validity (#16248). The decoder is bounded and fails visibly:
  *   - A successful response whose media type is not `text/event-stream` is
@@ -97,6 +98,22 @@ export interface StreamFilters {
   condition_id?: string;
   /** Only deliver frames carrying a grade at or above this threshold. */
   min_grade?: Grade;
+  /**
+   * Only deliver `LargeTradeInsertedV2` frames for this Polymarket wallet
+   * (`0x` plus 40 hex characters, any case). Every other frame type carries
+   * no wallet and is excluded while this is set. An address of any other
+   * shape is refused with a 400 `bad_request` whose `param` is `wallet`.
+   */
+  wallet?: string;
+  /**
+   * Only deliver `LargeTradeInsertedV2` frames whose USD notional
+   * (`size_usd`) is at or above this amount. A positive decimal with at most
+   * six places; pass a string (`"25000.50"`) to send it exactly. A number is
+   * sent as `String(value)`, so one that prints in exponent form (`1e-7`) is
+   * refused with a 400 `bad_request` whose `param` is `min_size`. Every other
+   * frame type is excluded while this is set.
+   */
+  min_size?: number | string;
 }
 
 export interface StreamOptions extends StreamFilters {
@@ -1409,6 +1426,14 @@ function buildStreamUrl(
   }
   if (options.min_grade) {
     url.searchParams.set("min_grade", options.min_grade);
+  }
+  if (options.wallet) {
+    url.searchParams.set("wallet", options.wallet);
+  }
+  // `0` is a value the server refuses (it must be positive), so it is sent
+  // and answered with the server's 400 rather than silently dropped.
+  if (options.min_size !== undefined && options.min_size !== "") {
+    url.searchParams.set("min_size", String(options.min_size));
   }
   return url.toString();
 }
