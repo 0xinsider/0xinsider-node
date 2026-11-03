@@ -598,12 +598,12 @@
             "name": "expand[]",
             "in": "query",
             "required": false,
-            "description": "Backward-compatible alias for expand. Repeatable: strategy, categories, trust. quant_metrics is accepted and returns nothing since 2026-10-27.",
+            "description": "Backward-compatible alias for expand. Repeatable: strategy, categories, trust, breakdowns. quant_metrics is accepted and returns nothing since 2026-10-27.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["strategy", "categories", "quant_metrics", "trust"]
+                "enum": ["strategy", "categories", "quant_metrics", "trust", "breakdowns"]
               }
             },
             "style": "form",
@@ -613,12 +613,12 @@
             "name": "expand",
             "in": "query",
             "required": false,
-            "description": "Include heavy fields and trust metadata. Repeatable: strategy, categories, trust. quant_metrics is accepted and returns nothing since 2026-10-27.",
+            "description": "Include heavy fields and trust metadata. Repeatable: strategy, categories, trust, breakdowns. breakdowns adds the profile's strategy measures (Trader.breakdowns), computed on the read, and is served on this route only. quant_metrics is accepted and returns nothing since 2026-10-27.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["strategy", "categories", "quant_metrics", "trust"]
+                "enum": ["strategy", "categories", "quant_metrics", "trust", "breakdowns"]
               }
             },
             "style": "form",
@@ -2093,7 +2093,7 @@
                       "type": "string",
                       "enum": ["strategy", "categories", "quant_metrics", "trust"]
                     },
-                    "description": "Shared expand flags applied to every trader item."
+                    "description": "Shared expand flags applied to every trader item. breakdowns is refused with 400 (param expand): it computes on the read per wallet, so GET /api/v1/trader/{address} serves it one wallet at a time."
                   }
                 }
               },
@@ -44596,6 +44596,372 @@
           },
           "category_skill_model": {
             "$ref": "#/components/schemas/CategorySkillModelReadiness"
+          },
+          "price_edge": {
+            "$ref": "#/components/schemas/TraderPriceEdge",
+            "description": "Edge over the price paid: the profile's Edge badge and the leaderboard's Edge measure (#32622). Present on every read of a wallet with at least one settled sports or esports market of $20 or more at a known entry price; omitted for a wallet with none, where there is nothing to measure."
+          },
+          "breakdowns": {
+            "$ref": "#/components/schemas/TraderBreakdowns",
+            "description": "The profile's strategy measures over the wallet's sports and esports markets: P&L and win rate by UTC hour, hold-time and first-trade-hour bands, position sizes with category concentration, and entry-price buckets (#32622). Present only when expand=breakdowns or expand[]=breakdowns is requested, on GET /api/v1/trader/{address} only: POST /api/v1/traders/batch refuses the expand. Computed on the read from the wallet's whole sports and esports history, so a large wallet can take seconds; a read that cannot finish answers 503 with Retry-After."
+          }
+        }
+      },
+      "TraderPriceEdge": {
+        "type": "object",
+        "description": "Edge over the price paid (#32270, #32622): how often the side a wallet bought won, minus the average price it paid, over its settled sports and esports markets of $20 or more at a known entry price. Probabilities throughout: edge 0.012 is 1.2 percentage points. The same figures as LeaderboardPriceEdge, plus the shrunk edge the profile badge and the leaderboard show. No hold: a hold is a fact of a leaderboard row, not of the wallet.",
+        "required": ["markets", "hit_rate", "avg_price", "edge", "status"],
+        "properties": {
+          "markets": {
+            "type": "integer",
+            "description": "Settled sports and esports markets of $20 or more at a known entry price that the edge is measured over."
+          },
+          "hit_rate": {
+            "type": "number",
+            "description": "Share of those markets whose bought side won, 0-1."
+          },
+          "avg_price": {
+            "type": "number",
+            "description": "Mean entry price paid, 0-1."
+          },
+          "edge": {
+            "type": "number",
+            "description": "hit_rate minus avg_price, full precision, before any shrink."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ranked", "too_few_markets", "sample_mismatch"],
+            "description": "Whether the edge ranks. ranked: at least 30 such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate over the same markets. too_few_markets: fewer than 30. sample_mismatch: that share is more than 10 points away, so these markets do not describe the wallet's record."
+          },
+          "shrunk_edge": {
+            "type": "number",
+            "description": "The edge the profile badge shows and the leaderboard ranks: edge pulled toward field_average by how short the record is. A short record moves most of the way to the average; a long one keeps nearly all of its own edge. Present only when status is ranked."
+          },
+          "field_average": {
+            "type": "number",
+            "description": "The mean edge of every ranked wallet that traded in the last 180 days, the value shrunk_edge is pulled toward. Present only with shrunk_edge."
+          }
+        }
+      },
+      "TraderBreakdowns": {
+        "type": "object",
+        "description": "The profile's strategy measures (expand=breakdowns, #32622), the same figures as the wallet profile's Insights and Performance breakdown cards. Every figure counts the wallet's sports and esports markets only, from the same read the profile makes.",
+        "required": ["hourly_performance", "time_breakdowns", "risk_metrics", "entry_price_analysis"],
+        "properties": {
+          "hourly_performance": {
+            "$ref": "#/components/schemas/TraderHourlyPerformance"
+          },
+          "time_breakdowns": {
+            "$ref": "#/components/schemas/TraderTimeBreakdowns"
+          },
+          "risk_metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraderRiskMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Position sizes and category concentration. null when the wallet has no sports or esports position with trades, or its stored markets carry no freshness clock yet."
+          },
+          "entry_price_analysis": {
+            "$ref": "#/components/schemas/TraderEntryPriceAnalysis"
+          }
+        }
+      },
+      "TraderHourlyPerformance": {
+        "type": "object",
+        "description": "P&L and win rate by the UTC hour of the wallet's first trade in each settled sports or esports market.",
+        "required": [
+          "entries",
+          "best_hour",
+          "best_win_rate",
+          "worst_hour",
+          "worst_win_rate",
+          "spread_pp",
+          "is_approximate"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "description": "One entry per UTC hour that has a settled market; an hour with none is absent.",
+            "items": {
+              "type": "object",
+              "required": ["hour", "markets", "wins", "win_rate", "total_pnl", "avg_pnl"],
+              "properties": {
+                "hour": {
+                  "type": "integer",
+                  "description": "UTC hour of the first trade, 0-23."
+                },
+                "markets": {
+                  "type": "integer",
+                  "description": "Settled markets first traded in this hour."
+                },
+                "wins": {
+                  "type": "integer",
+                  "description": "Of those, the markets that made money at settlement."
+                },
+                "win_rate": {
+                  "type": "number",
+                  "description": "wins over the decided markets (settled with a nonzero P&L), as a percentage 0-100. 0 when no market of the hour is decided: read it with wins and markets."
+                },
+                "total_pnl": {
+                  "type": "number",
+                  "description": "Realized P&L of those markets, USD."
+                },
+                "avg_pnl": {
+                  "type": "number",
+                  "description": "total_pnl over markets, USD."
+                }
+              }
+            }
+          },
+          "best_hour": {
+            "type": ["integer", "null"],
+            "description": "The hour with the highest win_rate. null when no entry exists."
+          },
+          "best_win_rate": {
+            "type": ["number", "null"],
+            "description": "best_hour's win_rate, percentage 0-100. null exactly when best_hour is."
+          },
+          "worst_hour": {
+            "type": ["integer", "null"],
+            "description": "The hour with the lowest win_rate. null when no entry exists."
+          },
+          "worst_win_rate": {
+            "type": ["number", "null"],
+            "description": "worst_hour's win_rate, percentage 0-100. null exactly when worst_hour is."
+          },
+          "spread_pp": {
+            "type": ["number", "null"],
+            "description": "best_win_rate minus worst_win_rate, percentage points. null when either is null."
+          },
+          "is_approximate": {
+            "type": "boolean",
+            "description": "true when at least 12 hours have markets and every one of them has the same P&L sign, so the hour-to-hour spread says little about timing."
+          }
+        }
+      },
+      "TraderTimeBreakdowns": {
+        "type": "object",
+        "description": "The hold-time and first-trade-hour bands of the profile's Performance breakdown card, over the wallet's sports and esports markets with a realized P&L.",
+        "required": ["by_duration", "by_hour_bucket", "insights"],
+        "properties": {
+          "by_duration": {
+            "type": "array",
+            "description": "One row per band of time from the wallet's first to its last trade in a market: < 1h, 1h – 1d, 1 – 3d, 3 – 7d, 1 – 4w, > 4w. A band with no market is absent.",
+            "items": {
+              "$ref": "#/components/schemas/TraderTimeBreakdownBand"
+            }
+          },
+          "by_hour_bucket": {
+            "type": "array",
+            "description": "One row per four-hour UTC band of the wallet's first trade in a market: 00-03, 04-07, 08-11, 12-15, 16-19, 20-23. A band with no market is absent.",
+            "items": {
+              "$ref": "#/components/schemas/TraderTimeBreakdownBand"
+            }
+          },
+          "insights": {
+            "type": "object",
+            "description": "One-line summaries keyed by breakdown (by_duration, by_hour_bucket), from bands of at least 5 markets with a known P&L. A key is present only when there is a summary.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TraderTimeBreakdownBand": {
+        "type": "object",
+        "description": "One band of a time breakdown.",
+        "required": ["category_value", "n_markets", "win_rate", "expectancy", "profit_factor", "total_pnl"],
+        "properties": {
+          "category_value": {
+            "type": "string",
+            "description": "The band's label."
+          },
+          "n_markets": {
+            "type": "integer",
+            "description": "Markets with a realized P&L in the band."
+          },
+          "win_rate": {
+            "type": ["number", "null"],
+            "description": "Resolved markets that made money over resolved markets with a nonzero P&L, 0-1. null when none is decided."
+          },
+          "expectancy": {
+            "type": ["number", "null"],
+            "description": "total_pnl over n_markets, USD."
+          },
+          "profit_factor": {
+            "type": ["number", "null"],
+            "description": "Gross profit over gross loss. null when the band has no loss."
+          },
+          "total_pnl": {
+            "type": ["number", "null"],
+            "description": "Realized P&L of the band's markets, USD."
+          }
+        }
+      },
+      "TraderRiskMetrics": {
+        "type": "object",
+        "description": "Position sizes over the wallet's sports and esports positions with trades, and how concentrated its volume is across categories. Each measure is an analytic value: read state before value. The four size measures are not_computed while any position's cost is unknown; the counts are always measured.",
+        "required": [
+          "avg_position_size",
+          "median_position_size",
+          "max_position_size",
+          "position_size_stddev",
+          "total_positions",
+          "large_position_count",
+          "concentration"
+        ],
+        "properties": {
+          "avg_position_size": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Mean cost basis of a position, USD."
+          },
+          "median_position_size": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Median cost basis of a position, USD."
+          },
+          "max_position_size": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Largest cost basis of a position, USD."
+          },
+          "position_size_stddev": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Population standard deviation of the cost basis, USD."
+          },
+          "total_positions": {
+            "type": "integer",
+            "description": "Sports and esports positions with trades."
+          },
+          "large_position_count": {
+            "type": "integer",
+            "description": "Positions whose cost is more than twice the mean."
+          },
+          "concentration": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Herfindahl index of the wallet's volume across sports and esports categories: each category's share of the volume, squared and summed. 1.0 is a single category; lower is more spread. not_computed while any category's cost is unknown, and no value without volume."
+          }
+        }
+      },
+      "TraderEntryPriceAnalysis": {
+        "type": "object",
+        "description": "Results by the entry price the wallet paid for the side it held, over its sports and esports markets with a known held entry price.",
+        "required": ["buckets", "best_bucket", "worst_bucket"],
+        "properties": {
+          "buckets": {
+            "type": "array",
+            "description": "One bucket per price band that has a market, in bucket_order.",
+            "items": {
+              "$ref": "#/components/schemas/TraderEntryPriceBucket"
+            }
+          },
+          "best_bucket": {
+            "type": ["string", "null"],
+            "description": "The bucket with the highest win rate among buckets of at least 3 markets. null when no bucket has 3."
+          },
+          "worst_bucket": {
+            "type": ["string", "null"],
+            "description": "The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3."
+          }
+        }
+      },
+      "TraderEntryPriceBucket": {
+        "type": "object",
+        "description": "One entry-price band. Each measure is an analytic value: read state before value.",
+        "required": ["bucket", "bucket_order", "markets", "wins", "win_rate", "total_pnl", "avg_pnl"],
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "description": "The band: $0.01-$0.19, $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. The last also holds any price below $0.01."
+          },
+          "bucket_order": {
+            "type": "integer",
+            "description": "Display position, 0 first, from the lowest price up."
+          },
+          "markets": {
+            "$ref": "#/components/schemas/AnalyticInteger",
+            "description": "Markets in the band."
+          },
+          "wins": {
+            "$ref": "#/components/schemas/AnalyticInteger",
+            "description": "Of those, the markets that made money."
+          },
+          "win_rate": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "wins over decided markets (a nonzero P&L), as a percentage 0-100."
+          },
+          "total_pnl": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Realized P&L of the band's markets, USD."
+          },
+          "avg_pnl": {
+            "$ref": "#/components/schemas/AnalyticNumber",
+            "description": "Mean realized P&L of a market in the band, USD."
+          }
+        }
+      },
+      "AnalyticNumber": {
+        "type": "object",
+        "description": "A computed number with its truth state. value is present when state is computed or known_zero and may be present when stale; any other state says why there is no number, never a stand-in zero.",
+        "required": ["state", "source"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "known_zero",
+              "not_computed",
+              "not_applicable",
+              "stale",
+              "unavailable",
+              "insufficient_data"
+            ],
+            "description": "computed: a measured value. known_zero: a measured zero. stale: a value past its freshness window. not_computed: an input is unknown. not_applicable: the measure does not apply. unavailable: the source could not be read. insufficient_data: too few observations."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["provider", "insert_time", "cache", "computed"],
+            "description": "Where the value came from, for diagnostics: cache is a stored aggregate, computed a request-time aggregate. Decide on state, not source."
+          },
+          "value": {
+            "type": "number"
+          },
+          "freshness_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the stored inputs behind the value were written or last confirmed (cache), or the request time (computed)."
+          }
+        }
+      },
+      "AnalyticInteger": {
+        "type": "object",
+        "description": "A computed count with its truth state; the same envelope as AnalyticNumber.",
+        "required": ["state", "source"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "known_zero",
+              "not_computed",
+              "not_applicable",
+              "stale",
+              "unavailable",
+              "insufficient_data"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": ["provider", "insert_time", "cache", "computed"]
+          },
+          "value": {
+            "type": "integer"
+          },
+          "freshness_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

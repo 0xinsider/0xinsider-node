@@ -626,7 +626,19 @@ with `sort: "recent"` only.
 
 ### Live stream (SSE)
 
-`streamFeed()` consumes `GET /api/v1/stream`, parses each `{ seq, published_at, type, ... }` feed envelope, and supports `Last-Event-ID` resume plus per-connection filters (`event`, `condition_id`, `min_grade`). The numeric cursor is cluster-shared across replicas and process restarts while retained; expired, future, or uncovered cursors emit `resync`.
+`streamFeed()` consumes `GET /api/v1/stream`, parses each `{ seq, published_at, type, ... }` feed envelope, and supports `Last-Event-ID` resume plus per-connection filters (`event`, `condition_id`, `min_grade`, `wallet`, `min_size`). The numeric cursor is cluster-shared across replicas and process restarts while retained; expired, future, or uncovered cursors emit `resync`.
+
+SDK 0.37.0 adds `wallet` and `min_size`, which the stream has accepted since before this release and earlier SDKs could not send. Both apply to `LargeTradeInsertedV2` frames only; with either set, every other frame type is excluded. `wallet` is a `0x` address (any case). `min_size` is the trade's USD notional floor, a positive decimal with at most six places; pass it as a string to send it exactly. The server refuses a malformed value with a 400 `bad_request` whose `param` names the filter, which `streamFeed` throws and the resilient consumers do not retry. A whale alert for one wallet's trades of $25,000 or more:
+
+```ts
+for await (const frame of streamFeedResilient(client, {
+  event: ["LargeTradeInsertedV2"],
+  wallet: "0x1234...abcd",
+  min_size: "25000",
+})) {
+  if (frame.kind === "event") console.log(frame.envelope);
+}
+```
 
 ```ts
 import { streamFeed } from "@0xinsider/sdk";
