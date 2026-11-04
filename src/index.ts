@@ -407,6 +407,7 @@ export type {
   LeaderboardEntry,
   LeaderboardLeagues,
   LeaderboardPriceEdge,
+  LeaderboardSummary,
   MarketCandles,
   MarketFlow,
   MarketHolder,

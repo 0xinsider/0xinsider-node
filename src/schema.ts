@@ -2035,6 +2035,22 @@ export type LeaderboardPriceEdge = {
   hold?: "record_incomplete";
 };
 
+/** The whole board's totals, the counts the 0xinsider leaderboard page shows (#32737), read with the ranking snapshot the page is served at. Sent on every page of a request with no category and no strategy, whatever its sort, dir and activity, which order or split the same wallets. Omitted on a category or strategy page, which lists a subset these totals do not describe, and while the ranking has no totals for the served generation. */
+export type LeaderboardSummary = {
+  /** Ranked wallets on the board: the wallets the unfiltered list pages through. */
+  ranked_total: number;
+  /** Ranked wallets by grade. Every ranked wallet is graded S, A or B, so the three sum to ranked_total. */
+  by_grade: {
+    S: number;
+    A: number;
+    B: number;
+  };
+  /** Ranked wallets whose last trade was 30 days or less before as_of: the wallets activity=active lists. ranked_total minus active_30d is the activity=inactive count. */
+  active_30d: number;
+  /** When the totals were counted, UTC. They are recounted about once a minute while the ranking is current. */
+  as_of: string;
+};
+
 /** One side's score line inside a `live_sports_updated` pulse. */
 export type LiveSportsScoreEntry = {
   /** Team name, ordered for the league (away first where the league reads that way). */
@@ -8026,6 +8042,7 @@ export interface OperationResponse {
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
     total?: number;
     meta: ResponseMeta;
+    summary?: LeaderboardSummary;
   };
   listLeaderboardLeagues: {
     object: "leaderboard_leagues";
