@@ -173,6 +173,8 @@ A past day with no published pick throws the 404 `not_found` with `error.param` 
 
 SDK 0.38.0 types the smaller Pick of the Day reads (#32659): `view: "summary"` and `pick_id` on the pick, `view`, `limit` and `cursor` on the archive, `view` and `sections` on the stats. The archive and stats `data` are now typed as the full body or the smaller one. Only the smaller one carries `view`, so check `"view" in data` before you read a full-only field. A call without these parameters returns the same full body as before.
 
+SDK 0.39.0 types `selected_by` (`"auto"` or `"manual"`) on every Pick of the Day ledger entry (#32696), and the stats `selections` breakdown, which `sections: ["selections"]` returns alone.
+
 ```ts
 const page = await client.call("getPickOfTheDayArchive", { query: { view: "summary", limit: 50 } });
 if ("view" in page.data) console.log(page.data.page.next_cursor);
@@ -633,7 +635,7 @@ with `sort: "recent"` only.
 
 ### Live stream (SSE)
 
-`streamFeed()` consumes `GET /api/v1/stream`, parses each `{ seq, published_at, type, ... }` feed envelope, and supports `Last-Event-ID` resume plus per-connection filters (`event`, `condition_id`, `min_grade`, `wallet`, `min_size`). The numeric cursor is cluster-shared across replicas and process restarts while retained; expired, future, or uncovered cursors emit `resync`.
+`streamFeed()` consumes `GET /api/v1/stream`, parses each `{ seq, published_at, type, ... }` feed envelope, and supports `Last-Event-ID` resume plus per-connection filters (`event`, `condition_id`, `min_grade`, `min_grade_at_trade`, `wallet`, `min_size`). The numeric cursor is cluster-shared across replicas and process restarts while retained; expired, future, or uncovered cursors emit `resync`.
 
 SDK 0.37.0 adds `wallet` and `min_size`, which the stream has accepted since before this release and earlier SDKs could not send. Both apply to `LargeTradeInsertedV2` frames only; with either set, every other frame type is excluded. `wallet` is a `0x` address (any case). `min_size` is the trade's USD notional floor, a positive decimal with at most six places; pass it as a string to send it exactly. The server refuses a malformed value with a 400 `bad_request` whose `param` names the filter, which `streamFeed` throws and the resilient consumers do not retry. A whale alert for one wallet's trades of $25,000 or more:
 
@@ -642,6 +644,17 @@ for await (const frame of streamFeedResilient(client, {
   event: ["LargeTradeInsertedV2"],
   wallet: "0x1234...abcd",
   min_size: "25000",
+})) {
+  if (frame.kind === "event") console.log(frame.envelope);
+}
+```
+
+SDK 0.39.0 adds `min_grade_at_trade` (#32766). It reads a `LargeTradeInsertedV2` frame's `grade_at_trade`, the grade the wallet held when the trade filled, and passes only a frame whose `grade_at_trade_status` is `graded`; with it set, every other frame type is excluded. `min_grade` reads `grade` instead, the wallet's grade when the trade was published, which for a backfilled trade can be hours after the fill. Send one of the two: the server refuses both with a 400 `bad_request` whose `param` is `min_grade_at_trade`. The same release types `min_grade_at_trade` on `listLargeTrades`, `listLargeTradeHistory` and `getEventReplaySince` and in webhook `trade_filters`, so a catch-up read and the stream with the same floor return the same trades. Trades by wallets graded A or better when they filled:
+
+```ts
+for await (const frame of streamFeedResilient(client, {
+  event: ["LargeTradeInsertedV2"],
+  min_grade_at_trade: "A",
 })) {
   if (frame.kind === "event") console.log(frame.envelope);
 }

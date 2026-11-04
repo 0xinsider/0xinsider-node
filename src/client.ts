@@ -893,8 +893,9 @@ const convergentWrites: ReadonlySet<string> = new Set(CONVERGENT_WRITE_OPERATION
 /**
  * How `call()` may repeat an operation that failed with 429, 502, 503, 504 or
  * a network error before any response (#16182):
- * - `"read"`: a GET, a read-only POST or a convergent write, repeated
- *   without conditions.
+ * - `"read"`: a GET, a POST that changes nothing
+ *   (`READ_ONLY_POST_OPERATIONS`) or a convergent write, repeated without
+ *   conditions.
  * - `"keyed"`: an `IDEMPOTENT_WRITE_OPERATIONS` member, repeated only when
  *   the request carries an `Idempotency-Key`, with the same key and the same
  *   bytes on every attempt.
@@ -1010,7 +1011,7 @@ export interface ApiClientOptions {
    * How many times a failed idempotent request is retried (#14281). Default
    * `DEFAULT_MAX_RETRIES` (2); `0` disables retries.
    *
-   * Retried: a GET, a read-only POST (`READ_ONLY_POST_OPERATIONS`), or an
+   * Retried: a GET, a POST that changes nothing (`READ_ONLY_POST_OPERATIONS`), or an
    * `IDEMPOTENT_WRITE_OPERATIONS` write carrying an `Idempotency-Key`, that
    * failed with 408, 429, 502, 503, 504, or a network error before any
    * response (`retryEligibility`, #16182). A 408 is the server's own timeout
