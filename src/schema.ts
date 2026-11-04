@@ -1475,6 +1475,21 @@ export type GameMarket = {
   prices?: GameMarketPrices;
   /** Polymarket's reported liquidity for this market. Omitted when the provider read carried none, and on a finished game read from its stored record; never 0 in place of a missing figure. */
   liquidity?: GameMarketLiquidity;
+  /** How Polymarket's oracle settled or is settling this market, the block GET /api/v1/games/{event_slug}/markets serves, from the same per-game store. Always present on GET /api/v1/games/{event_slug}; on GET /api/v1/games only with expand=settlement. It never waits for Polymarket: a game not read lately reads status unavailable while its read starts. */
+  settlement?: {
+    expected_settlement_time: string | null;
+    observed_at: string | null;
+    oracle_status: string | null;
+    payouts: number[] | null;
+    proposed_answer: "outcome_0" | "outcome_1" | "split" | "too_early" | null;
+    resolved_at: string | null;
+    result: "outcome" | "split" | null;
+    settled: boolean | null;
+    settlement_time_basis: string | null;
+    status: "observed" | "not_posed" | "unavailable";
+    was_disputed: boolean | null;
+    winning_outcome_index: number | null;
+  };
 };
 
 /** One market's liquidity as Polymarket reports it (Gamma liquidityNum), verbatim. Polymarket documents it only as reported market liquidity, with no unit. It describes the market's resting order book, not traded volume. */
@@ -2397,6 +2412,21 @@ export type MarketSnapshot = {
   };
   /** Price and spread trust metadata. Present only when expand=trust or expand[]=trust is requested. */
   trust?: MarketSnapshotTrust;
+  /** How Polymarket's oracle settled or is settling this market, the block GET /api/v1/games/{event_slug}/markets serves, read from the store of the market's event (a child event's market: its game's). It never waits for Polymarket: with nothing stored it reads status unavailable while the read starts. market.market_result stays null; read settlement.result. */
+  settlement: {
+    expected_settlement_time: string | null;
+    observed_at: string | null;
+    oracle_status: string | null;
+    payouts: number[] | null;
+    proposed_answer: "outcome_0" | "outcome_1" | "split" | "too_early" | null;
+    resolved_at: string | null;
+    result: "outcome" | "split" | null;
+    settled: boolean | null;
+    settlement_time_basis: string | null;
+    status: "observed" | "not_posed" | "unavailable";
+    was_disputed: boolean | null;
+    winning_outcome_index: number | null;
+  };
 };
 
 export type MarketSnapshotFreshness = {
@@ -6551,11 +6581,21 @@ export interface OperationData {
     line?: number;
     line_outcome_index?: number;
     negative_risk?: boolean;
-    outcomes: {
+    outcomes: ({
       index: number;
       label?: string;
       token_id?: string;
-    }[];
+      quote?: {
+        best_ask: number | null;
+        best_bid: number | null;
+        book_observed_at: string | null;
+        price: number | null;
+        price_basis: "midpoint" | "last_trade" | null;
+        price_observed_at: string | null;
+        status: "observed" | "no_orderbook" | "unavailable";
+        book_unavailable_reason: "cache_miss" | "stream_capacity" | "no_orderbook" | "missing_provider_token_id" | null;
+      };
+    })[];
     platform?: string;
     slug?: string;
     sports_market_type?: string;
@@ -6574,6 +6614,42 @@ export interface OperationData {
       }[];
       status: "computed" | "not_computed" | "unavailable";
       trader_count: number | null;
+    };
+    settlement: {
+      expected_settlement_time: string | null;
+      observed_at: string | null;
+      oracle_status: string | null;
+      payouts: number[] | null;
+      proposed_answer: "split" | "too_early" | "outcome_0" | "outcome_1" | null;
+      resolved_at: string | null;
+      result: "outcome" | "split" | null;
+      settled: boolean | null;
+      settlement_time_basis: string | null;
+      status: "observed" | "not_posed" | "unavailable";
+      was_disputed: boolean | null;
+      winning_outcome_index: number | null;
+    };
+    trading_terms?: {
+      fee_schedule: {
+        exponent: number | null;
+        rate: number | null;
+        rebate_rate: number | null;
+        taker_only: boolean | null;
+      } | null;
+      fees_enabled: boolean | null;
+      observed_at: string | null;
+      reward_allocations: ({
+        end_date: string | null;
+        rewards_amount: number | null;
+        rewards_daily_rate: number | null;
+        start_date: string | null;
+      })[] | null;
+      rewards_max_spread: number | null;
+      rewards_min_size: number | null;
+      seconds_delay: number | null;
+      status: "observed" | "not_listed" | "unavailable";
+      tick_size: number | null;
+      min_order_size_shares: number | null;
     };
   })[];
   listGames: Game[];
@@ -7030,15 +7106,15 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque gmk_v1_ cursor from next_cursor, sent with the same filters. It pins the page position (sports_market_type, line, condition_id), not a snapshot. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
-    /** sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. Repeatable: sharp_money. */
-    expand?: "sharp_money"[];
-    /** Backward-compatible alias for expand. Repeatable: sharp_money. */
-    "expand[]"?: "sharp_money"[];
+    /** sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. quotes adds each outcome's quote: the cached display price and best bid and ask, each with its observation time, in one cache read for the page; it adds 1 to the cost, on every plan. trading_terms adds each row's fee schedule, reward settings and allocations, order delay, tick and minimum order size in shares from its Gamma record, with the read's time; it adds 1 to the cost, on every plan. Repeatable: sharp_money, quotes, trading_terms. */
+    expand?: ("sharp_money" | "quotes" | "trading_terms")[];
+    /** Backward-compatible alias for expand. Repeatable: sharp_money, quotes, trading_terms. */
+    "expand[]"?: ("sharp_money" | "quotes" | "trading_terms")[];
   };
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page. */
     sport?: string;
-    /** League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports. */
+    /** League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports. */
     league?: string;
     /** Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). Without status, or with any other state, the list is the live and upcoming board. A value outside the enum returns an empty page. */
     status?: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
@@ -7052,10 +7128,10 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
-    /** Backward-compatible alias for expand. Repeatable: sharp_money. */
-    "expand[]"?: "sharp_money"[];
-    /** sharp_money adds each game's sharp_money, the GameSharpMoney object GET /api/v1/games/{event_slug}/sharp-money returns, read from the sport board's cached aggregate: one board read per sport on the page, never a per-game compute. A game the board did not evaluate carries status not_computed (read the per-game route for it); a sport whose aggregate could not be read carries status unavailable while the rest of the page is served. Adds 3 to the request cost. Repeatable. */
-    expand?: "sharp_money"[];
+    /** Backward-compatible alias for expand. Repeatable: sharp_money, settlement. */
+    "expand[]"?: ("sharp_money" | "settlement")[];
+    /** sharp_money adds each game's sharp_money, the GameSharpMoney object GET /api/v1/games/{event_slug}/sharp-money returns, read from the sport board's cached aggregate: one board read per sport on the page, never a per-game compute. A game the board did not evaluate carries status not_computed (read the per-game route for it); a sport whose aggregate could not be read carries status unavailable while the rest of the page is served. Pro and Max only; adds 3 to the request cost. settlement adds settlement to each winner market, the GameMarketSettlement block GET /api/v1/games/{event_slug}/markets serves, from the same per-game store. It never waits for Polymarket: a game not read lately carries status unavailable and its read starts, so a read a moment later may answer. Every plan; adds 2 to the request cost. Repeatable; the two combine. */
+    expand?: ("sharp_money" | "settlement")[];
   };
   listGameTrades: {
     /** Newest fills to return. Out-of-range values are clamped to 1..200. */

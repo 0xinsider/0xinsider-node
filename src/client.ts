@@ -2905,8 +2905,11 @@ export class OxinsiderApiClient {
    * List every stored market of one game's `event_slug` and of its child
    * events: spreads, totals, team totals, period lines and player props, each
    * with its `condition_id`, `sports_market_type`, typed `line` and outcome
-   * token ids. `families` counts every market type the event holds.
-   * `expand: ["sharp_money"]` adds each row's per-line sharp-money split.
+   * token ids, and its oracle `settlement`. `families` counts every market type
+   * the event holds. `expand: ["sharp_money"]` adds each row's per-line
+   * sharp-money split, `"quotes"` each outcome's cached `quote`, and
+   * `"trading_terms"` the market's fee schedule, reward settings, order delay,
+   * tick and `min_order_size_shares` from its Gamma record.
    */
   listGameMarkets(
     eventSlug: OperationPath["listGameMarkets"]["event_slug"],

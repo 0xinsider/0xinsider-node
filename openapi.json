@@ -19686,6 +19686,20 @@
                           "source": "live_sports_cache",
                           "reason": "market_not_in_stale_live_sports_read_model"
                         },
+                        "settlement": {
+                          "status": "observed",
+                          "oracle_status": "resolved",
+                          "settled": true,
+                          "payouts": [0, 1000000],
+                          "result": "outcome",
+                          "winning_outcome_index": 1,
+                          "was_disputed": false,
+                          "resolved_at": "2025-06-23T14:05:11Z",
+                          "expected_settlement_time": null,
+                          "settlement_time_basis": null,
+                          "proposed_answer": null,
+                          "observed_at": "2026-11-04T05:20:00Z"
+                        },
                         "freshness": {
                           "market_data": {
                             "status": "fresh",
@@ -21461,7 +21475,7 @@
             "name": "league",
             "in": "query",
             "required": false,
-            "description": "League tag, case-insensitive, as coverage.leagues spells it: nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports.",
+            "description": "League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports.",
             "schema": {
               "type": "string"
             }
@@ -21542,13 +21556,14 @@
             "name": "expand[]",
             "in": "query",
             "required": false,
-            "description": "Backward-compatible alias for expand. Repeatable: sharp_money.",
+            "description": "Backward-compatible alias for expand. Repeatable: sharp_money, settlement.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "sharp_money"
+                  "sharp_money",
+                  "settlement"
                 ]
               }
             },
@@ -21559,13 +21574,14 @@
             "name": "expand",
             "in": "query",
             "required": false,
-            "description": "sharp_money adds each game's sharp_money, the GameSharpMoney object GET /api/v1/games/{event_slug}/sharp-money returns, read from the sport board's cached aggregate: one board read per sport on the page, never a per-game compute. A game the board did not evaluate carries status not_computed (read the per-game route for it); a sport whose aggregate could not be read carries status unavailable while the rest of the page is served. Adds 3 to the request cost. Repeatable.",
+            "description": "sharp_money adds each game's sharp_money, the GameSharpMoney object GET /api/v1/games/{event_slug}/sharp-money returns, read from the sport board's cached aggregate: one board read per sport on the page, never a per-game compute. A game the board did not evaluate carries status not_computed (read the per-game route for it); a sport whose aggregate could not be read carries status unavailable while the rest of the page is served. Pro and Max only; adds 3 to the request cost. settlement adds settlement to each winner market, the GameMarketSettlement block GET /api/v1/games/{event_slug}/markets serves, from the same per-game store. It never waits for Polymarket: a game not read lately carries status unavailable and its read starts, so a read a moment later may answer. Every plan; adds 2 to the request cost. Repeatable; the two combine.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "sharp_money"
+                  "sharp_money",
+                  "settlement"
                 ]
               }
             },
@@ -22265,7 +22281,7 @@
             }
           },
           "404": {
-            "description": "No covered game has that event_slug. GET /api/v1/games lists what is covered; coverage.sports and coverage.leagues say which sports and leagues this deployment serves.",
+            "description": "No covered game has that event_slug. GET /api/v1/games lists what is covered; the coverage.sports and coverage.leagues of its response say which sports and leagues this deployment serves.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22368,7 +22384,7 @@
       "get": {
         "operationId": "listGameMarkets",
         "summary": "List a game's markets",
-        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, and active or closed status. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a player prop, a line beyond the seven around its family's main line, a closed or settled line), unavailable when the read failed or held no observation of the line within 120 ms. While the frame is being built, a line the game's stored split holds is computed and dated by money_as_of. Each read starts the game's split refilling: read again after a minute or two for the lines it could not answer. No price and no holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
+        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, active or closed status, and settlement. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. settlement is how Polymarket's oracle settled or is settling the market, read from Polymarket's /v2/resolutions and stored per game: status observed (the provider's row is below), not_posed (no oracle request yet; settled false) or unavailable (no read in hand; every other field null, and a read a moment later may answer); oracle_status, the provider lifecycle state verbatim (posed, proposed, challenged, reproposed, disputed, arbitration, resolved); settled; payouts, the provider's payout per share per outcome index in micro-USDC (1000000 is $1), only on a resolved row that carries them; result, outcome or split (Polymarket's 50-50), and winning_outcome_index, both read off payouts only; was_disputed; resolved_at; expected_settlement_time and settlement_time_basis, the provider's earliest-settlement estimate for a pending market, never a deadline; proposed_answer (outcome_0, outcome_1, split, too_early), the newest proposal of a pending round; observed_at, when the provider answered. Every key is present; a null is unknown. A settled read is refreshed every 10 minutes, any other every minute. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a player prop, a line beyond the seven around its family's main line, a closed or settled line), unavailable when the read failed or held no observation of the line within 120 ms. While the frame is being built, a line the game's stored split holds is computed and dated by money_as_of. Each read starts the game's split refilling: read again after a minute or two for the lines it could not answer. expand=quotes adds each outcome's quote, the cached figures GET /api/v1/market/{condition_id}/snapshot serves, for the whole page in one cache read, on every plan, for 1 more unit of cost: status observed (the cache holds the outcome's price, its book or both; a null beside it is a figure the cache does not hold, but a null best_bid or best_ask beside a book_observed_at is a side with no orders, so a book with one side or none is observed), no_orderbook (the provider confirmed the outcome has no book and no price is cached) or unavailable (nothing cached; every figure null); price, 0 to 1, the price Polymarket shows, with price_basis midpoint (the best bid and ask are at most $0.10 apart) or last_trade, and price_observed_at, when its quote and trade state became observable; best_bid and best_ask with book_observed_at, when their CLOB frame was observed; book_unavailable_reason, null when book_observed_at is set, else cache_miss, stream_capacity, no_orderbook or missing_provider_token_id. Each read keeps the page's open markets covered, so an outcome that reads cache_miss usually answers a few seconds later; stream_capacity means the market is not streamed and API reads already hold every live book they may open, so it answers only once fewer markets are read. With expand=quotes the ETag moves whenever a quote does. expand=trading_terms adds each row's trading_terms, the market's terms from its Gamma record passed through unchanged, on every plan, for 1 more unit of cost: status observed (Gamma's record was read at observed_at; a null figure is one the record does not carry), not_listed (Gamma's market list returned no record for the market) or unavailable (no read in hand; every figure null); fees_enabled; fee_schedule with rate, exponent, taker_only and rebate_rate, the fraction of taker fees rebated to the resting maker; rewards_min_size, in shares, and rewards_max_spread, in cents from the midpoint; reward_allocations, the dated allocations with rewards_amount, rewards_daily_rate, start_date and end_date; seconds_delay, the delay before a newly placed marketable order can match; tick_size, the minimum price increment for limit orders; and min_order_size_shares, the smallest order the CLOB accepts, in shares (Polymarket's market reference calls this figure USDC, and the CLOB enforces it on an order's share count). Each market's read serves for a minute and then refreshes off the request path, so a market that reads unavailable usually answers a few seconds later and the ETag moves about once a minute. Without expand=quotes no price, and never a holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -22436,13 +22452,15 @@
             "name": "expand",
             "in": "query",
             "required": false,
-            "description": "sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. Repeatable: sharp_money.",
+            "description": "sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. quotes adds each outcome's quote: the cached display price and best bid and ask, each with its observation time, in one cache read for the page; it adds 1 to the cost, on every plan. trading_terms adds each row's fee schedule, reward settings and allocations, order delay, tick and minimum order size in shares from its Gamma record, with the read's time; it adds 1 to the cost, on every plan. Repeatable: sharp_money, quotes, trading_terms.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "sharp_money"
+                  "sharp_money",
+                  "quotes",
+                  "trading_terms"
                 ]
               }
             },
@@ -22453,13 +22471,15 @@
             "name": "expand[]",
             "in": "query",
             "required": false,
-            "description": "Backward-compatible alias for expand. Repeatable: sharp_money.",
+            "description": "Backward-compatible alias for expand. Repeatable: sharp_money, quotes, trading_terms.",
             "schema": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "sharp_money"
+                  "sharp_money",
+                  "quotes",
+                  "trading_terms"
                 ]
               }
             },
@@ -22539,7 +22559,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["id", "condition_id", "event_slug", "outcomes", "status"],
+                        "required": ["id", "condition_id", "event_slug", "outcomes", "status", "settlement"],
                         "properties": {
                           "condition_id": {
                             "type": "string"
@@ -22576,6 +22596,69 @@
                                 },
                                 "token_id": {
                                   "type": "string"
+                                },
+                                "quote": {
+                                  "type": "object",
+                                  "required": [
+                                    "status",
+                                    "price",
+                                    "price_basis",
+                                    "price_observed_at",
+                                    "best_bid",
+                                    "best_ask",
+                                    "book_observed_at",
+                                    "book_unavailable_reason"
+                                  ],
+                                  "properties": {
+                                    "best_ask": {
+                                      "type": ["number", "null"]
+                                    },
+                                    "best_bid": {
+                                      "type": ["number", "null"]
+                                    },
+                                    "book_observed_at": {
+                                      "type": ["string", "null"],
+                                      "format": "date-time"
+                                    },
+                                    "price": {
+                                      "type": ["number", "null"]
+                                    },
+                                    "price_basis": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": ["midpoint", "last_trade"]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "price_observed_at": {
+                                      "type": ["string", "null"],
+                                      "format": "date-time"
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": ["observed", "no_orderbook", "unavailable"]
+                                    },
+                                    "book_unavailable_reason": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "cache_miss",
+                                            "stream_capacity",
+                                            "no_orderbook",
+                                            "missing_provider_token_id"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -22639,6 +22722,173 @@
                               },
                               "trader_count": {
                                 "type": ["integer", "null"]
+                              }
+                            }
+                          },
+                          "settlement": {
+                            "type": "object",
+                            "required": [
+                              "status",
+                              "oracle_status",
+                              "settled",
+                              "payouts",
+                              "result",
+                              "winning_outcome_index",
+                              "was_disputed",
+                              "resolved_at",
+                              "expected_settlement_time",
+                              "settlement_time_basis",
+                              "proposed_answer",
+                              "observed_at"
+                            ],
+                            "properties": {
+                              "expected_settlement_time": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "observed_at": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "oracle_status": {
+                                "type": ["string", "null"]
+                              },
+                              "payouts": {
+                                "type": ["array", "null"],
+                                "items": {
+                                  "type": "integer"
+                                }
+                              },
+                              "proposed_answer": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["split", "too_early", "outcome_0", "outcome_1"]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "resolved_at": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "result": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["outcome", "split"]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "settled": {
+                                "type": ["boolean", "null"]
+                              },
+                              "settlement_time_basis": {
+                                "type": ["string", "null"]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["observed", "not_posed", "unavailable"]
+                              },
+                              "was_disputed": {
+                                "type": ["boolean", "null"]
+                              },
+                              "winning_outcome_index": {
+                                "type": ["integer", "null"]
+                              }
+                            }
+                          },
+                          "trading_terms": {
+                            "type": "object",
+                            "required": [
+                              "status",
+                              "observed_at",
+                              "fees_enabled",
+                              "fee_schedule",
+                              "rewards_min_size",
+                              "rewards_max_spread",
+                              "reward_allocations",
+                              "seconds_delay",
+                              "tick_size",
+                              "min_order_size_shares"
+                            ],
+                            "properties": {
+                              "fee_schedule": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": ["rate", "exponent", "taker_only", "rebate_rate"],
+                                    "properties": {
+                                      "exponent": {
+                                        "type": ["number", "null"]
+                                      },
+                                      "rate": {
+                                        "type": ["number", "null"]
+                                      },
+                                      "rebate_rate": {
+                                        "type": ["number", "null"]
+                                      },
+                                      "taker_only": {
+                                        "type": ["boolean", "null"]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "fees_enabled": {
+                                "type": ["boolean", "null"]
+                              },
+                              "observed_at": {
+                                "type": ["string", "null"],
+                                "format": "date-time"
+                              },
+                              "reward_allocations": {
+                                "type": ["array", "null"],
+                                "items": {
+                                  "type": "object",
+                                  "required": ["rewards_amount", "rewards_daily_rate", "start_date", "end_date"],
+                                  "properties": {
+                                    "end_date": {
+                                      "type": ["string", "null"]
+                                    },
+                                    "rewards_amount": {
+                                      "type": ["number", "null"]
+                                    },
+                                    "rewards_daily_rate": {
+                                      "type": ["number", "null"]
+                                    },
+                                    "start_date": {
+                                      "type": ["string", "null"]
+                                    }
+                                  }
+                                }
+                              },
+                              "rewards_max_spread": {
+                                "type": ["number", "null"]
+                              },
+                              "rewards_min_size": {
+                                "type": ["number", "null"]
+                              },
+                              "seconds_delay": {
+                                "type": ["integer", "null"]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["observed", "not_listed", "unavailable"]
+                              },
+                              "tick_size": {
+                                "type": ["number", "null"]
+                              },
+                              "min_order_size_shares": {
+                                "type": ["number", "null"]
                               }
                             }
                           }
@@ -22708,7 +22958,21 @@
                         }
                       ],
                       "negative_risk": false,
-                      "status": "active"
+                      "status": "closed",
+                      "settlement": {
+                        "status": "observed",
+                        "oracle_status": "resolved",
+                        "settled": true,
+                        "payouts": [1000000, 0],
+                        "result": "outcome",
+                        "winning_outcome_index": 0,
+                        "was_disputed": false,
+                        "resolved_at": "2026-11-01T23:19:04Z",
+                        "expected_settlement_time": null,
+                        "settlement_time_basis": null,
+                        "proposed_answer": null,
+                        "observed_at": "2026-11-04T03:29:29.435109Z"
+                      }
                     },
                     {
                       "id": "mkt_0x0397ef87ab7d459cd00824e2705c33850dc233d72ea681ffb202b544fa0be7eb",
@@ -22733,7 +22997,21 @@
                         }
                       ],
                       "negative_risk": false,
-                      "status": "active"
+                      "status": "closed",
+                      "settlement": {
+                        "status": "observed",
+                        "oracle_status": "resolved",
+                        "settled": true,
+                        "payouts": [0, 1000000],
+                        "result": "outcome",
+                        "winning_outcome_index": 1,
+                        "was_disputed": false,
+                        "resolved_at": "2026-11-01T23:18:48Z",
+                        "expected_settlement_time": null,
+                        "settlement_time_basis": null,
+                        "proposed_answer": null,
+                        "observed_at": "2026-11-04T03:29:29.435109Z"
+                      }
                     }
                   ],
                   "has_more": true,
@@ -45094,6 +45372,85 @@
           "liquidity": {
             "$ref": "#/components/schemas/GameMarketLiquidity",
             "description": "Polymarket's reported liquidity for this market. Omitted when the provider read carried none, and on a finished game read from its stored record; never 0 in place of a missing figure."
+          },
+          "settlement": {
+            "description": "How Polymarket's oracle settled or is settling this market, the block GET /api/v1/games/{event_slug}/markets serves, from the same per-game store. Always present on GET /api/v1/games/{event_slug}; on GET /api/v1/games only with expand=settlement. It never waits for Polymarket: a game not read lately reads status unavailable while its read starts.",
+            "type": "object",
+            "required": [
+              "status",
+              "oracle_status",
+              "settled",
+              "payouts",
+              "result",
+              "winning_outcome_index",
+              "was_disputed",
+              "resolved_at",
+              "expected_settlement_time",
+              "settlement_time_basis",
+              "proposed_answer",
+              "observed_at"
+            ],
+            "properties": {
+              "expected_settlement_time": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "oracle_status": {
+                "type": ["string", "null"]
+              },
+              "payouts": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "proposed_answer": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["outcome_0", "outcome_1", "split", "too_early"]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resolved_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "result": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["outcome", "split"]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "settled": {
+                "type": ["boolean", "null"]
+              },
+              "settlement_time_basis": {
+                "type": ["string", "null"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["observed", "not_posed", "unavailable"]
+              },
+              "was_disputed": {
+                "type": ["boolean", "null"]
+              },
+              "winning_outcome_index": {
+                "type": ["integer", "null"]
+              }
+            }
           }
         }
       },
@@ -51386,7 +51743,7 @@
       },
       "MarketSnapshot": {
         "type": "object",
-        "required": ["market", "outcomes", "liquidity", "sports", "freshness"],
+        "required": ["market", "outcomes", "liquidity", "sports", "freshness", "settlement"],
         "properties": {
           "market": {
             "type": "object",
@@ -51595,6 +51952,85 @@
           "trust": {
             "$ref": "#/components/schemas/MarketSnapshotTrust",
             "description": "Price and spread trust metadata. Present only when expand=trust or expand[]=trust is requested."
+          },
+          "settlement": {
+            "description": "How Polymarket's oracle settled or is settling this market, the block GET /api/v1/games/{event_slug}/markets serves, read from the store of the market's event (a child event's market: its game's). It never waits for Polymarket: with nothing stored it reads status unavailable while the read starts. market.market_result stays null; read settlement.result.",
+            "type": "object",
+            "required": [
+              "status",
+              "oracle_status",
+              "settled",
+              "payouts",
+              "result",
+              "winning_outcome_index",
+              "was_disputed",
+              "resolved_at",
+              "expected_settlement_time",
+              "settlement_time_basis",
+              "proposed_answer",
+              "observed_at"
+            ],
+            "properties": {
+              "expected_settlement_time": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "oracle_status": {
+                "type": ["string", "null"]
+              },
+              "payouts": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "proposed_answer": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["outcome_0", "outcome_1", "split", "too_early"]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resolved_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "result": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["outcome", "split"]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "settled": {
+                "type": ["boolean", "null"]
+              },
+              "settlement_time_basis": {
+                "type": ["string", "null"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["observed", "not_posed", "unavailable"]
+              },
+              "was_disputed": {
+                "type": ["boolean", "null"]
+              },
+              "winning_outcome_index": {
+                "type": ["integer", "null"]
+              }
+            }
           }
         }
       },
