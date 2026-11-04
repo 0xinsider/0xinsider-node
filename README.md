@@ -141,6 +141,17 @@ SDK 0.32.0 removes the old names from the September 2026 renames. Each removed n
 
 Two differences remain on the wire. The new methods call the new paths, so a response has the new `object`: `large_trade` instead of `whale_trade`, `suspicious_trade` instead of `radar_flag`, and `market_flow` and `market_flow_batch` instead of `market_intel` and `market_intel_batch`. The old webhook event names are still delivered, so a subscription made under an old name keeps the old `type` literal. `WebhookEvent` still includes those literals: narrow on `event.type` rather than on a removed event type.
 
+SDK 0.40.0 types three blocks on game markets. Every `listGameMarkets` row and every `getMarketSnapshot` market carries `settlement`: how Polymarket's oracle settled or is settling the market (`status` `observed`, `not_posed` or `unavailable`, then `oracle_status`, `payouts`, `result`, `winning_outcome_index`, `resolved_at` and the rest; a `null` is unknown). `getGame` winner markets carry it too, and `listGames` with `expand: ["settlement"]` (#32706, #32896). On `listGameMarkets`, `expand: ["quotes"]` adds each outcome's `quote`, the cached price with its `price_basis`, best bid and best ask (#32893), and `expand: ["trading_terms"]` adds each row's `trading_terms` from the market's Gamma record: the fee schedule, reward settings, `seconds_delay`, `tick_size` and `min_order_size_shares`, the smallest order the CLOB accepts, in shares, not USDC (#32688, #32938). Each of the two adds 1 to the request cost. A `quote` or `trading_terms` whose `status` is `unavailable` has every figure `null`: read again after a few seconds.
+
+```ts
+const page = await client.listGameMarkets("nba-bos-orl-2026-11-01", { expand: ["quotes", "trading_terms"] });
+for (const row of page.data) {
+  row.trading_terms?.min_order_size_shares; // number | null, in shares
+  row.outcomes[0]?.quote?.price; // number | null, 0 to 1
+  row.settlement.status; // "observed" | "not_posed" | "unavailable"
+}
+```
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
