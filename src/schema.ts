@@ -1438,10 +1438,12 @@ export type GameHoldersItem = {
   market: MarketHoldersMarket;
   scan: MarketHoldersScan;
   totals: MarketHoldersTotals;
-  /** When this roster was computed. A cached roster is at most 60 seconds old. */
+  /** When this roster was computed. A fresh cached roster is at most 60 seconds old; a stale one at most 15 minutes. */
   computed_at: string;
-  /** true when the roster came from the 60-second roster cache. */
+  /** true when the roster came from the cache. */
   cached: boolean;
+  /** true when the market had no fresh roster at the batch deadline and this is the last roster published for it, up to 15 minutes old (read computed_at). The fresh one is still computing, so a read a few seconds later normally gets it; a market refused over the account's cold-read share is served the same way. */
+  stale: boolean;
 };
 
 /** One Polymarket market linked to this game. */
@@ -2031,6 +2033,22 @@ export type LeaderboardPriceEdge = {
   status: "ranked" | "too_few_markets" | "sample_mismatch";
   /** Why the leaderboard does not rank a ranked edge. record_incomplete: the wallet's stored sports and esports record shows more profit than Polymarket reports for it, so some losing markets are likely missing. Omitted when nothing holds the edge, and always omitted unless status is ranked. */
   hold?: "record_incomplete";
+};
+
+/** The whole board's totals, the counts the 0xinsider leaderboard page shows (#32737), read with the ranking snapshot the page is served at. Sent on every page of a request with no category and no strategy, whatever its sort, dir and activity, which order or split the same wallets. Omitted on a category or strategy page, which lists a subset these totals do not describe, and while the ranking has no totals for the served generation. */
+export type LeaderboardSummary = {
+  /** Ranked wallets on the board: the wallets the unfiltered list pages through. */
+  ranked_total: number;
+  /** Ranked wallets by grade. Every ranked wallet is graded S, A or B, so the three sum to ranked_total. */
+  by_grade: {
+    S: number;
+    A: number;
+    B: number;
+  };
+  /** Ranked wallets whose last trade was 30 days or less before as_of: the wallets activity=active lists. ranked_total minus active_30d is the activity=inactive count. */
+  active_30d: number;
+  /** When the totals were counted, UTC. They are recounted about once a minute while the ranking is current. */
+  as_of: string;
 };
 
 /** One side's score line inside a `live_sports_updated` pulse. */
@@ -2792,6 +2810,13 @@ export type PickOfTheDayArchive = {
   /** One entry per product day that has a published pick included in the archive, newest first, in the same order as picks. Each carries that day's net units, accumulated in the same backend pass and behind the same visibility gate as hit_rate.unit_score, so both cover the same population of picks. Re-adding the day totals reproduces hit_rate.unit_score to display precision rather than bit-for-bit, since that re-associates the floating-point sum. */
   days: PickOfTheDayArchiveDay[];
   hit_rate: PickOfTheDayHitRate;
+  page?: {
+    has_more: boolean;
+    limit: number;
+    next_cursor: string | null;
+    returned: number;
+    total: number;
+  };
 };
 
 export type PickOfTheDayArchiveDay = {
@@ -2888,6 +2913,68 @@ export type PickOfTheDayArchiveEntry = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
+};
+
+/** The archive with `view=summary`: `hit_rate` without its daily `series`, one short row per pick, and `page`. Page with `limit` and `cursor`; `view=full` returns every field of a row. */
+export type PickOfTheDayArchiveSummary = {
+  hit_rate: {
+    clv_applicable: number;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_beats_close: number;
+    clv_coverage_display?: string;
+    clv_coverage_explanation?: string;
+    clv_coverage_pct?: number;
+    clv_eligible: number;
+    clv_measured: number;
+    clv_not_applicable: number;
+    clv_pending: number;
+    clv_state: string;
+    clv_ties: number;
+    clv_total: number;
+    clv_unavailable: number;
+    decided: number;
+    losses: number;
+    net_profit_display: string;
+    net_profit_usd: number;
+    pct: number;
+    pending: number;
+    roi_display: string;
+    roi_pct: number;
+    stake_usd: number;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display: string;
+    wins: number;
+  };
+  page: {
+    has_more: boolean;
+    limit: number;
+    next_cursor: string | null;
+    returned: number;
+    total: number;
+  };
+  picks: {
+    backed_price?: number;
+    backed_side_locked?: boolean;
+    clv_pct?: number;
+    display_category?: string;
+    is_free_selection: boolean;
+    matchup?: string;
+    outcome: string;
+    pick_date: string;
+    pick_id: string;
+    pick_outcome_label?: string;
+    publication_order: number;
+    required_tier?: string;
+    top_grade?: string;
+    unit_score?: number;
+  }[];
+  view: string;
 };
 
 /** Select using the entry commitment_version, never implicit payload shape. All historic v1 hashes remain unchanged. */
@@ -3563,6 +3650,447 @@ export type PickOfTheDayStats = {
     wins: number;
   }[];
   voids: {
+    backed_price?: number;
+    backed_side?: string;
+    category?: string;
+    matchup?: string;
+    pick_date: string;
+    pick_id: string;
+    pick_rank: number;
+  }[];
+};
+
+/** The stats with `view=summary` or `sections`: only the named sections, listed in `sections`. `view=summary` names every section except `series`, `days`, `categories`, `months` and `voids`. */
+export type PickOfTheDayStatsSections = {
+  categories?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  days?: ({
+    date: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    sweep?: "win" | "loss";
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    wins: number;
+  })[];
+  hit_rate?: {
+    clv_applicable: number;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_beats_close: number;
+    clv_coverage_display?: string;
+    clv_coverage_explanation?: string;
+    clv_coverage_pct?: number;
+    clv_eligible: number;
+    clv_measured: number;
+    clv_not_applicable: number;
+    clv_pending: number;
+    clv_state: string;
+    clv_ties: number;
+    clv_total: number;
+    clv_unavailable: number;
+    decided: number;
+    losses: number;
+    net_profit_display: string;
+    net_profit_usd: number;
+    pct: number;
+    pending: number;
+    roi_display: string;
+    roi_pct: number;
+    stake_usd: number;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display: string;
+    wins: number;
+  };
+  market_expectations?: {
+    as_of_date: string;
+    price_basis: string;
+    timezone: string;
+    windows: ({
+      clv_avg_display: string | null;
+      clv_avg_pct: number | null;
+      clv_avg_pp: number | null;
+      clv_avg_pp_display: string | null;
+      clv_measured: number;
+      clv_missing: number;
+      expected_wins: number | null;
+      expected_wins_display: string | null;
+      from_date: string | null;
+      key: string;
+      label: string;
+      numeric_unavailable: boolean;
+      priced_decided: number;
+      through_date: string;
+      units: number | null;
+      units_display: string | null;
+      units_z: number | null;
+      units_z_display: string | null;
+      unpriced_decided: number;
+      wins: number;
+      wins_z: number | null;
+      wins_z_display: string | null;
+    })[];
+  };
+  market_types?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  months?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  outcome_stats?: {
+    concentration: {
+      positive_wins: number;
+      remaining_valued_decided: number;
+      removed_wins: number;
+      roi_without_top_wins_display: string | null;
+      roi_without_top_wins_pct: number | null;
+      target_wins: number;
+      top_wins_share_display: string | null;
+      top_wins_share_pct: number | null;
+      valued_decided: number;
+    };
+    drawdown: {
+      completed_days: number;
+      current_days_below_peak: number | null;
+      current_drawdown_display: string | null;
+      current_drawdown_units: number | null;
+      days_below_peak: number | null;
+      excluded_days: number;
+      from_date: string | null;
+      longest_days_below_peak: number | null;
+      longest_recovery_days: number | null;
+      max_drawdown_display: string | null;
+      max_drawdown_units: number | null;
+      peak_date: string | null;
+      peak_net_profit_usd: number | null;
+      through_date: string | null;
+    };
+    profit_factor: {
+      display: string | null;
+      gross_loss_usd: number | null;
+      gross_profit_usd: number | null;
+      state: "empty" | "measured" | "no_losses" | "numeric_unavailable";
+      value: number | null;
+      valued_decided: number;
+    };
+    rolling: ({
+      from_date: string | null;
+      losses: number;
+      roi_display: string | null;
+      roi_pct: number | null;
+      through_date: string | null;
+      units: number | null;
+      units_display: string | null;
+      valued_decided: number;
+      win_rate_display: string | null;
+      win_rate_pct: number | null;
+      window_size: number;
+      wins: number;
+    })[];
+  };
+  price_bands?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  records?: {
+    best_day?: {
+      date: string;
+      date_display: string;
+      losses: number;
+      net_profit_display: string;
+      net_profit_usd: number;
+      picks: number;
+      wins: number;
+    };
+    biggest_win?: {
+      category: string;
+      date: string;
+      date_display: string;
+      matchup: string;
+      net_profit_display: string;
+      net_profit_usd: number;
+    };
+    longest_losing_day_streak?: {
+      days: number;
+      end_date: string;
+      net_profit_display: string;
+      net_profit_usd: number;
+      range_display: string;
+      start_date: string;
+    };
+    longest_winning_day_streak?: {
+      days: number;
+      end_date: string;
+      net_profit_display: string;
+      net_profit_usd: number;
+      range_display: string;
+      start_date: string;
+    };
+    sweeps: {
+      clean_sweeps: number;
+      latest_clean_sweep?: {
+        date: string;
+        date_display: string;
+        losses: number;
+        wins: number;
+      };
+      latest_wipeout?: {
+        date: string;
+        date_display: string;
+        losses: number;
+        wins: number;
+      };
+      min_decided: number;
+      wipeouts: number;
+    };
+    winning_days?: {
+      flat: number;
+      losing: number;
+      settled: number;
+      winning: number;
+      winning_pct: number;
+      winning_pct_display: string;
+    };
+    worst_day?: {
+      date: string;
+      date_display: string;
+      losses: number;
+      net_profit_display: string;
+      net_profit_usd: number;
+      picks: number;
+      wins: number;
+    };
+  };
+  sections: string[];
+  series?: {
+    date: string;
+    hit_rate_pct: number;
+    net_profit_usd: number;
+  }[];
+  sports?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  streaks?: {
+    current?: number;
+    current_day?: number;
+    current_day_display?: string;
+    current_display?: string;
+    longest_loss: number;
+    longest_win: number;
+  };
+  tiers?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  total_sides?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
+  }[];
+  view: string;
+  voids?: {
     backed_price?: number;
     backed_side?: string;
     category?: string;
@@ -4520,7 +5048,7 @@ export type TraderContext = {
   freshness_note: string;
 };
 
-/** Results by the entry price the wallet paid for the side it held, over its sports and esports markets with a known held entry price. */
+/** Results by the entry price the wallet paid for the side it held, over its settled sports and esports positions with a held entry price. coverage counts the settled positions the buckets leave out, and why. */
 export type TraderEntryPriceAnalysis = {
   /** One bucket per price band that has a market, in bucket_order. */
   buckets: TraderEntryPriceBucket[];
@@ -4528,11 +5056,13 @@ export type TraderEntryPriceAnalysis = {
   best_bucket: string | null;
   /** The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3. */
   worst_bucket: string | null;
+  /** What the buckets cover (since 2026-11-03, #32671). */
+  coverage: TraderEntryPriceCoverage;
 };
 
 /** One entry-price band. Each measure is an analytic value: read state before value. */
 export type TraderEntryPriceBucket = {
-  /** The band: $0.01-$0.19, $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. The last also holds any price below $0.01. */
+  /** The band: $0.00-$0.19 (any price below $0.20, sub-cent fills included), $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. Until 2026-11-03 the first band was $0.01-$0.19 and sub-cent fills had no bucket (#32671). */
   bucket: string;
   /** Display position, 0 first, from the lowest price up. */
   bucket_order: number;
@@ -4546,6 +5076,30 @@ export type TraderEntryPriceBucket = {
   total_pnl: AnalyticNumber;
   /** Mean realized P&L of a market in the band, USD. */
   avg_pnl: AnalyticNumber;
+};
+
+/** The settled sports and esports positions the entry-price section reads. The buckets' markets plus every unbucketed row's are settled_markets, and their realized P&L sums to settled_pnl. settled_pnl adds up the wallet's per-market realized P&L, so it differs from pnl.in_scope.realized_pnl, which is Polymarket's published sports and esports P&L with a share of the wallet's rebates. */
+export type TraderEntryPriceCoverage = {
+  /** Settled sports and esports positions: bucketed_markets plus every unbucketed row's markets. */
+  settled_markets: number;
+  /** Realized P&L of those positions, USD. */
+  settled_pnl: number;
+  /** Positions in a bucket: the sum of buckets[].markets. */
+  bucketed_markets: number;
+  /** Realized P&L of the bucketed positions, USD: the sum of buckets[].total_pnl. */
+  bucketed_pnl: number;
+  /** The settled positions the buckets leave out: one row for each reason that has a position, ordered by reason. Empty when the buckets hold every settled position. */
+  unbucketed: TraderEntryPriceUnbucketed[];
+};
+
+/** Settled positions with no entry-price bucket, for one reason. */
+export type TraderEntryPriceUnbucketed = {
+  /** two_sided: both outcomes bought at a price, a hedged book with no single side. held_side_unpriced: one outcome has a recorded price, but the wallet's remaining shares are on the other. no_entry_price: no outcome has a recorded entry price. freshness_unknown: a bucket whose rows carry no freshness clock yet. */
+  reason: "two_sided" | "held_side_unpriced" | "no_entry_price" | "freshness_unknown";
+  /** Positions left out for this reason. */
+  markets: number;
+  /** Their realized P&L, USD. */
+  total_pnl: number;
 };
 
 export type TraderEsportsGameRecord = {
@@ -5641,11 +6195,64 @@ export interface OperationData {
   getMarketTopHolders: MarketTopHolders;
   getMarketWalletsInOut: MarketWalletsInOut;
   getMonthlyReportSnapshot: ReportSnapshot;
-  getPickOfTheDay: PickOfTheDay | PickOfTheDayNoEntitledPicks;
-  getPickOfTheDayArchive: PickOfTheDayArchive;
+  getPickOfTheDay: PickOfTheDay | PickOfTheDayNoEntitledPicks | {
+    disclaimer?: string;
+    locked_picks?: {
+      pick_rank: number;
+      required_tier: string;
+    }[];
+    pick_count: number;
+    pick_date: string;
+    picks: {
+      backed_price?: number;
+      category?: string;
+      clv_pct?: number;
+      clv_status?: string;
+      display_category?: string;
+      event_slug?: string;
+      game_ended?: boolean;
+      game_started?: boolean;
+      holder_count?: number;
+      is_free_selection: boolean;
+      matchup?: string;
+      outcome?: string;
+      pick_id: string;
+      pick_outcome_label?: string;
+      polymarket_url?: string;
+      publication_order: number;
+      release_at?: string;
+      return_usd?: number;
+      stake_usd?: number;
+      token_id?: string;
+      top_grade?: string;
+      unit_score?: number;
+    }[];
+    proof_pending_picks?: ({
+      is_free_selection: boolean;
+      kickoff?: string;
+      pick_id: string;
+      pick_rank: number;
+      publication_order: number;
+      release_at: string;
+      retry_at: string;
+      supersedes_pick_id: string | null;
+    })[];
+    scheduled_picks?: ({
+      is_free_selection: boolean;
+      kickoff: string;
+      pick_id: string;
+      pick_rank: number;
+      publication_order: number;
+      release_at: string;
+      supersedes_pick_id: string | null;
+    })[];
+    state: string;
+    view: string;
+  };
+  getPickOfTheDayArchive: PickOfTheDayArchive | PickOfTheDayArchiveSummary;
   getPickOfTheDayLedger: PickOfTheDayLedger;
   getPickOfTheDayLedgerEntry: PickOfTheDayLedgerEntry;
-  getPickOfTheDayStats: PickOfTheDayStats;
+  getPickOfTheDayStats: PickOfTheDayStats | PickOfTheDayStatsSections;
   getPlatforms: Platforms;
   getPositionTimeline: PositionTimelineEvent[];
   getPositionTimelineById: PositionTimelineEvent[];
@@ -5989,7 +6596,7 @@ export interface OperationQuery {
   createWebhookVerificationAttempt: Record<string, never>;
   deleteWebhook: Record<string, never>;
   exploreMarkets: {
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). The Sports facet counts that catch-all category alone. */
     category?: string;
     /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
@@ -6026,7 +6633,7 @@ export interface OperationQuery {
   getEdgeHunter: {
     /** Response mode. board preserves the full quoted board; signals exposes ranked records and category evidence; observations exposes cohort measurements and accountable funnel evidence. Defaults to board. */
     view?: "board" | "signals" | "observations";
-    /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
+    /** Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. The word sports, in any casing, reads as kind=sports, every sport but Esports, as category=sports does on every other route (#32720): the response echoes kind sports beside category sports, and with kind=esports it returns 400 with param category. Any other unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND. */
     category?: string;
     /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets that view=signals does not list at its widest selection (horizon_hours=48, min_grade=B, no selector), so until kickoff a market is read in one view or the other. A market view=signals lists leaves wider_holder as primary_slate_candidate, and is a wider_holder candidate again in the first refresh after view=signals stops listing it; signals_as_of names the view=signals snapshot each refresh read. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so a market among a sport's 8 soonest stays evaluated until its game starts. wider_holder also evaluates up to 8 more markets per sport that kick off within 24 hours, most graded holders first, so the most-held markets appear up to a day before kickoff. Each of these keeps its place in later refreshes until its game starts while its holder page still shows a card or could not be read, so a more-held market waits for a free place instead of displacing it. Each row's admitted_by names its place, most_held or soonest_kickoff. The rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
@@ -6132,11 +6739,29 @@ export interface OperationQuery {
   getPickOfTheDay: {
     /** A product day (America/New_York) in YYYY-MM-DD format, on or before today. Omit it, or send today, for the current read. A past day with no published pick returns 404 not_found with error.param=date; a date after today, or a value that is not a date, returns 400 bad_request with error.param=date. */
     date?: string;
+    /** full (default) is the whole recorded set: every pick with its holders, lead backer, sports context, thesis and entry_authorization, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks and locked_picks. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
+    view?: "full" | "summary";
+    /** One entitled published pick of the day, by its stable decimal-string pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks and locked_picks. Pair it with date for a past day's pick. A pick_id that is not among the day's entitled published picks returns 404 not_found with error.param=pick_id; one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id. */
+    pick_id?: string;
   };
-  getPickOfTheDayArchive: Record<string, never>;
+  getPickOfTheDayArchive: {
+    /** full (default) is every row with every field, plus days and hit_rate with its per-pick series. summary returns view, hit_rate without series, one page of short rows (pick_id, pick_date, publication_order, is_free_selection, matchup, display_category, pick_outcome_label, outcome, top_grade, backed_price, unit_score, clv_pct, backed_side_locked, required_tier) and page; it always pages, 50 rows unless limit says otherwise. Any other value returns 400 bad_request with error.param=view. */
+    view?: "full" | "summary";
+    /** Rows per page of picks, 1 to 200, default 50. An integer outside that range is clamped into it, like every list limit, and X-Effective-Query reports the limit applied; a value that is not an integer returns 400 invalid_query. On view=full, sending limit or cursor pages picks and adds page, while days and hit_rate still describe the whole record; with neither, the response is the whole record. */
+    limit?: number;
+    /** The page.next_cursor of the previous page: the rows after it, newest first. A cursor is a position in the record, so a pick published while you page does not shift later pages. A value this route did not return returns 400 bad_request with error.param=cursor. */
+    cursor?: string;
+  };
   getPickOfTheDayLedger: Record<string, never>;
   getPickOfTheDayLedgerEntry: Record<string, never>;
-  getPickOfTheDayStats: Record<string, never>;
+  getPickOfTheDayStats: {
+    /** full (default) is every section. summary returns view, sections and every section except the five that grow with the record: series, days, categories, months and voids. In summary and sections bodies hit_rate carries no series; series is its own top-level section. Ignored when sections is sent. Any other value returns 400 bad_request with error.param=view. */
+    view?: "full" | "summary";
+    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
+    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    /** Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated, with the same names. */
+    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+  };
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
     /** Market condition_id. One timeline per (trader, market). */
@@ -6200,7 +6825,7 @@ export interface OperationQuery {
     max_age_s?: number;
   };
   getTraderCategoryRecords: {
-    /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
   };
   getTraderContext: Record<string, never>;
@@ -6321,7 +6946,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum position value in USD. Raises the feed's own floor of 50,000 USD; a smaller value does not lower it. */
     min_size?: number;
-    /** One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. A value outside sports and esports returns 400 bad_request with param=category (#27305), as on GET /api/v1/markets/explore. */
+    /** One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. A value outside sports and esports returns 400 bad_request with param=category (#27305), as on GET /api/v1/markets/explore. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657). */
     category?: string;
     /** Minimum trader grade. Matched against the trader.grade each row returns, the wallet's current grade, so every row listed shows a grade at or above this floor. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -6355,7 +6980,7 @@ export interface OperationQuery {
     condition_id?: string;
     /** Trader wallet address, timestamp-suffixed wallet alias, username, or trd_-prefixed trader ID, resolved against the traders table. Unknown traders return an empty list. */
     trader?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule filter on trader.grade_at_trade instead. A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -6381,7 +7006,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum trade size in USD. */
     min_size?: number;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -6403,7 +7028,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the committed leaderboard generation and the effective category/strategy filters, and on a sorted page to its sort, dir and activity. A cursor from another sort or dir is a 400 bad_request on cursor; one from another activity, category, strategy or generation is cursor_expired. Legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
     cursor?: string;
-    /** Filter by category: a sport or esports bucket. Values are matched to canonical category buckets: league values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Mapped buckets are case-insensitive; passthrough buckets (Cricket, Sports) match case-sensitively against the provider-native bucket key, so use exact casing. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by category: a sport or esports bucket, matched case-insensitively. League values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. Current styles count the wallet's sports and esports markets only. The ten archetype keys retired on 2026-10-01 (accumulator, algo_trader, arbitrageur, directional, event_driven, market_maker, momentum, scalper, speculator, swing_trader) are still accepted and match no wallet. Style describes recorded behavior; grade measures performance. */
     strategy?: "category_focused" | "diversified" | "high_activity" | "mixed" | "two_sided" | "unclassified";
@@ -6424,7 +7049,7 @@ export interface OperationQuery {
     consistency?: "live" | "snapshot";
     /** Minimum current position value in USD. Defaults to 100 when omitted, or to 0 when wallet is present; send 0 to include every reconciled position. */
     min_size?: number;
-    /** Exact match against provider-backed market_canonical.category. Sports and esports only (#27311): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Exact match against provider-backed market_canonical.category. Sports and esports only (#27311): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657). */
     category?: string;
     /** Scope to one market. Accepts the raw provider condition_id or the mkt_-prefixed market id emitted by V1 responses. Combine with min_size=0 for every reconciled position in that market; an unknown id or a resolved market returns []. A market outside sports and esports returns 404 not_found with error.reason=market_out_of_scope (#27311). Without condition_id the board and wallet reads list sports and esports markets only. */
     condition_id?: string;
@@ -6444,7 +7069,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
@@ -6464,7 +7089,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque cursor from previous response's next_cursor. Encodes the first-page as_of timestamp, normalized effective filters, ranking and aggregate collection revisions, plus the last row's absolute net flow and condition_id. A changed filter or collection returns cursor_expired; request the first page again. */
     cursor?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
@@ -6532,7 +7157,7 @@ export interface OperationQuery {
     condition_id?: string;
     /** Trader wallet address, timestamp-suffixed wallet alias, or username resolved against the traders table. Unknown traders return an empty list. */
     trader?: string;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -6558,7 +7183,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Minimum trade size in USD. */
     min_size?: number;
-    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Minimum trader grade as of today (trader.grade). A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
@@ -6595,7 +7220,7 @@ export interface OperationQuery {
     cursor?: string;
     /** Filter by market status. A market is closed once Polymarket has closed trading or it has resolved, and active otherwise; all returns both. */
     status?: "active" | "closed" | "all";
-    /** Filter by category. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. */
+    /** Filter by category. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657). */
     category?: string;
   };
   submitTraderExport: {
@@ -7417,6 +8042,7 @@ export interface OperationResponse {
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
     total?: number;
     meta: ResponseMeta;
+    summary?: LeaderboardSummary;
   };
   listLeaderboardLeagues: {
     object: "leaderboard_leagues";

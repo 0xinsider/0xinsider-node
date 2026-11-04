@@ -2951,7 +2951,7 @@
             "name": "category",
             "in": "query",
             "required": false,
-            "description": "Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -4142,7 +4142,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Exact match against provider-backed market_canonical.category. Sports and esports only (#27311): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Exact match against provider-backed market_canonical.category. Sports and esports only (#27311): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657).",
             "schema": {
               "type": "string"
             }
@@ -4646,7 +4646,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. A value outside sports and esports returns 400 bad_request with param=category (#27305), as on GET /api/v1/markets/explore.",
+            "description": "One RFC 4180 CSV record of exact current provider-backed market_canonical.category values. Legacy unquoted lists such as NBA,WNBA remain valid; values containing commas, quotes, or newlines are CSV-quoted. Matching is case-insensitive. Malformed quoted input fails closed as one unknown exact category. A value outside sports and esports returns 400 bad_request with param=category (#27305), as on GET /api/v1/markets/explore. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657).",
             "schema": {
               "type": "string"
             }
@@ -5008,7 +5008,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -5514,7 +5514,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -6024,7 +6024,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -6623,7 +6623,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -9106,7 +9106,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by category: a sport or esports bucket. Values are matched to canonical category buckets: league values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Mapped buckets are case-insensitive; passthrough buckets (Cricket, Sports) match case-sensitively against the provider-native bucket key, so use exact casing. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by category: a sport or esports bucket, matched case-insensitively. League values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -9238,6 +9238,9 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ResponseMeta"
+                    },
+                    "summary": {
+                      "$ref": "#/components/schemas/LeaderboardSummary"
                     }
                   }
                 },
@@ -9249,6 +9252,16 @@
                       "data": [],
                       "has_more": false,
                       "total": 0,
+                      "summary": {
+                        "ranked_total": 8300,
+                        "by_grade": {
+                          "S": 259,
+                          "A": 1003,
+                          "B": 7038
+                        },
+                        "active_30d": 4870,
+                        "as_of": "2026-11-03T20:57:23Z"
+                      },
                       "meta": {
                         "request_id": "req_example",
                         "cached": false,
@@ -9480,7 +9493,7 @@
       "get": {
         "operationId": "getPickOfTheDay",
         "summary": "Get today's or a past day's Pick of the Day",
-        "description": "Returns entitled published picks for the current product day, or for the past product day named by `date`. Pro includes five selections in total: the designated free selection and the first four non-free selections in publication order. Max opens every available selection, up to twenty-five. A day can include multiple selections from the same game. Same-game picks share exposure and need not be independent; retain each `pick_id` instead of deduplicating by game. Both read resolved picks. Publication prices and backing are frozen. Without `date`, a prior day never appears here.\n\nWith `date` (YYYY-MM-DD, America/New_York, before today), the response is that day's slate as the dated web page shows it, under the same tier rule: resolved picks are open to both tiers, and unresolved picks outside the tier appear as `locked_picks`. A past day carries no `scheduled_picks`. A past day with no published pick returns a final 404 `not_found` with `error.param=date` and no retry guidance. Today's date is the same read as no `date`; a date after today returns 400 `bad_request` with `error.param=date`. The archive lists every published pick with its `pick_date`.\n\nStable `pick_id` values identify selections. `publication_order` describes presentation and `is_free_selection` describes access; neither is a quality rating. Standing selections retain their identity, slot, and release schedule. Later additions fill available slots. Historical IDs, order, and proof bytes remain unchanged.\n\nUnauthorized unresolved selections appear only as identity-free `locked_picks` containing `pick_rank` and `required_tier`. When only locked selections are published, HTTP 200 carries `state=none`, `picks=[]`, `pick_count=0`, and an Upgrade to Max message. Proof warming applies only to entitled picks.\n\n`scheduled_picks` contains only entitled slots and retains required `release_at` and `kickoff`. Unauthorized scheduled selections expose no game identity or release time.\n\nFor today, when no active pick is available, including after cancelled recommendations are withdrawn, HTTP 404 carries `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason and schedule one request using `Retry-After` or `error.retry_at` instead of polling. This advisory retry does not reveal an unauthorized game's release time.\n\nFinal sporting scores are retained for resolved picks after the event is confirmed ended and both sides have verified scores. A result without a verified final stays unavailable; a win/loss outcome alone does not establish a sporting score. Existing sports_context fields and return calculations are unchanged.\n\nWithdrawn picks are excluded from current and dated recommendations, the archive, and its statistics, even after market settlement. The public ledger retains every published commitment under its original identity and proof bytes. Provider settlement still determines the recorded result. Request and response fields are unchanged.",
+        "description": "Returns entitled published picks for the current product day, or for the past product day named by `date`. Pro includes five selections in total: the designated free selection and the first four non-free selections in publication order. Max opens every available selection, up to twenty-five. A day can include multiple selections from the same game. Same-game picks share exposure and need not be independent; retain each `pick_id` instead of deduplicating by game. Both read resolved picks. Publication prices and backing are frozen. Without `date`, a prior day never appears here.\n\nWith `date` (YYYY-MM-DD, America/New_York, before today), the response is that day's slate as the dated web page shows it, under the same tier rule: resolved picks are open to both tiers, and unresolved picks outside the tier appear as `locked_picks`. A past day carries no `scheduled_picks`. A past day with no published pick returns a final 404 `not_found` with `error.param=date` and no retry guidance. Today's date is the same read as no `date`; a date after today returns 400 `bad_request` with `error.param=date`. The archive lists every published pick with its `pick_date`.\n\nStable `pick_id` values identify selections. `publication_order` describes presentation and `is_free_selection` describes access; neither is a quality rating. Standing selections retain their identity, slot, and release schedule. Later additions fill available slots. Historical IDs, order, and proof bytes remain unchanged.\n\nUnauthorized unresolved selections appear only as identity-free `locked_picks` containing `pick_rank` and `required_tier`. When only locked selections are published, HTTP 200 carries `state=none`, `picks=[]`, `pick_count=0`, and an Upgrade to Max message. Proof warming applies only to entitled picks.\n\n`scheduled_picks` contains only entitled slots and retains required `release_at` and `kickoff`. Unauthorized scheduled selections expose no game identity or release time.\n\nFor today, when no active pick is available, including after cancelled recommendations are withdrawn, HTTP 404 carries `error.code=\"not_found\"` and `error.reason=\"pick_not_released\"`. Branch on the reason and schedule one request using `Retry-After` or `error.retry_at` instead of polling. This advisory retry does not reveal an unauthorized game's release time.\n\nFinal sporting scores are retained for resolved picks after the event is confirmed ended and both sides have verified scores. A result without a verified final stays unavailable; a win/loss outcome alone does not establish a sporting score. Existing sports_context fields and return calculations are unchanged.\n\nWithdrawn picks are excluded from current and dated recommendations, the archive, and its statistics, even after market settlement. The public ledger retains every published commitment under its original identity and proof bytes. Provider settlement still determines the recorded result. Request and response fields are unchanged.\n\n`view=summary` returns each entitled pick's identity, side, price, result, return and grade, about 600 bytes a pick, and `pick_id` narrows the set to one pick; together they read a slate, then one pick's whole record (holders, sports context, `entry_authorization`). The default `view=full` and a request without `pick_id` are unchanged. The full set of 2026-11-02 (14 picks) was 198,807 bytes, past the 50,000 characters an MCP client such as Claude Code shows of a tool result, so the MCP tool defaults to the summary.",
         "tags": ["Pick of the Day"],
         "parameters": [
           {
@@ -9501,6 +9514,27 @@
             "schema": {
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "full (default) is the whole recorded set: every pick with its holders, lead backer, sports context, thesis and entry_authorization, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks and locked_picks. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view.",
+            "schema": {
+              "type": "string",
+              "enum": ["full", "summary"],
+              "default": "full"
+            }
+          },
+          {
+            "name": "pick_id",
+            "in": "query",
+            "required": false,
+            "description": "One entitled published pick of the day, by its stable decimal-string pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks and locked_picks. Pair it with date for a past day's pick. A pick_id that is not among the day's entitled published picks returns 404 not_found with error.param=pick_id; one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
             }
           },
           {
@@ -9574,6 +9608,203 @@
                         },
                         {
                           "$ref": "#/components/schemas/PickOfTheDayNoEntitledPicks"
+                        },
+                        {
+                          "type": "object",
+                          "required": ["view", "state", "pick_date", "pick_count", "picks"],
+                          "properties": {
+                            "disclaimer": {
+                              "type": "string"
+                            },
+                            "locked_picks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["pick_rank", "required_tier"],
+                                "properties": {
+                                  "pick_rank": {
+                                    "type": "integer"
+                                  },
+                                  "required_tier": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "pick_count": {
+                              "type": "integer"
+                            },
+                            "pick_date": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "picks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["pick_id", "publication_order", "is_free_selection"],
+                                "properties": {
+                                  "backed_price": {
+                                    "type": "number"
+                                  },
+                                  "category": {
+                                    "type": "string"
+                                  },
+                                  "clv_pct": {
+                                    "type": "number"
+                                  },
+                                  "clv_status": {
+                                    "type": "string"
+                                  },
+                                  "display_category": {
+                                    "type": "string"
+                                  },
+                                  "event_slug": {
+                                    "type": "string"
+                                  },
+                                  "game_ended": {
+                                    "type": "boolean"
+                                  },
+                                  "game_started": {
+                                    "type": "boolean"
+                                  },
+                                  "holder_count": {
+                                    "type": "integer"
+                                  },
+                                  "is_free_selection": {
+                                    "type": "boolean"
+                                  },
+                                  "matchup": {
+                                    "type": "string"
+                                  },
+                                  "outcome": {
+                                    "type": "string"
+                                  },
+                                  "pick_id": {
+                                    "type": "string"
+                                  },
+                                  "pick_outcome_label": {
+                                    "type": "string"
+                                  },
+                                  "polymarket_url": {
+                                    "type": "string"
+                                  },
+                                  "publication_order": {
+                                    "type": "integer"
+                                  },
+                                  "release_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "return_usd": {
+                                    "type": "number"
+                                  },
+                                  "stake_usd": {
+                                    "type": "number"
+                                  },
+                                  "token_id": {
+                                    "type": "string"
+                                  },
+                                  "top_grade": {
+                                    "type": "string"
+                                  },
+                                  "unit_score": {
+                                    "type": "number"
+                                  }
+                                }
+                              }
+                            },
+                            "proof_pending_picks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "pick_id",
+                                  "publication_order",
+                                  "is_free_selection",
+                                  "supersedes_pick_id",
+                                  "pick_rank",
+                                  "release_at",
+                                  "retry_at"
+                                ],
+                                "properties": {
+                                  "is_free_selection": {
+                                    "type": "boolean"
+                                  },
+                                  "kickoff": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "pick_id": {
+                                    "type": "string"
+                                  },
+                                  "pick_rank": {
+                                    "type": "integer"
+                                  },
+                                  "publication_order": {
+                                    "type": "integer"
+                                  },
+                                  "release_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "retry_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "supersedes_pick_id": {
+                                    "type": ["string", "null"]
+                                  }
+                                }
+                              }
+                            },
+                            "scheduled_picks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "pick_id",
+                                  "publication_order",
+                                  "is_free_selection",
+                                  "supersedes_pick_id",
+                                  "pick_rank",
+                                  "release_at",
+                                  "kickoff"
+                                ],
+                                "properties": {
+                                  "is_free_selection": {
+                                    "type": "boolean"
+                                  },
+                                  "kickoff": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "pick_id": {
+                                    "type": "string"
+                                  },
+                                  "pick_rank": {
+                                    "type": "integer"
+                                  },
+                                  "publication_order": {
+                                    "type": "integer"
+                                  },
+                                  "release_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "supersedes_pick_id": {
+                                    "type": ["string", "null"]
+                                  }
+                                }
+                              }
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "view": {
+                              "type": "string"
+                            }
+                          }
                         }
                       ]
                     },
@@ -10020,7 +10251,7 @@
       "get": {
         "operationId": "getPickOfTheDayArchive",
         "summary": "Get the Pick of the Day track record",
-        "description": "Returns published picks that have not been withdrawn, with their outcome, modeled return, unit score, closing-line value, and cumulative record. Resolved game details and results are public. For unauthorized unresolved selections, game identity, category, image, publication time, and backed facts are omitted; `required_tier` and `backed_side_locked` provide an upgrade action. Pro includes the designated free selection and the first four non-free selections in publication order, five in total. Max opens every available selection, up to twenty-five.\n\nStable `pick_id` values identify selections. Historical picks retain their original IDs, order, and proof bytes. `publication_order` describes presentation and `is_free_selection` records access designation; neither is a quality rating. New selections use a neutral presentation order, while standing selections retain their identity, slot, and release schedule.\n\nEach row carries measured CLV or the reason it was not measured. Coverage is the share of resolved picks published before kickoff that have measured CLV. A post-kickoff publication is `not_applicable`.\n\nWithdrawn recommendations are excluded from archive rows, daily counts, and all track-record statistics, including CLV, financial aggregates, and the cumulative series. Later market settlement does not restore them to the archive. The public ledger retains every published commitment under its original pick_id and proof bytes. Request and response fields are unchanged.",
+        "description": "Returns published picks that have not been withdrawn, with their outcome, modeled return, unit score, closing-line value, and cumulative record. Resolved game details and results are public. For unauthorized unresolved selections, game identity, category, image, publication time, and backed facts are omitted; `required_tier` and `backed_side_locked` provide an upgrade action. Pro includes the designated free selection and the first four non-free selections in publication order, five in total. Max opens every available selection, up to twenty-five.\n\nStable `pick_id` values identify selections. Historical picks retain their original IDs, order, and proof bytes. `publication_order` describes presentation and `is_free_selection` records access designation; neither is a quality rating. New selections use a neutral presentation order, while standing selections retain their identity, slot, and release schedule.\n\nEach row carries measured CLV or the reason it was not measured. Coverage is the share of resolved picks published before kickoff that have measured CLV. A post-kickoff publication is `not_applicable`.\n\nWithdrawn recommendations are excluded from archive rows, daily counts, and all track-record statistics, including CLV, financial aggregates, and the cumulative series. Later market settlement does not restore them to the archive. The public ledger retains every published commitment under its original pick_id and proof bytes. Request and response fields are unchanged.\n\n`view=summary` returns the headline record (`hit_rate` without its per-pick `series`) and one page of short rows; `limit` and `cursor` page `picks` in either view and add `page` (`limit`, `returned`, `total`, `has_more`, `next_cursor`). A request with none of the three is the whole record, unchanged: 1,124,089 bytes for 888 picks on 2026-11-03. The MCP tool defaults to the summary.",
         "tags": ["Pick of the Day"],
         "parameters": [
           {
@@ -10031,6 +10262,38 @@
             "schema": {
               "type": "string",
               "enum": ["strict"]
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "full (default) is every row with every field, plus days and hit_rate with its per-pick series. summary returns view, hit_rate without series, one page of short rows (pick_id, pick_date, publication_order, is_free_selection, matchup, display_category, pick_outcome_label, outcome, top_grade, backed_price, unit_score, clv_pct, backed_side_locked, required_tier) and page; it always pages, 50 rows unless limit says otherwise. Any other value returns 400 bad_request with error.param=view.",
+            "schema": {
+              "type": "string",
+              "enum": ["full", "summary"],
+              "default": "full"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Rows per page of picks, 1 to 200, default 50. An integer outside that range is clamped into it, like every list limit, and X-Effective-Query reports the limit applied; a value that is not an integer returns 400 invalid_query. On view=full, sending limit or cursor pages picks and adds page, while days and hit_rate still describe the whole record; with neither, the response is the whole record.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 50,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "The page.next_cursor of the previous page: the rows after it, newest first. A cursor is a position in the record, so a pick published while you page does not shift later pages. A value this route did not return returns 400 bad_request with error.param=cursor.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -10098,7 +10361,14 @@
                       "const": "pick_of_the_day_archive"
                     },
                     "data": {
-                      "$ref": "#/components/schemas/PickOfTheDayArchive"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PickOfTheDayArchive"
+                        },
+                        {
+                          "$ref": "#/components/schemas/PickOfTheDayArchiveSummary"
+                        }
+                      ]
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ResponseMeta"
@@ -10417,7 +10687,7 @@
       "get": {
         "operationId": "getPickOfTheDayStats",
         "summary": "Get the Pick of the Day track-record breakdown",
-        "description": "The figures behind the stats page, computed from the same rows the archive publishes: the hit rate, the win rate the market expected at publication, flat-stake outcome stats (drawdown, rolling form, profit factor, concentration), and buckets by day, sport, category, access group, month, entry-price band, market type and totals side, plus streaks, records and every void pick. Withdrawn picks are outside every figure, as in the archive. Pro reads the Pro view; Max counts every selection whose backed side Max sees.",
+        "description": "The figures behind the stats page, computed from the same rows the archive publishes: the hit rate, the win rate the market expected at publication, flat-stake outcome stats (drawdown, rolling form, profit factor, concentration), and buckets by day, sport, category, access group, month, entry-price band, market type and totals side, plus streaks, records and every void pick. Withdrawn picks are outside every figure, as in the archive. Pro reads the Pro view; Max counts every selection whose backed side Max sees.\n\n`view=summary` drops the five sections that grow with the record (`series`, `days`, `categories`, `months` and `voids`; the first four were 127,020 of the 151,774 bytes on 2026-11-03), and `sections` returns exactly the sections named, `series` among them as its own top-level key. Both add `view` and `sections` to the body; the default `view=full` body is unchanged. The MCP tool defaults to the summary.",
         "tags": [
           "Pick of the Day"
         ],
@@ -10433,6 +10703,79 @@
                 "strict"
               ]
             }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "full (default) is every section. summary returns view, sections and every section except the five that grow with the record: series, days, categories, months and voids. In summary and sections bodies hit_rate carries no series; series is its own top-level section. Ignored when sections is sent. Any other value returns 400 bad_request with error.param=view.",
+            "schema": {
+              "type": "string",
+              "enum": ["full", "summary"],
+              "default": "full"
+            }
+          },
+          {
+            "name": "sections",
+            "in": "query",
+            "required": false,
+            "description": "Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "hit_rate",
+                  "series",
+                  "market_expectations",
+                  "outcome_stats",
+                  "days",
+                  "categories",
+                  "sports",
+                  "tiers",
+                  "months",
+                  "price_bands",
+                  "market_types",
+                  "total_sides",
+                  "streaks",
+                  "records",
+                  "voids"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "sections[]",
+            "in": "query",
+            "required": false,
+            "description": "Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated, with the same names.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "hit_rate",
+                  "series",
+                  "market_expectations",
+                  "outcome_stats",
+                  "days",
+                  "categories",
+                  "sports",
+                  "tiers",
+                  "months",
+                  "price_bands",
+                  "market_types",
+                  "total_sides",
+                  "streaks",
+                  "records",
+                  "voids"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": true
           },
           {
             "name": "If-None-Match",
@@ -10503,7 +10846,14 @@
                       "const": "pick_of_the_day_stats"
                     },
                     "data": {
-                      "$ref": "#/components/schemas/PickOfTheDayStats"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PickOfTheDayStats"
+                        },
+                        {
+                          "$ref": "#/components/schemas/PickOfTheDayStatsSections"
+                        }
+                      ]
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ResponseMeta"
@@ -13417,7 +13767,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by category. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by category. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, names every sport and returns 400 bad_request with param category, because this filter takes one category: omit category for every sports and esports market, or name one sport (#32657).",
             "schema": {
               "type": "string"
             }
@@ -13996,7 +14346,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Facet values are returned as the canonical bucket. Sports and esports only (#27411): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). The Sports facet counts that catch-all category alone.",
             "schema": {
               "type": "string"
             }
@@ -14691,7 +15041,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -15146,7 +15496,7 @@
           {
             "name": "category",
             "in": "query",
-            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets.",
+            "description": "Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657).",
             "schema": {
               "type": "string"
             }
@@ -23440,7 +23790,8 @@
                               }
                             },
                             "computed_at": "2026-11-01T23:02:14Z",
-                            "cached": true
+                            "cached": true,
+                            "stale": false
                           }
                         },
                         {
@@ -24396,7 +24747,7 @@
       "get": {
         "operationId": "getStream",
         "summary": "Resumable real-time event stream (SSE)",
-        "description": "Server-Sent Events stream of the live feed envelopes the platform already broadcasts (whale-trade pulses and other public/Pro feed events). Forwards the same backend-owned envelope shape as the internal feed; no provider data is recomputed. LiveScoreChanged frames may include optional live_score.tennis_points from API-Tennis in scoreboard order. This group has independent source_revision, observed_at, expires_at, set_number, and games; serving_side is omitted when unknown. Discard the group at expiry or set/game mismatch, and never compare its revision with the enclosing Polymarket score revision. Use event=LiveScoreChanged without market, wallet, grade, or size filters to receive these frames, which carry event_slug rather than condition_id. Authenticated via the oxi_sk Bearer key like every other /api/v1 endpoint, and limited to a small number of concurrent connections per API key and a cluster-wide ceiling across all keys (HTTP 429 with Retry-After when either cap is exceeded; HTTP 503 with Retry-After if a required Redis service is briefly unavailable). Each delivered frame carries an SSE id from one cluster-shared sequence that remains valid across backend replicas and process restarts. Reconnect with the Last-Event-ID header (or the last_event_id / seq query fallback) to replay the missed window before resuming live. When the requested resume point is older than the retained window, ahead of the current sequence, separated from live delivery by an uncovered gap, or the server's sequence counter restarts mid-stream (a completeness.status of truncated, lagged, or reset), the stream emits a resync marker event (event: resync) instead of silently skipping frames. Idle connections receive periodic ': keep-alive' comment lines. This is a long-lived response: keep the connection open and read frames as they arrive. Authorization is re-checked for as long as the stream is open: checks become due every 30 seconds and the credential cache has a 10-second TTL. Body polling and lookup I/O can delay terminal delivery. A key that is revoked, expired or rotated, or an account that is deleted, locked or no longer subscribed, ends the stream with one terminal 'event: error' frame and then closes the connection. The frame's JSON is { type: 'error', error: <the same error object a reconnect is answered with: code, message, doc_url, reason, retry_at>, retry: <boolean> }; retry is false for every credential and account refusal (a reconnect is refused with the same 401, 402, 403 or 423), and true only when the credential store stopped answering (code rate_limit_unavailable with reason database_unavailable when protected-delivery grace expires 90 seconds after the last confirmed check; terminal arrival depends on body polling), in which case reconnect after the error's retry_at with Last-Event-ID set to the frame's id to resume. Replay uses the same ongoing authorization as live delivery. When a paused response resumes, due authorization and terminal controls run before another protected replay frame is emitted; bytes already handed to HTTP cannot be recalled. A healthy response paused beyond the grace period must complete one fresh check before protected delivery resumes. Compatible unexpired tennis_points survives temporary supplemental snapshot unavailability or contention; expiry and set/game mismatch still clear it.",
+        "description": "Server-Sent Events stream of the live feed envelopes the platform already broadcasts (whale-trade pulses and other public/Pro feed events). Forwards the same backend-owned envelope shape as the internal feed; no provider data is recomputed. LiveScoreChanged frames may include optional live_score.tennis_points from API-Tennis in scoreboard order. This group has independent source_revision, observed_at, expires_at, set_number, and games; serving_side is omitted when unknown. Discard the group at expiry or set/game mismatch, and never compare its revision with the enclosing Polymarket score revision. Use event=LiveScoreChanged without market, wallet, grade, or size filters to receive these frames, which carry event_slug rather than condition_id. Authenticated via the oxi_sk Bearer key like every other /api/v1 endpoint, and limited to a small number of concurrent connections per API key and a cluster-wide ceiling across all keys (HTTP 429 with Retry-After when either cap is exceeded; HTTP 503 with Retry-After if a required Redis service is briefly unavailable). Each delivered frame carries an SSE id from one cluster-shared sequence that remains valid across backend replicas and process restarts. Reconnect with the Last-Event-ID header (or the last_event_id / seq query fallback) to replay the missed window before resuming live. The replay window is counted in all feed events, not in the frames a filtered connection receives: the newest 4,096 events, about 15 to 30 seconds of feed in the evening. While a connection drops frames its filter excludes, the server keeps its position, so a reconnect that sends the last delivered id after a short restart or a backend release replays from where the connection stopped instead of resyncing. A client away longer than the window gets a truncated resync; LargeTradeInsertedV2 consumers then catch up through GET /api/v1/large-trades?since= or GET /api/v1/events/feed/since. When the requested resume point is older than the retained window, ahead of the current sequence, separated from live delivery by an uncovered gap, or the server's sequence counter restarts mid-stream (a completeness.status of truncated, lagged, or reset), the stream emits a resync marker event (event: resync) instead of silently skipping frames. Idle connections receive periodic ': keep-alive' comment lines. This is a long-lived response: keep the connection open and read frames as they arrive. Authorization is re-checked for as long as the stream is open: checks become due every 30 seconds and the credential cache has a 10-second TTL. Body polling and lookup I/O can delay terminal delivery. A key that is revoked, expired or rotated, or an account that is deleted, locked or no longer subscribed, ends the stream with one terminal 'event: error' frame and then closes the connection. The frame's JSON is { type: 'error', error: <the same error object a reconnect is answered with: code, message, doc_url, reason, retry_at>, retry: <boolean> }; retry is false for every credential and account refusal (a reconnect is refused with the same 401, 402, 403 or 423), and true only when the credential store stopped answering (code rate_limit_unavailable with reason database_unavailable when protected-delivery grace expires 90 seconds after the last confirmed check; terminal arrival depends on body polling), in which case reconnect after the error's retry_at with Last-Event-ID set to the frame's id to resume. Replay uses the same ongoing authorization as live delivery. When a paused response resumes, due authorization and terminal controls run before another protected replay frame is emitted; bytes already handed to HTTP cannot be recalled. A healthy response paused beyond the grace period must complete one fresh check before protected delivery resumes. Compatible unexpired tennis_points survives temporary supplemental snapshot unavailability or contention; expiry and set/game mismatch still clear it.",
         "tags": ["Streaming"],
         "parameters": [
           {
@@ -29608,7 +29959,7 @@
       "post": {
         "operationId": "createMcpJsonRpcResponse",
         "summary": "Remote MCP endpoint (JSON-RPC)",
-        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 55 read-only tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_large_positions, get_trending_wallets, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_trader_context, get_trader_categories, get_trader_grade_at, get_market_holders, get_market_candles, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
+        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 55 tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_large_positions, get_trending_wallets, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_trader_context, get_trader_categories, get_trader_grade_at, get_market_holders, get_market_candles, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
         "tags": ["MCP"],
         "parameters": [
           {
@@ -37669,7 +38020,7 @@
           "requirement": "engineering-budget"
         },
         "summary": "Get Edge Hunter",
-        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input, the one-page holder bound (holder_scan_complete=false, counted in coverage.incomplete_holder_markets) and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. In-play additionally requires a coherent nonfuture original live-source clock no older than 30 seconds at publication and every served reuse; compute and missed-pass grace never renew that clock. Provider-confirmed live membership is observed independently of rendered scores, quotes and holder enrichment. UI refresh-marker expiry or score invalidation alone does not invalidate a separately observed provider membership. Explicit provider-source invalidation or an invalid, incomplete, future, expired or missing source remains unavailable. When one scheduled observation refresh misses its deadline, other cohorts may keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. An expired in-play source returns 503 read_model_warming even within generation grace. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census. admission=most_held_48h with cohort=wider_holder opts in to the most-held selection instead of the default one: per sport, up to 8 markets kicking off within 48 hours, most graded holders first, then volume, then soonest kickoff, at most 4 per event, recomputed every refresh; every row carries admitted_by most_held_48h, the response echoes admission, and funnel, coverage and degradation describe that selection. Both wider_holder selections add departures: the markets whose card left that selection before kickoff, each with departed_at, the departed card's last_observed_at and a reason from the funnel's terminal vocabulary, so a reader can tell a move to view=signals (primary_slate_candidate) from a split holder pile. Every observations snapshot names in signals_as_of the view=signals snapshot whose listed markets it excluded from wider_holder. A sport's pregame wider_holder holders are read only while a wider_holder or emerging_pile request named that sport, or named no category, within the last 30 minutes (default and most_held_48h counted apart; in-play reads never pause). A request whose sport was not read, or one without a category while any sport was not, returns 503 read_model_warming with Retry-After: 45 and restarts those reads; the retry serves the same rows as before, and that sport's admitted markets count as capacity_limited in the global coverage counts while they were not read.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
+        "description": "Max-only canonical Edge Hunter API with board, signals and observations views. An active Pro credential receives 403 forbidden with reason max_plan_required. Default board admission and ordering remain compatible: B grade floor, 30-row cap, 48-hour kickoff horizon, full Max projection and both current outcome quotes. Board outcomes include nullable token_id; the full signal includes nullable backed token_id, ranked_at copied from the frozen signal_created_at, and the existing aggregate category_skill evidence. Quote ts/validated_at and metadata_updated_at retain their separate meanings; none is wallet entry cost. Board quotes read verified display-price and websocket caches only, with no inline provider request or request-triggered REST refresh. Uncached outcomes remain null; retained quotes keep their original observation clock and existing retention bound. Board category, min_grade and limit are configurable; horizon clamps 1..48 and cap clamps 1..30. total counts selected admitted rows before the cap.\n\nSignals exposes full ranked records and category-skill/source evidence with default B grade floor, 12-hour horizon (clamp 1..48), page limit 20 (clamp 1..100) and cursor. Observations requires wider_holder, in_play or emerging_pile and retains full records, verified token IDs, midpoint price marks, holder/provider/directional clocks, snapshot_as_of, degraded, degradation_reasons, coverage and source-generation/category funnel evidence. Required degradation_reasons records each operational cause with canonical sport or null for generation-wide evidence, and is empty only for a healthy generation. For sports and esports reads, the first four coverage counts stay global across cohort/category/selectors; selected_observations counts matching rows before pagination and returned_observations equals data.length. An unmappable legacy category retains its zero-work empty generation with all coverage counts zero and no degradation reasons, without reading the all-sports cache. Intentional capacity_limited input, the one-page holder bound (holder_scan_complete=false, counted in coverage.incomplete_holder_markets) and board_upcoming_status=not_configured do not by themselves degrade a generation. Reconciled terminals prove accounting, not complete holder coverage. Observation horizon stays 48 hours with 12-hour in-play kickoff lookback and 30-second live snapshot ceiling. In-play additionally requires a coherent nonfuture original live-source clock no older than 30 seconds at publication and every served reuse; compute and missed-pass grace never renew that clock. Provider-confirmed live membership is observed independently of rendered scores, quotes and holder enrichment. UI refresh-marker expiry or score invalidation alone does not invalidate a separately observed provider membership. Explicit provider-source invalidation or an invalid, incomplete, future, expired or missing source remains unavailable. When one scheduled observation refresh misses its deadline, other cohorts may keep serving the last snapshot for up to 45 more seconds, with its age in meta.cache_age_s and its completion time in snapshot_as_of; a second missed refresh in a row returns 503 read_model_warming. An expired in-play source returns 503 read_model_warming even within generation grace. Funnel diagnostics describe the warmed generation/category accounting rather than the selected league/type/ID input census. admission=most_held_48h with cohort=wider_holder opts in to the most-held selection instead of the default one: per sport, up to 8 markets kicking off within 48 hours, most graded holders first, then volume, then soonest kickoff, at most 4 per event, recomputed every refresh; every row carries admitted_by most_held_48h, the response echoes admission, and funnel, coverage and degradation describe that selection. Both wider_holder selections add departures: the markets whose card left that selection before kickoff, each with departed_at, the departed card's last_observed_at and a reason from the funnel's terminal vocabulary, so a reader can tell a move to view=signals (primary_slate_candidate) from a split holder pile. Every observations snapshot names in signals_as_of the view=signals snapshot whose listed markets it excluded from wider_holder. A sport's pregame wider_holder holders are fetched only while a wider_holder or emerging_pile request named that sport, or named no category, within the last 30 minutes (default and most_held_48h counted apart; in-play reads never pause). A request whose sport was not read, or one without a category while any sport was not, returns 503 read_model_warming with Retry-After: 45 and restarts those reads; the retry serves the same rows as before, and that sport's admitted markets count as capacity_limited in the global coverage counts while they were not read.\n\nEvery view accepts kind, sports, leagues, market_types, condition_ids, event_slugs, series_slugs and legacy category. Repeat array query keys or supply comma-separated values inside a key; at most 100 supplied values per axis before deduplication. Values normalize, sort and deduplicate. Lists match OR and axes match AND. Sports and machine leagues normalize case-insensitively; market_types/event_slugs/series_slugs remain trimmed exact case-sensitive provider strings. category=NFL reaches Football, while leagues=nfl selects NFL only. Selection runs before cap/pagination, binds advanced cursors/ETags, and is echoed in optional top-level selection whenever a selector or nonblank category is requested. Missing selected metadata excludes a row. Unknown well-formed market IDs or provider identities return empty results.\n\nEach row adds required nullable market_context for authoritative discovery. A frozen observed sidecar gives required nullable league, series_slug, market_type and metadata_updated_at; a pre-selector cached generation can yield context:null on an unselected read. metadata_updated_at is exactly local market_canonical.updated_at, never a provider observation clock or current-time fallback. A selected read without sidecar readiness returns 503 read_model_warming with Retry-After: 5, never silently wider results. SDK selected reads enforce strict query validation and require the echo.\n\nAll public views read warmed generations only; missing or stale readiness returns 503 read_model_warming with Retry-After: 5. Advanced views use private,no-cache with ETag/If-None-Match/304; no request holder/provider computation. Default board has no ETag/pagination and private,no-store. Invalid view-specific parameters return 400. Replaced snapshots or changed cursor-bound filters return cursor_expired. Price marks are market midpoints, not wallet entry cost; volume is provider taker shares. Nullable/omitted evidence and db_only/degraded provenance remain explicit. Analytics is not an execution instruction.",
         "security": [
           {
             "bearerAuth": []
@@ -37713,7 +38064,7 @@
             "name": "category",
             "in": "query",
             "required": false,
-            "description": "Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. An unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND.",
+            "description": "Legacy canonical bucket alias, now accepted in every view. Provider aliases canonicalize: NFL reaches Football and EPL reaches Soccer. Use leagues for a league-specific selection. The word sports, in any casing, reads as kind=sports, every sport but Esports, as category=sports does on every other route (#32720): the response echoes kind sports beside category sports, and with kind=esports it returns 400 with param category. Any other unmappable non-sport category returns an empty result and echoes category non_sport. Combines with other selection axes using AND.",
             "schema": {
               "type": "string"
             }
@@ -41098,6 +41449,1605 @@
           "streaks",
           "records"
         ]
+      },
+      "PickOfTheDayStatsSections": {
+        "description": "The stats with `view=summary` or `sections`: only the named sections, listed in `sections`. `view=summary` names every section except `series`, `days`, `categories`, `months` and `voids`.",
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["date", "picks", "wins", "losses", "void", "pending"],
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "sweep": {
+                  "type": "string",
+                  "enum": ["win", "loss"]
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "hit_rate": {
+            "type": "object",
+            "required": [
+              "wins",
+              "losses",
+              "decided",
+              "pct",
+              "void",
+              "pending",
+              "stake_usd",
+              "net_profit_usd",
+              "staked_usd",
+              "roi_pct",
+              "net_profit_display",
+              "roi_display",
+              "win_rate_display",
+              "clv_eligible",
+              "clv_total",
+              "clv_measured",
+              "clv_applicable",
+              "clv_not_applicable",
+              "clv_pending",
+              "clv_unavailable",
+              "clv_state",
+              "clv_beats_close",
+              "clv_ties"
+            ],
+            "properties": {
+              "clv_applicable": {
+                "type": "integer"
+              },
+              "clv_avg_display": {
+                "type": "string"
+              },
+              "clv_avg_pct": {
+                "type": "number"
+              },
+              "clv_avg_pp": {
+                "type": "number"
+              },
+              "clv_avg_pp_display": {
+                "type": "string"
+              },
+              "clv_beats_close": {
+                "type": "integer"
+              },
+              "clv_coverage_display": {
+                "type": "string"
+              },
+              "clv_coverage_explanation": {
+                "type": "string"
+              },
+              "clv_coverage_pct": {
+                "type": "number"
+              },
+              "clv_eligible": {
+                "type": "integer"
+              },
+              "clv_measured": {
+                "type": "integer"
+              },
+              "clv_not_applicable": {
+                "type": "integer"
+              },
+              "clv_pending": {
+                "type": "integer"
+              },
+              "clv_state": {
+                "type": "string"
+              },
+              "clv_ties": {
+                "type": "integer"
+              },
+              "clv_total": {
+                "type": "integer"
+              },
+              "clv_unavailable": {
+                "type": "integer"
+              },
+              "decided": {
+                "type": "integer"
+              },
+              "losses": {
+                "type": "integer"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "pct": {
+                "type": "number"
+              },
+              "pending": {
+                "type": "integer"
+              },
+              "roi_display": {
+                "type": "string"
+              },
+              "roi_pct": {
+                "type": "number"
+              },
+              "stake_usd": {
+                "type": "number"
+              },
+              "staked_usd": {
+                "type": "number"
+              },
+              "unit_score": {
+                "type": "number"
+              },
+              "unit_score_display": {
+                "type": "string"
+              },
+              "void": {
+                "type": "integer"
+              },
+              "win_rate_display": {
+                "type": "string"
+              },
+              "wins": {
+                "type": "integer"
+              }
+            }
+          },
+          "market_expectations": {
+            "type": "object",
+            "required": ["as_of_date", "timezone", "price_basis", "windows"],
+            "properties": {
+              "as_of_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "price_basis": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "windows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "key",
+                    "label",
+                    "from_date",
+                    "through_date",
+                    "priced_decided",
+                    "unpriced_decided",
+                    "wins",
+                    "expected_wins",
+                    "expected_wins_display",
+                    "units",
+                    "units_display",
+                    "wins_z",
+                    "wins_z_display",
+                    "units_z",
+                    "units_z_display",
+                    "clv_measured",
+                    "clv_missing",
+                    "clv_avg_pct",
+                    "clv_avg_display",
+                    "clv_avg_pp",
+                    "clv_avg_pp_display",
+                    "numeric_unavailable"
+                  ],
+                  "properties": {
+                    "clv_avg_display": {
+                      "type": ["string", "null"]
+                    },
+                    "clv_avg_pct": {
+                      "type": ["number", "null"]
+                    },
+                    "clv_avg_pp": {
+                      "type": ["number", "null"]
+                    },
+                    "clv_avg_pp_display": {
+                      "type": ["string", "null"]
+                    },
+                    "clv_measured": {
+                      "type": "integer"
+                    },
+                    "clv_missing": {
+                      "type": "integer"
+                    },
+                    "expected_wins": {
+                      "type": ["number", "null"]
+                    },
+                    "expected_wins_display": {
+                      "type": ["string", "null"]
+                    },
+                    "from_date": {
+                      "type": ["string", "null"],
+                      "format": "date"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "numeric_unavailable": {
+                      "type": "boolean"
+                    },
+                    "priced_decided": {
+                      "type": "integer"
+                    },
+                    "through_date": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "units": {
+                      "type": ["number", "null"]
+                    },
+                    "units_display": {
+                      "type": ["string", "null"]
+                    },
+                    "units_z": {
+                      "type": ["number", "null"]
+                    },
+                    "units_z_display": {
+                      "type": ["string", "null"]
+                    },
+                    "unpriced_decided": {
+                      "type": "integer"
+                    },
+                    "wins": {
+                      "type": "integer"
+                    },
+                    "wins_z": {
+                      "type": ["number", "null"]
+                    },
+                    "wins_z_display": {
+                      "type": ["string", "null"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "market_types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "outcome_stats": {
+            "type": "object",
+            "required": ["drawdown", "rolling", "profit_factor", "concentration"],
+            "properties": {
+              "concentration": {
+                "type": "object",
+                "required": [
+                  "valued_decided",
+                  "positive_wins",
+                  "removed_wins",
+                  "target_wins",
+                  "top_wins_share_pct",
+                  "top_wins_share_display",
+                  "remaining_valued_decided",
+                  "roi_without_top_wins_pct",
+                  "roi_without_top_wins_display"
+                ],
+                "properties": {
+                  "positive_wins": {
+                    "type": "integer"
+                  },
+                  "remaining_valued_decided": {
+                    "type": "integer"
+                  },
+                  "removed_wins": {
+                    "type": "integer"
+                  },
+                  "roi_without_top_wins_display": {
+                    "type": ["string", "null"]
+                  },
+                  "roi_without_top_wins_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "target_wins": {
+                    "type": "integer"
+                  },
+                  "top_wins_share_display": {
+                    "type": ["string", "null"]
+                  },
+                  "top_wins_share_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "valued_decided": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "drawdown": {
+                "type": "object",
+                "required": [
+                  "completed_days",
+                  "excluded_days",
+                  "from_date",
+                  "through_date",
+                  "max_drawdown_units",
+                  "max_drawdown_display",
+                  "current_drawdown_units",
+                  "current_drawdown_display",
+                  "days_below_peak",
+                  "longest_days_below_peak",
+                  "current_days_below_peak",
+                  "longest_recovery_days",
+                  "peak_date",
+                  "peak_net_profit_usd"
+                ],
+                "properties": {
+                  "completed_days": {
+                    "type": "integer"
+                  },
+                  "current_days_below_peak": {
+                    "type": ["integer", "null"]
+                  },
+                  "current_drawdown_display": {
+                    "type": ["string", "null"]
+                  },
+                  "current_drawdown_units": {
+                    "type": ["number", "null"]
+                  },
+                  "days_below_peak": {
+                    "type": ["integer", "null"]
+                  },
+                  "excluded_days": {
+                    "type": "integer"
+                  },
+                  "from_date": {
+                    "type": ["string", "null"],
+                    "format": "date"
+                  },
+                  "longest_days_below_peak": {
+                    "type": ["integer", "null"]
+                  },
+                  "longest_recovery_days": {
+                    "type": ["integer", "null"]
+                  },
+                  "max_drawdown_display": {
+                    "type": ["string", "null"]
+                  },
+                  "max_drawdown_units": {
+                    "type": ["number", "null"]
+                  },
+                  "peak_date": {
+                    "type": ["string", "null"],
+                    "format": "date"
+                  },
+                  "peak_net_profit_usd": {
+                    "type": ["number", "null"]
+                  },
+                  "through_date": {
+                    "type": ["string", "null"],
+                    "format": "date"
+                  }
+                }
+              },
+              "profit_factor": {
+                "type": "object",
+                "required": [
+                  "valued_decided",
+                  "state",
+                  "gross_profit_usd",
+                  "gross_loss_usd",
+                  "value",
+                  "display"
+                ],
+                "properties": {
+                  "display": {
+                    "type": ["string", "null"]
+                  },
+                  "gross_loss_usd": {
+                    "type": ["number", "null"]
+                  },
+                  "gross_profit_usd": {
+                    "type": ["number", "null"]
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["empty", "measured", "no_losses", "numeric_unavailable"]
+                  },
+                  "value": {
+                    "type": ["number", "null"]
+                  },
+                  "valued_decided": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "rolling": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "window_size",
+                    "valued_decided",
+                    "wins",
+                    "losses",
+                    "from_date",
+                    "through_date",
+                    "units",
+                    "units_display",
+                    "roi_pct",
+                    "roi_display",
+                    "win_rate_pct",
+                    "win_rate_display"
+                  ],
+                  "properties": {
+                    "from_date": {
+                      "type": ["string", "null"],
+                      "format": "date"
+                    },
+                    "losses": {
+                      "type": "integer"
+                    },
+                    "roi_display": {
+                      "type": ["string", "null"]
+                    },
+                    "roi_pct": {
+                      "type": ["number", "null"]
+                    },
+                    "through_date": {
+                      "type": ["string", "null"],
+                      "format": "date"
+                    },
+                    "units": {
+                      "type": ["number", "null"]
+                    },
+                    "units_display": {
+                      "type": ["string", "null"]
+                    },
+                    "valued_decided": {
+                      "type": "integer"
+                    },
+                    "win_rate_display": {
+                      "type": ["string", "null"]
+                    },
+                    "win_rate_pct": {
+                      "type": ["number", "null"]
+                    },
+                    "window_size": {
+                      "type": "integer"
+                    },
+                    "wins": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "price_bands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "records": {
+            "type": "object",
+            "required": ["sweeps"],
+            "properties": {
+              "best_day": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "date_display",
+                  "picks",
+                  "wins",
+                  "losses",
+                  "net_profit_usd",
+                  "net_profit_display"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "date_display": {
+                    "type": "string"
+                  },
+                  "losses": {
+                    "type": "integer"
+                  },
+                  "net_profit_display": {
+                    "type": "string"
+                  },
+                  "net_profit_usd": {
+                    "type": "number"
+                  },
+                  "picks": {
+                    "type": "integer"
+                  },
+                  "wins": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "biggest_win": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "date_display",
+                  "matchup",
+                  "category",
+                  "net_profit_usd",
+                  "net_profit_display"
+                ],
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "date_display": {
+                    "type": "string"
+                  },
+                  "matchup": {
+                    "type": "string"
+                  },
+                  "net_profit_display": {
+                    "type": "string"
+                  },
+                  "net_profit_usd": {
+                    "type": "number"
+                  }
+                }
+              },
+              "longest_losing_day_streak": {
+                "type": "object",
+                "required": [
+                  "days",
+                  "start_date",
+                  "end_date",
+                  "range_display",
+                  "net_profit_usd",
+                  "net_profit_display"
+                ],
+                "properties": {
+                  "days": {
+                    "type": "integer"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "net_profit_display": {
+                    "type": "string"
+                  },
+                  "net_profit_usd": {
+                    "type": "number"
+                  },
+                  "range_display": {
+                    "type": "string"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              },
+              "longest_winning_day_streak": {
+                "type": "object",
+                "required": [
+                  "days",
+                  "start_date",
+                  "end_date",
+                  "range_display",
+                  "net_profit_usd",
+                  "net_profit_display"
+                ],
+                "properties": {
+                  "days": {
+                    "type": "integer"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "net_profit_display": {
+                    "type": "string"
+                  },
+                  "net_profit_usd": {
+                    "type": "number"
+                  },
+                  "range_display": {
+                    "type": "string"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              },
+              "sweeps": {
+                "type": "object",
+                "required": ["min_decided", "clean_sweeps", "wipeouts"],
+                "properties": {
+                  "clean_sweeps": {
+                    "type": "integer"
+                  },
+                  "latest_clean_sweep": {
+                    "type": "object",
+                    "required": ["date", "date_display", "wins", "losses"],
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "date_display": {
+                        "type": "string"
+                      },
+                      "losses": {
+                        "type": "integer"
+                      },
+                      "wins": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "latest_wipeout": {
+                    "type": "object",
+                    "required": ["date", "date_display", "wins", "losses"],
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "date_display": {
+                        "type": "string"
+                      },
+                      "losses": {
+                        "type": "integer"
+                      },
+                      "wins": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "min_decided": {
+                    "type": "integer"
+                  },
+                  "wipeouts": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "winning_days": {
+                "type": "object",
+                "required": ["winning", "losing", "flat", "settled", "winning_pct", "winning_pct_display"],
+                "properties": {
+                  "flat": {
+                    "type": "integer"
+                  },
+                  "losing": {
+                    "type": "integer"
+                  },
+                  "settled": {
+                    "type": "integer"
+                  },
+                  "winning": {
+                    "type": "integer"
+                  },
+                  "winning_pct": {
+                    "type": "number"
+                  },
+                  "winning_pct_display": {
+                    "type": "string"
+                  }
+                }
+              },
+              "worst_day": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "date_display",
+                  "picks",
+                  "wins",
+                  "losses",
+                  "net_profit_usd",
+                  "net_profit_display"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "date_display": {
+                    "type": "string"
+                  },
+                  "losses": {
+                    "type": "integer"
+                  },
+                  "net_profit_display": {
+                    "type": "string"
+                  },
+                  "net_profit_usd": {
+                    "type": "number"
+                  },
+                  "picks": {
+                    "type": "integer"
+                  },
+                  "wins": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["date", "net_profit_usd", "hit_rate_pct"],
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "hit_rate_pct": {
+                  "type": "number"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "sports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "streaks": {
+            "type": "object",
+            "required": ["longest_win", "longest_loss"],
+            "properties": {
+              "current": {
+                "type": "integer"
+              },
+              "current_day": {
+                "type": "integer"
+              },
+              "current_day_display": {
+                "type": "string"
+              },
+              "current_display": {
+                "type": "string"
+              },
+              "longest_loss": {
+                "type": "integer"
+              },
+              "longest_win": {
+                "type": "integer"
+              }
+            }
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "total_sides": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "picks",
+                "wins",
+                "losses",
+                "void",
+                "pending",
+                "settled",
+                "priced_decided",
+                "small_sample",
+                "staked_usd",
+                "clv_measured"
+              ],
+              "properties": {
+                "canonical_category": {
+                  "type": "string"
+                },
+                "clv_avg_display": {
+                  "type": "string"
+                },
+                "clv_avg_pct": {
+                  "type": "number"
+                },
+                "clv_avg_pp": {
+                  "type": "number"
+                },
+                "clv_avg_pp_display": {
+                  "type": "string"
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "edge_display": {
+                  "type": "string"
+                },
+                "edge_pp": {
+                  "type": "number"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "net_profit_display": {
+                  "type": "string"
+                },
+                "net_profit_usd": {
+                  "type": "number"
+                },
+                "pending": {
+                  "type": "integer"
+                },
+                "picks": {
+                  "type": "integer"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "priced_in_display": {
+                  "type": "string"
+                },
+                "priced_in_pct": {
+                  "type": "number"
+                },
+                "roi_display": {
+                  "type": "string"
+                },
+                "roi_pct": {
+                  "type": "number"
+                },
+                "settled": {
+                  "type": "integer"
+                },
+                "small_sample": {
+                  "type": "boolean"
+                },
+                "staked_usd": {
+                  "type": "number"
+                },
+                "unit_score": {
+                  "type": "number"
+                },
+                "unit_score_display": {
+                  "type": "string"
+                },
+                "void": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": "string"
+                },
+                "win_rate_pct": {
+                  "type": "number"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "view": {
+            "type": "string"
+          },
+          "voids": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["pick_id", "pick_date", "pick_rank"],
+              "properties": {
+                "backed_price": {
+                  "type": "number"
+                },
+                "backed_side": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                },
+                "matchup": {
+                  "type": "string"
+                },
+                "pick_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "pick_id": {
+                  "type": "string"
+                },
+                "pick_rank": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "required": ["view", "sections"]
       },
       "ResolutionReport": {
         "type": "object",
@@ -44847,8 +46797,8 @@
       },
       "TraderEntryPriceAnalysis": {
         "type": "object",
-        "description": "Results by the entry price the wallet paid for the side it held, over its sports and esports markets with a known held entry price.",
-        "required": ["buckets", "best_bucket", "worst_bucket"],
+        "description": "Results by the entry price the wallet paid for the side it held, over its settled sports and esports positions with a held entry price. coverage counts the settled positions the buckets leave out, and why.",
+        "required": ["buckets", "best_bucket", "worst_bucket", "coverage"],
         "properties": {
           "buckets": {
             "type": "array",
@@ -44864,6 +46814,60 @@
           "worst_bucket": {
             "type": ["string", "null"],
             "description": "The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3."
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/TraderEntryPriceCoverage",
+            "description": "What the buckets cover (since 2026-11-03, #32671)."
+          }
+        }
+      },
+      "TraderEntryPriceCoverage": {
+        "type": "object",
+        "description": "The settled sports and esports positions the entry-price section reads. The buckets' markets plus every unbucketed row's are settled_markets, and their realized P&L sums to settled_pnl. settled_pnl adds up the wallet's per-market realized P&L, so it differs from pnl.in_scope.realized_pnl, which is Polymarket's published sports and esports P&L with a share of the wallet's rebates.",
+        "required": ["settled_markets", "settled_pnl", "bucketed_markets", "bucketed_pnl", "unbucketed"],
+        "properties": {
+          "settled_markets": {
+            "type": "integer",
+            "description": "Settled sports and esports positions: bucketed_markets plus every unbucketed row's markets."
+          },
+          "settled_pnl": {
+            "type": "number",
+            "description": "Realized P&L of those positions, USD."
+          },
+          "bucketed_markets": {
+            "type": "integer",
+            "description": "Positions in a bucket: the sum of buckets[].markets."
+          },
+          "bucketed_pnl": {
+            "type": "number",
+            "description": "Realized P&L of the bucketed positions, USD: the sum of buckets[].total_pnl."
+          },
+          "unbucketed": {
+            "type": "array",
+            "description": "The settled positions the buckets leave out: one row for each reason that has a position, ordered by reason. Empty when the buckets hold every settled position.",
+            "items": {
+              "$ref": "#/components/schemas/TraderEntryPriceUnbucketed"
+            }
+          }
+        }
+      },
+      "TraderEntryPriceUnbucketed": {
+        "type": "object",
+        "description": "Settled positions with no entry-price bucket, for one reason.",
+        "required": ["reason", "markets", "total_pnl"],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": ["two_sided", "held_side_unpriced", "no_entry_price", "freshness_unknown"],
+            "description": "two_sided: both outcomes bought at a price, a hedged book with no single side. held_side_unpriced: one outcome has a recorded price, but the wallet's remaining shares are on the other. no_entry_price: no outcome has a recorded entry price. freshness_unknown: a bucket whose rows carry no freshness clock yet."
+          },
+          "markets": {
+            "type": "integer",
+            "description": "Positions left out for this reason."
+          },
+          "total_pnl": {
+            "type": "number",
+            "description": "Their realized P&L, USD."
           }
         }
       },
@@ -44874,7 +46878,7 @@
         "properties": {
           "bucket": {
             "type": "string",
-            "description": "The band: $0.01-$0.19, $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. The last also holds any price below $0.01."
+            "description": "The band: $0.00-$0.19 (any price below $0.20, sub-cent fills included), $0.20-$0.39, $0.40-$0.59, $0.60-$0.79 or $0.80-$0.99. Until 2026-11-03 the first band was $0.01-$0.19 and sub-cent fills had no bucket (#32671)."
           },
           "bucket_order": {
             "type": "integer",
@@ -46285,8 +48289,238 @@
           },
           "hit_rate": {
             "$ref": "#/components/schemas/PickOfTheDayHitRate"
+          },
+          "page": {
+            "type": "object",
+            "required": ["limit", "returned", "total", "has_more", "next_cursor"],
+            "properties": {
+              "has_more": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "next_cursor": {
+                "type": ["string", "null"]
+              },
+              "returned": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              }
+            }
           }
         }
+      },
+      "PickOfTheDayArchiveSummary": {
+        "description": "The archive with `view=summary`: `hit_rate` without its daily `series`, one short row per pick, and `page`. Page with `limit` and `cursor`; `view=full` returns every field of a row.",
+        "type": "object",
+        "properties": {
+          "hit_rate": {
+            "type": "object",
+            "required": [
+              "wins",
+              "losses",
+              "decided",
+              "pct",
+              "void",
+              "pending",
+              "stake_usd",
+              "net_profit_usd",
+              "staked_usd",
+              "roi_pct",
+              "net_profit_display",
+              "roi_display",
+              "win_rate_display",
+              "clv_eligible",
+              "clv_total",
+              "clv_measured",
+              "clv_applicable",
+              "clv_not_applicable",
+              "clv_pending",
+              "clv_unavailable",
+              "clv_state",
+              "clv_beats_close",
+              "clv_ties"
+            ],
+            "properties": {
+              "clv_applicable": {
+                "type": "integer"
+              },
+              "clv_avg_display": {
+                "type": "string"
+              },
+              "clv_avg_pct": {
+                "type": "number"
+              },
+              "clv_avg_pp": {
+                "type": "number"
+              },
+              "clv_avg_pp_display": {
+                "type": "string"
+              },
+              "clv_beats_close": {
+                "type": "integer"
+              },
+              "clv_coverage_display": {
+                "type": "string"
+              },
+              "clv_coverage_explanation": {
+                "type": "string"
+              },
+              "clv_coverage_pct": {
+                "type": "number"
+              },
+              "clv_eligible": {
+                "type": "integer"
+              },
+              "clv_measured": {
+                "type": "integer"
+              },
+              "clv_not_applicable": {
+                "type": "integer"
+              },
+              "clv_pending": {
+                "type": "integer"
+              },
+              "clv_state": {
+                "type": "string"
+              },
+              "clv_ties": {
+                "type": "integer"
+              },
+              "clv_total": {
+                "type": "integer"
+              },
+              "clv_unavailable": {
+                "type": "integer"
+              },
+              "decided": {
+                "type": "integer"
+              },
+              "losses": {
+                "type": "integer"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "pct": {
+                "type": "number"
+              },
+              "pending": {
+                "type": "integer"
+              },
+              "roi_display": {
+                "type": "string"
+              },
+              "roi_pct": {
+                "type": "number"
+              },
+              "stake_usd": {
+                "type": "number"
+              },
+              "staked_usd": {
+                "type": "number"
+              },
+              "unit_score": {
+                "type": "number"
+              },
+              "unit_score_display": {
+                "type": "string"
+              },
+              "void": {
+                "type": "integer"
+              },
+              "win_rate_display": {
+                "type": "string"
+              },
+              "wins": {
+                "type": "integer"
+              }
+            }
+          },
+          "page": {
+            "type": "object",
+            "required": ["limit", "returned", "total", "has_more", "next_cursor"],
+            "properties": {
+              "has_more": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "next_cursor": {
+                "type": ["string", "null"]
+              },
+              "returned": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              }
+            }
+          },
+          "picks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["pick_id", "pick_date", "publication_order", "is_free_selection", "outcome"],
+              "properties": {
+                "backed_price": {
+                  "type": "number"
+                },
+                "backed_side_locked": {
+                  "type": "boolean"
+                },
+                "clv_pct": {
+                  "type": "number"
+                },
+                "display_category": {
+                  "type": "string"
+                },
+                "is_free_selection": {
+                  "type": "boolean"
+                },
+                "matchup": {
+                  "type": "string"
+                },
+                "outcome": {
+                  "type": "string"
+                },
+                "pick_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "pick_id": {
+                  "type": "string"
+                },
+                "pick_outcome_label": {
+                  "type": "string"
+                },
+                "publication_order": {
+                  "type": "integer"
+                },
+                "required_tier": {
+                  "type": "string"
+                },
+                "top_grade": {
+                  "type": "string"
+                },
+                "unit_score": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "view": {
+            "type": "string"
+          }
+        },
+        "required": ["view", "hit_rate", "picks", "page"]
       },
       "PickOfTheDayArchiveDay": {
         "type": "object",
@@ -47166,6 +49400,42 @@
             "type": "string",
             "format": "date-time",
             "description": "When the wallet last traded: its most recent recorded trade, as of the leaderboard row's last refresh, which re-reads it hourly, so a new trade can take about an hour to show. It agrees with the activity filter: every wallet listed under activity=inactive last traded more than 30 days ago. Since 2026-11-02 (#32322); before, it carried the time 0xinsider last synced the wallet, usually within the past week whether or not the wallet traded. Omitted when the wallet has no recorded trade."
+          }
+        }
+      },
+      "LeaderboardSummary": {
+        "type": "object",
+        "description": "The whole board's totals, the counts the 0xinsider leaderboard page shows (#32737), read with the ranking snapshot the page is served at. Sent on every page of a request with no category and no strategy, whatever its sort, dir and activity, which order or split the same wallets. Omitted on a category or strategy page, which lists a subset these totals do not describe, and while the ranking has no totals for the served generation.",
+        "required": ["ranked_total", "by_grade", "active_30d", "as_of"],
+        "properties": {
+          "ranked_total": {
+            "type": "integer",
+            "description": "Ranked wallets on the board: the wallets the unfiltered list pages through."
+          },
+          "by_grade": {
+            "type": "object",
+            "description": "Ranked wallets by grade. Every ranked wallet is graded S, A or B, so the three sum to ranked_total.",
+            "required": ["S", "A", "B"],
+            "properties": {
+              "S": {
+                "type": "integer"
+              },
+              "A": {
+                "type": "integer"
+              },
+              "B": {
+                "type": "integer"
+              }
+            }
+          },
+          "active_30d": {
+            "type": "integer",
+            "description": "Ranked wallets whose last trade was 30 days or less before as_of: the wallets activity=active lists. ranked_total minus active_30d is the activity=inactive count."
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the totals were counted, UTC. They are recounted about once a minute while the ranking is current."
           }
         }
       },
@@ -49239,7 +51509,8 @@
           "scan",
           "totals",
           "computed_at",
-          "cached"
+          "cached",
+          "stale"
         ],
         "properties": {
           "data": {
@@ -49269,11 +51540,15 @@
           "computed_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this roster was computed. A cached roster is at most 60 seconds old."
+            "description": "When this roster was computed. A fresh cached roster is at most 60 seconds old; a stale one at most 15 minutes."
           },
           "cached": {
             "type": "boolean",
-            "description": "true when the roster came from the 60-second roster cache."
+            "description": "true when the roster came from the cache."
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "true when the market had no fresh roster at the batch deadline and this is the last roster published for it, up to 15 minutes old (read computed_at). The fresh one is still computing, so a read a few seconds later normally gets it; a market refused over the account's cold-read share is served the same way."
           }
         }
       },
