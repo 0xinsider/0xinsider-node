@@ -21,7 +21,8 @@
  *
  * Filters (per-connection, subscribe-time): `event` (comma-separated frame
  * types), `condition_id`, `min_grade` (S|A|B|C|D|F), and, for
- * `LargeTradeInsertedV2` frames, `wallet` and `min_size` (#32642).
+ * `LargeTradeInsertedV2` frames, `wallet`, `min_size` (#32642) and
+ * `min_grade_at_trade` (#32766).
  *
  * Protocol validity (#16248). The decoder is bounded and fails visibly:
  *   - A successful response whose media type is not `text/event-stream` is
@@ -96,8 +97,23 @@ export interface StreamFilters {
   event?: readonly string[];
   /** Subscribe only to frames for this market (raw provider id or `mkt_*`). */
   condition_id?: string;
-  /** Only deliver frames carrying a grade at or above this threshold. */
+  /**
+   * Only deliver frames carrying a grade at or above this threshold. On a
+   * `LargeTradeInsertedV2` frame it reads `grade`, the wallet's grade when the
+   * trade was published, which for a backfilled trade is hours after the
+   * fill. Not with `min_grade_at_trade` (the server answers 400).
+   */
   min_grade?: Grade;
+  /**
+   * Only deliver `LargeTradeInsertedV2` frames whose `grade_at_trade`, the
+   * grade the wallet held when the trade filled, is at or above this
+   * threshold. Only a frame whose `grade_at_trade_status` is `graded` can
+   * match, and every other frame type is excluded while this is set. The same
+   * basis as `min_grade_at_trade` on `listLargeTrades`, `listLargeTradeHistory`,
+   * `getEventReplaySince` and webhook `trade_filters`, so a catch-up read and
+   * this stream agree. Not with `min_grade` (the server answers 400).
+   */
+  min_grade_at_trade?: Grade;
   /**
    * Only deliver `LargeTradeInsertedV2` frames for this Polymarket wallet
    * (`0x` plus 40 hex characters, any case). Every other frame type carries
@@ -1426,6 +1442,9 @@ function buildStreamUrl(
   }
   if (options.min_grade) {
     url.searchParams.set("min_grade", options.min_grade);
+  }
+  if (options.min_grade_at_trade) {
+    url.searchParams.set("min_grade_at_trade", options.min_grade_at_trade);
   }
   if (options.wallet) {
     url.searchParams.set("wallet", options.wallet);

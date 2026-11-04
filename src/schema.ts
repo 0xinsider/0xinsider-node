@@ -1070,6 +1070,7 @@ export type EventReplayMeta = {
       condition_id?: string;
       min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
       min_size?: number;
+      min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     };
     /** The expansions applied to every event on this page; empty when none. */
     expand: "trade"[];
@@ -1425,6 +1426,10 @@ export type GameFreshness = {
   scores_observed_at?: string;
   /** The provider's own frame clock. Omitted when the frame carries none. */
   scores_source_at?: string;
+  /** Seconds since this game's last Sports WebSocket frame. The esports feed resends an unchanged series about every 20 seconds, so this dates the feed's last frame, not the last score change. Omitted when no Sports WebSocket frame dates the score, which is not age zero: a score read from the provider's event listing is re-read on a cadence whether or not the game moved. */
+  scores_age_seconds?: number;
+  /** Whether this game's score and clock are current, judged on how often this league's feed sends a frame, and independent of source_freshness, which dates the board: a board can be seconds old while one game's frame is frozen. not_applicable outside play (scheduled, final, postponed, cancelled), at halftime and in a break between periods (a period of HT or End ...). stale when the last frame is older than the bound measured for its state: 180 seconds for a running soccer half before stoppage time (the provider sends a frame each match minute); 120 seconds for an in-progress cs2 or lol series (the feed resends each running series about every 20 seconds, so fresh means the provider resent it, not that the map score moved); 600 seconds for a running period of men's and women's college basketball (league cbb, cwbb) and NHL hockey (nhl), whose feeds send no frame while the clock is stopped for a timeout or review. fresh within the bound. unknown otherwise: no dated frame, soccer stoppage time, a period clock at 00:00, End OT in women's college basketball (the end of the third quarter, after which the provider sends no frame until the final), tennis (frames land on points and stop for changeovers and breaks), and every league with no measured bound, including the NBA and NFL. */
+  scores_freshness: "fresh" | "stale" | "unknown" | "not_applicable";
 };
 
 /** One market of a game holders batch: GET /api/v1/market/{condition_id}/holders unfiltered and cut to the batch limit. */
@@ -1927,7 +1932,7 @@ export type LargeTradeInsertedV2Data = {
   trader_id: number;
   /** Address of the wallet that made the trade. */
   wallet: string;
-  /** The wallet's grade when the event was published; `null` when it has none. */
+  /** The wallet's grade when the event was published; `null` when it has none. A backfilled trade publishes hours after it filled, so this can differ from `grade_at_trade`. `min_grade` filters on this field; `min_grade_at_trade` filters on `grade_at_trade`. */
   grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
   /** USD notional of the trade; decimal string. */
   size_usd: string;
@@ -1941,6 +1946,10 @@ export type LargeTradeInsertedV2Data = {
   /** When the trade filled on Polymarket. The envelope's `created_at` is this instant. */
   traded_at: string;
   platform: "polymarket";
+  /** The grade the wallet held when the trade filled, the same fact as `trader.grade_at_trade` on `GET /api/v1/large-trades`; `null` unless `grade_at_trade_status` is `graded`. `min_grade_at_trade` filters on it. */
+  grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** `graded` when `grade_at_trade` holds the grade at the fill; `ungraded` when the wallet had no grade then; `unknown` when it cannot be known, for a trade before 2026-09-19 23:00 UTC or while a grade change is unconfirmed. Only `graded` trades match `min_grade_at_trade`. An event published before these fields shipped (November 2026), or a redelivery of one, carries neither. */
+  grade_at_trade_status?: "graded" | "ungraded" | "unknown";
 };
 
 /** `large_trades_inserted` data (Pro and Max): new large trades were ingested. It carries a count and no trade; subscribe to `large_trade_inserted_v2` for the trade itself. The deprecated spelling `whale_trades_inserted` delivers the same object until its sunset on 2027-02-01 (#29352). */
@@ -1949,14 +1958,16 @@ export type LargeTradesInsertedData = {
   count: number;
 };
 
-/** All present fields narrow large_trade_inserted_v2 delivery. Grade is observed at publication; ungraded trades do not match min_grade. An empty object matches every large trade. */
+/** All present fields narrow large_trade_inserted_v2 delivery. min_grade reads the payload's grade, observed at publication; min_grade_at_trade reads its grade_at_trade, the grade when the trade filled. Send one of the two, not both (400). An empty object matches every large trade. */
 export type LargeTradeSubscriptionFilters = {
   /** Raw provider condition ID or mkt_-prefixed market ID. */
   condition_id?: string;
   /** Polymarket wallet address; matching is case-insensitive. */
   wallet?: string;
-  /** S is best; ungraded trades do not match. */
+  /** S is best; ungraded trades do not match. Reads the wallet's grade when the trade was published, which for a backfilled trade can be hours after the fill. */
   min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+  /** S is best. Reads grade_at_trade, the grade the trader held when the trade filled; only a trade whose grade_at_trade_status is graded matches. The same basis as min_grade_at_trade on GET /api/v1/large-trades and GET /api/v1/stream. */
+  min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
   /** Positive USD notional as an exact decimal string. */
   min_size_usd?: string;
 };
@@ -2005,17 +2016,28 @@ export type LeaderboardEntry = {
   last_active?: string;
 };
 
+/** Every league with a skill leaderboard, by sport: the league values GET /api/v1/leaderboard/sports/{sport} accepts. */
 export type LeaderboardLeagues = {
+  /** Grouped by sport, then most ranked wallets first. */
   leagues: {
+    /** The canonical sport, for example Soccer or Esports. */
     category: string;
+    /** The league's display name. */
     name: string;
+    /** Wallets the league board's edge sort ranks with no hold; at least min_ranked. */
     ranked_traders: number;
+    /** The league slug, the board route's league parameter. */
     slug: string;
+    /** The sport slug, the board route's {sport}. */
     sport: string;
+    /** Wallets with at least min_resolved settled markets in the league and a trade in the last 180 days: the field the league board ranks. */
     total_traders: number;
   }[];
+  /** Wallets a league board's edge sort must rank, with no hold, for the league to be listed. */
   min_ranked: number;
+  /** Settled markets of $20 or more a wallet needs in a league to be on its board. */
   min_resolved: number;
+  /** When the league ranking last ran. It runs about once a day. */
   refreshed_at: string;
 };
 
@@ -3160,6 +3182,8 @@ export type PickOfTheDayLedgerOpenedEntry = {
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
+  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
+  selected_by: "auto" | "manual";
 };
 
 /** An unresolved published pick. Carries only date, rank, hash, algorithm, seal instant and permalink. Kickoff and game identity are withheld; seal time remains public commitment provenance. */
@@ -3193,6 +3217,8 @@ export type PickOfTheDayLedgerSealedEntry = {
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
+  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
+  selected_by: "auto" | "manual";
 };
 
 /** A pick without a commitment, retained so the record cannot omit unprovable entries. Unresolved entries omit game identity; once resolved, matchup, category and payload become public. Existing opened canonical payload bytes and hashes are unchanged. */
@@ -3232,6 +3258,8 @@ export type PickOfTheDayLedgerUncommittedEntry = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
+  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
+  selected_by: "auto" | "manual";
 };
 
 /** A successful current-day entitlement response when only unauthorized ranks have published. It carries an empty pick set, identity-free locked ranks and an upgrade message. Selection IDs, game identity, prices and unauthorized clocks are absent. Any scheduled or proof-pending rows are entitled rows. */
@@ -3657,6 +3685,37 @@ export type PickOfTheDayStats = {
     pick_date: string;
     pick_id: string;
     pick_rank: number;
+  }[];
+  selections: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
   }[];
 };
 
@@ -4098,6 +4157,37 @@ export type PickOfTheDayStatsSections = {
     pick_date: string;
     pick_id: string;
     pick_rank: number;
+  }[];
+  selections?: {
+    canonical_category?: string;
+    clv_avg_display?: string;
+    clv_avg_pct?: number;
+    clv_avg_pp?: number;
+    clv_avg_pp_display?: string;
+    clv_measured: number;
+    edge_display?: string;
+    edge_pp?: number;
+    key: string;
+    label: string;
+    losses: number;
+    net_profit_display?: string;
+    net_profit_usd?: number;
+    pending: number;
+    picks: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
+    roi_display?: string;
+    roi_pct?: number;
+    settled: number;
+    small_sample: boolean;
+    staked_usd: number;
+    unit_score?: number;
+    unit_score_display?: string;
+    void: number;
+    win_rate_display?: string;
+    win_rate_pct?: number;
+    wins: number;
   }[];
 };
 
@@ -4712,48 +4802,88 @@ export type SnapshotState = {
   source_read_started_at: string | null;
 };
 
+/** One sport's skill leaderboard, or one league's. Every figure on a row is the wallet's record in this sport or league, except grade, the wallet's all-time grade, and volume (see volume_scope). */
 export type SportLeaderboard = {
+  /** The latest time any wallet's record on this board was recomputed. The sport ranking reruns hourly, a league ranking about once a day. null when the board has no rows. */
   as_of: string | null;
+  /** The canonical sport the slug resolved to, for example Soccer or Basketball. null when no wallet has a record under it; rows is then empty. */
   category: string | null;
+  /** The mean edge over every wallet in the field whose price_edge.status is ranked, held ones included: the value each row's edge_skill is pulled toward. null when no wallet's edge is ranked. */
   edge_average: number | null;
+  /** The league this board ranks; null on a sport board. */
   league: {
+    /** The league's display name. */
     name: string;
+    /** Wallets the league board's edge sort ranks with no hold. */
     ranked_traders: number;
+    /** The league's slug under its sport, for example premier-league or cs2. */
     slug: string;
   } | null;
+  /** The requested limit after clamping to 1..100 (default 20). rows holds fewer when the board has fewer wallets. */
   limit: number;
+  /** Settled markets of $20 or more a wallet needs in the sport or league to be on the board. */
   min_resolved: number;
+  /** The head of the board, in sort order. Every figure is the wallet's record in this sport or league, except grade (all-time) and volume (see volume_scope). */
   rows: ({
+    /** Lowercase proxy wallet. */
     address: string;
+    /** What the wallet paid, USD, for the settled markets pnl counts. null when any of them has no stored cost, never a partial sum. */
     cost: number | null;
+    /** Why sort=edge sets aside an edge whose status is ranked. category_loss: the wallet's realized P&L in this sport or league is zero or below. record_incomplete: the wallet's stored sports and esports P&L runs more than 5% of its cost ahead of Polymarket's own figure, so settled losing markets are likely missing from its record. A held row keeps its price_edge and edge_skill and sorts after the ranked rows on sort=edge. null when nothing holds the edge, and always null unless price_edge.status is ranked. */
     edge_hold: "category_loss" | "record_incomplete" | null;
+    /** price_edge.edge pulled toward edge_average by the share of the record that is noise: a short record moves most of the way to the average, a long one keeps nearly all of its own edge. The value sort=edge orders by when edge_hold is null. null unless price_edge.status is ranked. */
     edge_skill: number | null;
+    /** The wallet's all-time grade, S to F, the one every route serves. It is led by realized profit across all of the wallet's sports and esports markets, not this sport's or league's, so a wallet can lead a board on in-sport P&L and still grade F. Every letter is listed: the board ranks the in-sport record and does not filter on the grade. null when the wallet has no grade. */
     grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+    /** trd_0x..., the id the trader routes accept. */
     id: string;
+    /** The wallet's last trade on a settled market of $20 or more in this sport or league. */
     last_category_trade_at: string | null;
+    /** Markets n_resolved counts that settled at a realized loss. A market that broke even counts in neither wins nor losses. */
     losses: number;
+    /** The wallet's settled markets of $20 or more in this sport or league; at least min_resolved. */
     n_resolved: number;
+    /** Provider platform. Always polymarket. */
     platform: "polymarket";
+    /** Realized P&L, USD, across the markets n_resolved counts: this sport or league only, not the wallet's whole record. The value sort=pnl orders by. */
     pnl: number | null;
+    /** Edge over the price paid in this sport or league: how often the side the wallet bought won, minus the average price it paid. Probabilities throughout: edge 0.03 is 3 percentage points. A market bought on both sides counts by its shares. null when the wallet has no priced settled market here. */
     price_edge: {
+      /** Mean entry price paid, 0-1. */
       avg_price: number;
+      /** hit_rate minus avg_price, full precision, before any shrink. edge_skill is the shrunk value. */
       edge: number;
+      /** The low end of edge's 95% range: edge minus 1.96 times the square root of avg_price * (1 - avg_price) / markets. Not a sort key: sort=edge orders by edge_skill. */
       edge_lower: number;
+      /** Share of those markets whose bought side won, 0-1. A market bought on both sides adds the winning side's share of the shares bought. */
       hit_rate: number;
+      /** Settled markets of $20 or more in this sport or league at a known entry price that the edge is measured over. */
       markets: number;
+      /** Whether the edge ranks. ranked: at least 30 such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate here. too_few_markets: fewer than 30. sample_mismatch: that share is more than 10 points away, so these markets do not describe the wallet's record. Only a ranked edge with a null edge_hold orders on sort=edge. */
       status: "ranked" | "too_few_markets" | "sample_mismatch";
     } | null;
+    /** 1-based position on this board under sort. A page of limit rows is the head of the board. */
     rank: number;
+    /** pnl / cost, a fraction: 0.12 is 12%. null when cost is null. */
     roi: number | null;
+    /** The wallet's Polymarket username; null when it has none. */
     username: string | null;
+    /** USD, measured as volume_scope says. On a sport board: the wallet's volume across all its sports and esports markets, the profile's Volume traded, not this sport's alone. null on every league board row: no per-league volume is stored. */
     volume: number | null;
+    /** wins / (wins + losses) in this sport or league, 0-1: 0.6 is 60%. null when no market was decided. */
     win_rate: number | null;
+    /** The lower bound of the 95% Wilson interval on win_rate, 0-1: the value sort=win_rate orders by, so a short perfect record does not outrank a long strong one. null with win_rate. */
     win_rate_wilson_lb: number | null;
+    /** Markets n_resolved counts that settled at a realized profit. */
     wins: number;
   })[];
+  /** The order rows are in. edge: by edge_skill, with every wallet whose edge is not ranked, or is held, after the ranked ones. pnl: by realized P&L in the sport or league. win_rate: by the Wilson lower bound of the win rate. */
   sort: "edge" | "pnl" | "win_rate";
+  /** The board's sport slug, for example soccer, basketball or esports. An alias in the path, such as nba or cs2, reads as its sport's slug. */
   sport: string;
+  /** Wallets with at least min_resolved settled markets in the sport or league and a trade, in any market, in the last 180 days: the field rows is the head of. */
   total_traders: number;
+  /** What each row's volume measures. sports_and_esports: the wallet's volume across all its sports and esports markets, not this sport's or league's alone. */
   volume_scope: "sports_and_esports";
 };
 
@@ -6663,7 +6793,7 @@ export interface OperationQuery {
     series_slugs?: string[];
   };
   getEventReplaySince: {
-    /** Opaque event replay cursor returned as next_cursor by a prior response. The cursor maps to the global (whale_alerts.inserted_xid, whale_alerts.id) commit-order position, is valid across backend replicas, and is bound to the filter set the walk ran with (trader, condition_id, min_grade, min_size): presenting it under different filters answers 400 bad_request with error.reason cursor_expired, and the walk restarts without a cursor. Cursors issued before 2026-09-22 (id-only) stay accepted and are bound to no filters. Omit to fetch the latest durable public suffix. */
+    /** Opaque event replay cursor returned as next_cursor by a prior response. The cursor maps to the global (whale_alerts.inserted_xid, whale_alerts.id) commit-order position, is valid across backend replicas, and is bound to every filter the walk ran with (trader, condition_id, min_grade, min_grade_at_trade, min_size; expand is not a filter): presenting it under different filters, including a switch between min_grade and min_grade_at_trade, answers 400 bad_request with error.reason cursor_expired, and the walk restarts without a cursor. Cursors issued before 2026-09-22 (id-only) stay accepted and are bound to no filters. Omit to fetch the latest durable public suffix. */
     cursor?: string;
     /** Maximum durable public whale-trade events to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
@@ -6671,8 +6801,10 @@ export interface OperationQuery {
     trader?: string;
     /** Only trades on this market: the raw provider condition_id or its mkt_-prefixed id. Bound to the cursor. */
     condition_id?: string;
-    /** Only trades by wallets at this grade or better (S best), read from the wallet's newest ranking at request time; a wallet with no grade never passes. Bound to the cursor. */
+    /** Only trades by wallets at this grade or better (S best), read from the wallet's newest ranking at request time; a wallet with no grade never passes. For the grade the wallet held when the trade filled, send min_grade_at_trade instead. Bound to the cursor. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Only trades whose grade_at_trade, the grade the wallet held when the trade filled, is at this grade or better (S best). Only a trade whose grade at the fill is graded passes, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/large-trades, GET /api/v1/stream and webhook trade_filters. Bound to the cursor: switching between min_grade and min_grade_at_trade is a filter change and answers cursor_expired. Sending it with min_grade, or an invalid grade, returns HTTP 400. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Only trades of at least this USD amount. Decimal and scientific query spellings normalize exactly to cents, rounding half away from zero; maximum 1e15 USD. Pass the dataset continuation decimal string unchanged to preserve the bound. Bound to the cursor. */
     min_size?: number | string;
     /** Backward-compatible alias for expand. Repeatable: trade. */
@@ -6757,10 +6889,10 @@ export interface OperationQuery {
   getPickOfTheDayStats: {
     /** full (default) is every section. summary returns view, sections and every section except the five that grow with the record: series, days, categories, months and voids. In summary and sections bodies hit_rate carries no series; series is its own top-level section. Ignored when sections is sent. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
-    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
-    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, selections, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
+    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "selections" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
     /** Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated, with the same names. */
-    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "selections" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
   };
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
@@ -6808,8 +6940,10 @@ export interface OperationQuery {
     event?: string;
     /** Optional per-connection subscribe-time filter. Raw provider condition_id or mkt_-prefixed market id (normalized the same way the other v1 market endpoints normalize). A frame passes only when it carries a matching condition_id field; frames that carry no condition_id (e.g. whale-pulse events) are EXCLUDED while this is set. An empty value after normalization returns HTTP 400. Combines with event and min_grade as a logical AND; an absent param adds no constraint. */
     condition_id?: string;
-    /** Optional per-connection subscribe-time filter. A frame passes only when it carries a grade field whose grade is better-or-equal to this minimum (S is best). Frames without a grade (every frame except wallet_grade_changed and LargeTradeInsertedV2) are excluded. An invalid grade returns HTTP 400. Combines with the other filters as a logical AND. */
+    /** Optional per-connection subscribe-time filter. A frame passes only when it carries a grade field whose grade is better-or-equal to this minimum (S is best). On a LargeTradeInsertedV2 frame that field is grade, the wallet's grade when the trade was published: seconds after the fill for a live trade, hours after it for a backfilled one, so it is not always the grade the trade filled under. For that, send min_grade_at_trade instead. Frames without a grade (every frame except wallet_grade_changed and LargeTradeInsertedV2) are excluded. An invalid grade returns HTTP 400. Combines with the other filters as a logical AND. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Filter LargeTradeInsertedV2 frames to trades whose grade_at_trade, the grade the trader held when the trade filled, is at or above this minimum (S is best). Only a frame whose grade_at_trade_status is graded can match. The same basis as min_grade_at_trade on GET /api/v1/large-trades and on webhook trade_filters. Other event types are excluded when set. Sending it with min_grade, or an invalid grade, returns HTTP 400. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Filter LargeTradeInsertedV2 frames to this Polymarket wallet. Other event types have no wallet and are excluded when set. Applied to live and retained Redis frames after privacy checks. */
     wallet?: string;
     /** Filter LargeTradeInsertedV2 frames to trades at or above this USD notional. Positive decimal with at most six places; other event types are excluded when set. */
@@ -6982,8 +7116,10 @@ export interface OperationQuery {
     trader?: string;
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
-    /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule filter on trader.grade_at_trade instead. A means S or A, B means S, A or B. */
+    /** Minimum trader grade as of today (trader.grade), not at trade time. On a historical window it selects wallets by a grade they may have earned after the trade; for a point-in-time rule send min_grade_at_trade instead, which filters on trader.grade_at_trade. A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/large-trades, GET /api/v1/stream and webhook trade_filters, so a history read and a stream with the same floor agree. Applies to both sorts and beside condition_id, event_slug, trader and from/to. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Filter by whale_alerts.platform. all is equivalent to omitted. */
@@ -7008,8 +7144,10 @@ export interface OperationQuery {
     min_size?: number;
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
-    /** Minimum trader grade. */
+    /** Minimum trader grade now (trader.grade), the wallet's grade when this page is read, not when the trade filled. A wallet re-graded after a trade enters or leaves the result, so a catch-up read can disagree with GET /api/v1/stream and webhooks. For the grade at the fill, send min_grade_at_trade instead. A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/stream and on webhook trade_filters, so a client that catches up here and then streams gets one answer. Applies to every path: recent, since, sort=market_volume_share, condition_id and event_slug. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
@@ -7161,6 +7299,8 @@ export interface OperationQuery {
     category?: string;
     /** Minimum trader grade. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/large-trades, GET /api/v1/stream and webhook trade_filters, so a history read and a stream with the same floor agree. Applies to both sorts and beside condition_id, event_slug, trader and from/to. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Filter by whale_alerts.platform. all is equivalent to omitted. */
@@ -7185,8 +7325,10 @@ export interface OperationQuery {
     min_size?: number;
     /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
-    /** Minimum trader grade as of today (trader.grade). A means S or A, B means S, A or B. */
+    /** Minimum trader grade now (trader.grade), the wallet's grade when this page is read, not when the trade filled. A wallet re-graded after a trade enters or leaves the result, so a catch-up read can disagree with GET /api/v1/stream and webhooks. For the grade at the fill, send min_grade_at_trade instead. A means S or A, B means S, A or B. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
+    /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/stream and on webhook trade_filters, so a client that catches up here and then streams gets one answer. Applies to every path: recent, since, sort=market_volume_share, condition_id and event_slug. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
+    min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
