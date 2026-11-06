@@ -551,6 +551,20 @@ export async function* streamFeed(
   client: OxinsiderApiClient,
   options: StreamOptions = {},
 ): AsyncGenerator<StreamEvent, void, undefined> {
+  yield* streamConnection(client, options);
+}
+
+/**
+ * One stream connection: `streamFeed`'s body. `onEstablished` runs once the
+ * `200 text/event-stream` body is readable, the moment the opening deadline
+ * is cleared, so `streamFeedResilient` can measure how long a connection was
+ * healthy (#33187) without widening the public options.
+ */
+async function* streamConnection(
+  client: OxinsiderApiClient,
+  options: StreamOptions,
+  onEstablished?: () => void,
+): AsyncGenerator<StreamEvent, void, undefined> {
   const { maxFrameBytes, maxErrorBodyBytes, openTimeoutMs } =
     streamConnectionOptions(options);
   const apiKey = client.getApiKey();
@@ -646,6 +660,7 @@ export async function* streamFeed(
     if (!response.body) throw new Error("Stream response has no readable body");
     reader = response.body.getReader();
     connection.established();
+    onEstablished?.();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
     let buffer = "";
@@ -735,8 +750,12 @@ export async function* streamFeed(
 export interface ResilientStreamOptions extends StreamOptions {
   /**
    * Consecutive failed connections tolerated before giving up with
-   * `StreamReconnectsExhaustedError`. A connection that delivers any frame
-   * resets the count. Default `DEFAULT_MAX_STREAM_RECONNECTS` (10).
+   * `StreamReconnectsExhaustedError`. A connection fails when it does not
+   * open, or when it ends within `STREAM_HEALTHY_CONNECTION_MS` (60 s) of
+   * opening without delivering a frame. A connection that delivers any frame,
+   * or stays open that long, resets the count: the server ends every stream
+   * after its lifetime and on each release, and a quiet filter can see no
+   * frame for hours (#33187). Default `DEFAULT_MAX_STREAM_RECONNECTS` (10).
    */
   maxReconnects?: number;
   /**
@@ -768,6 +787,18 @@ export const DEFAULT_MAX_STREAM_RECONNECTS = 10;
 
 /** Default for `ResilientStreamOptions.maxRetryAfterMs`. */
 export const DEFAULT_MAX_STREAM_RETRY_AFTER_MS = RETRY_AFTER_CEILING_MS;
+
+/**
+ * How long a connection must stay open after its `200 text/event-stream`
+ * before `streamFeedResilient` counts it as healthy, in ms (#33187). A
+ * healthy connection resets the reconnect count however it ends, like a
+ * delivered frame does; one that ends sooner with no frame counts toward
+ * `maxReconnects` and backs off, so a server that closes at once stays
+ * bounded. Well under the server's stream lifetime (14 minutes, #33169), and
+ * long enough that a server holding each connection just past it costs at
+ * most one reconnect a minute.
+ */
+export const STREAM_HEALTHY_CONNECTION_MS = 60_000;
 
 const STREAM_RECONNECT_BASE_MS = 1_000;
 const STREAM_RECONNECT_MAX_MS = 30_000;
@@ -916,8 +947,12 @@ function assertMaxRetryAfterMs(value: number): number {
  * - Any other 4xx (400, 401, 402, 403, 423) is thrown at once: it cannot heal
  *   on its own. So is `StreamProtocolError` (#16248): a resume from
  *   `lastSeq` would replay the malformed frame, so the decision is yours.
- * - After `maxReconnects` consecutive connections that delivered nothing, it
- *   throws `StreamReconnectsExhaustedError` carrying `lastSeq`.
+ * - After `maxReconnects` consecutive failed connections, it throws
+ *   `StreamReconnectsExhaustedError` carrying `lastSeq`. A connection fails
+ *   when it does not open, or ends within `STREAM_HEALTHY_CONNECTION_MS`
+ *   (60 s) of opening without delivering a frame. One that delivers a frame
+ *   or stays open 60 s resets the count, so a quiet filter that sees nothing
+ *   across many server-ended lifetimes keeps reconnecting (#33187).
  * - `resync` markers are yielded unchanged, and `onResync` still fires. The
  *   marker's `id` becomes the resume cursor, as the server intends, so a
  *   reconnect after one does not request the aged window again.
@@ -974,13 +1009,22 @@ export async function* streamFeedResilient(
   for (;;) {
     if (signal?.aborted) return;
     let cause: unknown;
+    // Monotonic, so a wall-clock step cannot make a short connection look
+    // healthy or a healthy one short.
+    let establishedAt: number | undefined;
     try {
-      for await (const frame of streamFeed(client, {
-        ...streamOptions,
-        ...connectionOptions,
-        cursor,
-        lastEventId: cursor.seq ?? initialLastEventId,
-      })) {
+      for await (const frame of streamConnection(
+        client,
+        {
+          ...streamOptions,
+          ...connectionOptions,
+          cursor,
+          lastEventId: cursor.seq ?? initialLastEventId,
+        },
+        () => {
+          establishedAt = performance.now();
+        },
+      )) {
         attempt = 0;
         if (frame.kind === "resync" && frame.seq !== null) {
           cursor.seq = frame.seq;
@@ -993,6 +1037,16 @@ export async function* streamFeedResilient(
       cause = error;
     }
     if (signal?.aborted) return;
+    // A connection that stayed open long enough was healthy, however it
+    // ended: the server's lifetime close, a release, or a later network drop.
+    // Without this a filter that matches nothing for hours would spend one
+    // reconnect per lifetime and give up after `maxReconnects` of them.
+    if (
+      establishedAt !== undefined &&
+      performance.now() - establishedAt >= STREAM_HEALTHY_CONNECTION_MS
+    ) {
+      attempt = 0;
+    }
 
     const lastSeq = cursor.seq ?? toSeq(initialLastEventId);
     // A server-requested wait past the ceiling is deferred to the caller
