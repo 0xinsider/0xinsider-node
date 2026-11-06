@@ -236,6 +236,12 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "getTraderGradeAt",
     auth: "bearer",
   },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/clv",
+    operationId: "getTraderClv",
+    auth: "bearer",
+  },
   // Pre-existing op-table drift (surfaced by test/drift.test.ts, #6915): these
   // 200-returning openapi operations were never mirrored into the client table.
   // Added so the table stays contract-complete against the checked-in spec. All
@@ -437,6 +443,12 @@ export const API_CLIENT_OPERATIONS = [
     auth: "bearer",
   },
   {
+    method: "POST",
+    path: "/api/v1/markets/close/batch",
+    operationId: "batchGetMarketClose",
+    auth: "bearer",
+  },
+  {
     method: "GET",
     path: "/api/v1/market/{condition_id}/snapshot",
     operationId: "getMarketSnapshot",
@@ -453,6 +465,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/market/{condition_id}/candles",
     operationId: "getMarketCandles",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/close",
+    operationId: "getMarketClose",
     auth: "bearer",
   },
   {
@@ -860,7 +878,8 @@ export type IdempotentWriteOperationId =
 
 /**
  * POST operations that read and never write (#16182): the batch lookups.
- * `POST /api/v1/traders/batch` and `POST /api/v1/markets/flow/batch` resolve
+ * `POST /api/v1/traders/batch`, `POST /api/v1/markets/flow/batch` and
+ * `POST /api/v1/markets/close/batch` resolve
  * their inputs and store nothing (`backend/src/api_v1/handlers/batch.rs`), so
  * a repeat cannot duplicate a side effect. Each attempt is one request
  * against the account's quota and one reservation of batch item units, which
@@ -870,6 +889,7 @@ export type IdempotentWriteOperationId =
 export const READ_ONLY_POST_OPERATIONS = [
   "batchGetTraders",
   "batchGetMarketFlow",
+  "batchGetMarketClose",
 ] as const satisfies readonly ApiOperationId[];
 
 /**
@@ -2736,6 +2756,25 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * Closing line value over one wallet's large trades in a window (#32517):
+   * the trades `listLargeTradeHistory` returns for the same trader, `from`,
+   * `to`, `min_size` and `category`, each measured as its `clv` object is.
+   * Cents per share, positive when the trade beat the market's stored close;
+   * only pre-kickoff trades on a market with a measured close count.
+   */
+  getTraderClv(
+    address: OperationPath["getTraderClv"]["address"],
+    params: OperationQuery["getTraderClv"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getTraderClv", {
+      ...options,
+      path: { address },
+      query: params,
+    });
+  }
+
+  /**
    * Resolve 1 to 25 traders in one request (`POST /api/v1/traders/batch`).
    *
    * `traders` is sent as the request body's `traders` array, the field the
@@ -2777,6 +2816,18 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("batchGetMarketFlow", { ...options, body });
+  }
+
+  /**
+   * Up to 25 markets' stored closing lines in one request
+   * (`POST /api/v1/markets/close/batch`, #33025). Each `ok` item's `data` is
+   * what `getMarketClose` returns for that market; `meta` is the batch's own.
+   */
+  batchGetMarketClose(
+    body: OperationBody["batchGetMarketClose"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("batchGetMarketClose", { ...options, body });
   }
 
   listLeaderboard(params: LeaderboardListParams = {}, options: ConvenienceOptions = {}) {
@@ -3073,6 +3124,22 @@ export class OxinsiderApiClient {
       ...options,
       path: { condition_id: conditionId },
       query: params,
+    });
+  }
+
+  /**
+   * A market's stored closing line (#32517): each outcome's price in the
+   * provider's last minute bucket that ended at or before kickoff, captured
+   * once after settlement. `data.status` is `measured`, `pending` or
+   * `unavailable` (with `data.unavailable_reason`); a missing close is never 0.
+   */
+  getMarketClose(
+    conditionId: OperationPath["getMarketClose"]["condition_id"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getMarketClose", {
+      ...options,
+      path: { condition_id: conditionId },
     });
   }
 

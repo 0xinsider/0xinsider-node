@@ -137,6 +137,15 @@ export type BatchGameHoldersItem = {
   error?: ApiErrorBody;
 };
 
+export type BatchMarketCloseItem = {
+  /** Zero-based request index. Duplicate inputs keep separate result rows. */
+  index: number;
+  input: string;
+  status: "ok" | "error";
+  data?: MarketClose;
+  error?: ApiErrorBody;
+};
+
 export type BatchMarketFlowItem = {
   /** Zero-based request index. Duplicate inputs keep separate result rows. */
   index: number;
@@ -1363,7 +1372,7 @@ export type Game = {
   /** Kickoff in UTC, as the provider supplied it. Omitted when the provider published none; coverage.schedule then reads unavailable. */
   scheduled_at?: string;
   status: GameStatus;
-  /** Both sides, in the provider's own order. For a team league the provider lists the home side first. Empty when the provider identified neither side. */
+  /** Both sides, in the provider's own order. That order states no home or away: Polymarket lists the away team first in US leagues and the home team first in soccer. Read a market's side for home and away. Empty when the provider identified neither side. */
   competitors: GameCompetitor[];
   /** The esports series length, for example Bo3. Omitted for everything else. */
   series_format?: string;
@@ -1384,7 +1393,7 @@ export type Game = {
 
 /** One side of the game. */
 export type GameCompetitor = {
-  /** The competitor's name as the provider gives it. */
+  /** The team as its moneyline outcome names it, the same before, during and after the game (Jaguars, Penn). Where no outcome names the team, for example a soccer game's Yes/No win markets, the provider's full name (FC Bayern München). To identify a team, prefer provider_id. */
   name: string;
   /** The provider's league-scoped competitor id, as a string. Omitted when the provider has not identified this side; coverage.competitors then reads labels. */
   provider_id?: string;
@@ -1463,7 +1472,7 @@ export type GameMarket = {
   slug?: string;
   /** The provider's own market type, for example moneyline or spread. Omitted when the provider sent none. Not an enum: the provider owns this vocabulary and adds to it. */
   sports_market_type?: string;
-  /** Which side of the game this market's YES leg pays. Soccer 1X2 legs are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg, which is not the same as other. */
+  /** Which side of the game this market's YES leg pays. home and away are the provider's own home/away designation of the team the YES leg names (Polymarket's teams[].ordering), never its place in competitors. Soccer 1X2 legs are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg or the provider designates neither team home or away, which is not the same as other. */
   side?: "home" | "away" | "draw" | "other";
   /** The provider's label for the YES outcome. Omitted when the provider sent none. */
   outcome_yes?: string;
@@ -1911,6 +1920,23 @@ export type LargeTrade = {
     /** Provider-backed market_canonical category. */
     category?: string;
   };
+  /** Closing line value against the market's stored close (GET /api/v1/market/{condition_id}/close). Always present; status says whether it is measured. */
+  clv: {
+    /** The CLV definition, clv@v1. */
+    basis_version: string;
+    /** The anchor pre_kickoff was judged against: the stored close's anchor, else the market's kickoff. */
+    close_anchor_at: string | null;
+    /** The traded outcome's closing price, 0 to 1, whenever a usable close is stored and the outcome is known, in play included. */
+    close_price: number | null;
+    /** Cents per share, positive when the trade beat the close: buy is (close_price - price) * 100, sell is (price - close_price) * 100. Gross of fees. Computed from the trade's exact stored price; price on the wire is rounded to 4 places, so a recomputation from it agrees within 0.005 cents. Set exactly when status is measured. */
+    clv_cents: number | null;
+    /** Whether the trade filled before close_anchor_at. null when the market has no anchor. */
+    pre_kickoff: boolean | null;
+    /** measured: clv_cents is set. in_play: traded at or after the close anchor (kickoff), no CLV is defined. pending: traded before kickoff and the market's close is not stored yet. unavailable: see unavailable_reason. */
+    status: "measured" | "in_play" | "pending" | "unavailable";
+    /** Set exactly when status is unavailable. The market's reasons (see MarketClose.unavailable_reason), plus anchor_stale (the kickoff moved after the close was captured) and outcome_unknown (the traded outcome is not known for this trade). */
+    unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
+  };
 };
 
 export type LargeTradeDetail = LargeTrade & {
@@ -2140,6 +2166,49 @@ export type MarketCandles = {
   resolution: "1d" | "1w";
   /** One entry per present provider token (YES first, then NO); empty when no tokens have been fetched yet. */
   outcomes: OutcomeCandles[];
+};
+
+/** A market's stored closing line (#32517): Polymarket's price-history value for the last minute bucket ending at or before kickoff, read once after settlement and never recomputed. */
+export type MarketClose = {
+  /** true when game_start_time has moved more than lookback_seconds from close_anchor_at since capture; large trades on the market then carry no CLV. null without a stored row. */
+  anchor_stale: boolean | null;
+  /** Provider response contract version the value was read under. */
+  basis_version: string | null;
+  /** When the close was stored. Bookkeeping only. */
+  captured_at: string | null;
+  /** The instant the close was measured at: the kickoff when it was captured. Write-once; null when no close row is stored. */
+  close_anchor_at: string | null;
+  /** The field that supplied close_anchor_at, markets.game_start_time. */
+  close_anchor_source: string | null;
+  /** Polymarket condition id. */
+  condition_id: string;
+  /** The market's kickoff as stored now. */
+  game_start_time: string | null;
+  /** How far before the anchor the admitted bucket may start: 21600 (6 hours). */
+  lookback_seconds: number | null;
+  /** Bucket width: 60 (minute grain) or 3600 (hour grain, for a market read more than about six days after kickoff). */
+  observation_window_seconds: number | null;
+  /** Start of the provider bucket the close is. The bucket ends at observed_at + observation_window_seconds, at or before close_anchor_at. */
+  observed_at: string | null;
+  /** YES then NO when status is measured; empty otherwise. */
+  outcomes: ({
+    /** Closing price, 0 to 1, at full stored precision. */
+    close_price: number;
+    /** true on the NO leg: 1 minus the stored YES price, never a second read. */
+    derived_from_yes: boolean;
+    /** The outcome's label. */
+    outcome: string | null;
+    /** 0 is the YES leg, 1 the NO leg. */
+    outcome_index: number;
+    /** CLOB token id of the outcome. */
+    token_id: string | null;
+  })[];
+  /** Provider endpoint and grain, e.g. polymarket_data_v2_prices_history@minute-window-v1. */
+  price_source: string | null;
+  /** measured: outcomes carries the close. pending: no close is stored yet and the capture will still read the market. unavailable: no close will be served; see unavailable_reason. */
+  status: "measured" | "pending" | "unavailable";
+  /** Set exactly when status is unavailable. no_observation_in_lookback, provider_empty_window, provider_invalid_contract and capture_window_closed are the capture's own stored refusals; no_game_start_time: the market has no kickoff time; not_one_sided_resolution: it resolved to neither side; not_captured: the capture does not read it (no tracked buy before resolution, or kickoff over 30 days ago); close_token_mismatch: the close was read on a different YES token than the market carries now. */
+  unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
 };
 
 export type MarketFlow = {
@@ -2398,7 +2467,7 @@ export type MarketSnapshot = {
     source: string;
     live_match_key?: string;
     live_league_key?: string;
-    /** Live-score period and elapsed may be omitted when unavailable (older responses use null). A score entry may omit full_name when it equals team; fall back to team. Distinct aliases and score admission markers are preserved. For live esports, scores[].map_score retains an available pair through an update omitting both sides only within the same live map, series format and series totals. Map changes and final state follow current provider updates; absent detail remains unavailable. Optional tennis_points supplies independently sourced current-game points and serving side; absence means unavailable. Compatible unexpired tennis_points survives temporary supplemental snapshot unavailability or contention; expiry and set/game mismatch still clear it. */
+    /** Live-score period and elapsed may be omitted when unavailable (older responses use null). A score entry may omit full_name when it equals team; fall back to team. A score entry's side (home or away) is the provider's home/away designation of that team, omitted when the provider gives none; the order of scores states no side. Distinct aliases and score admission markers are preserved. For live esports, scores[].map_score retains an available pair through an update omitting both sides only within the same live map, series format and series totals. Map changes and final state follow current provider updates; absent detail remains unavailable. Optional tennis_points supplies independently sourced current-game points and serving side; absence means unavailable. Compatible unexpired tennis_points survives temporary supplemental snapshot unavailability or contention; expiry and set/game mismatch still clear it. */
     live_score?: Record<string, unknown> & {
       tennis_points?: TennisPoints;
     };
@@ -5165,6 +5234,54 @@ export type TraderCategoryRecords = {
   records: TraderCategoryRecord[];
 };
 
+/** Closing line value over one wallet's large trades in a window (#32517). */
+export type TraderClv = {
+  /** Wallet address, lowercase. */
+  address: string;
+  /** The CLV definition, clv@v1, each trade's clv.basis_version. */
+  basis_version: string;
+  /** The category filter as sent, or null. */
+  category: string | null;
+  /** The window's trades that carry no CLV, by clv.status. */
+  excluded: {
+    in_play: number;
+    pending: number;
+    unavailable: number;
+  };
+  /** Window start, inclusive. */
+  from: string;
+  /** trd_-prefixed trader id. */
+  id: string;
+  /** Large trades in the window, every status. */
+  large_trades: number;
+  /** Figures over the trades whose clv.status is measured. */
+  measured: {
+    /** Normal 95% interval on market_mean_clv_cents from the markets' sample deviation, as low and high. null below two markets. */
+    market_ci95_cents: {
+      high: number;
+      low: number;
+    } | null;
+    /** Mean over markets of each market's mean clv_cents. null with no measured trade. */
+    market_mean_clv_cents: number | null;
+    /** Distinct markets among them. */
+    markets: number;
+    /** Plain mean of clv_cents. null with no measured trade. */
+    mean_clv_cents: number | null;
+    /** Share of measured trades with clv_cents > 0, 0 to 1. null with no measured trade. */
+    share_beat_close: number | null;
+    /** Their summed size in USDC. */
+    size_usd: number;
+    /** Mean of clv_cents weighted by each trade's size_usd. null with no measured trade. */
+    stake_weighted_clv_cents: number | null;
+    /** Large trades with clv.status measured. */
+    trades: number;
+  };
+  /** Size floor in USDC, as /large-trades/history reads it. */
+  min_size: number;
+  /** Window end, exclusive. */
+  to: string;
+};
+
 export type TraderContext = {
   trader: Trader;
   /** Aggregate position and P&L coverage for the trader, over its synced markets. markets_open, unrealized_mtm and cost_basis_locked cover the open positions on sports and esports markets, each market judged when the summary is read (#32119). markets_synced, markets_resolved and the resolved win figures count every stored market: since 2026-10-27 (#29366) those are mostly sports and esports markets, but a market that moved out of sports and esports, or one stored before its category was known, stays in them, and sync_coverage counts every category on both sides. markets_total, total_realized_pnl and synced_realized_pnl still cover every Polymarket market of the wallet. Omitted entirely (key absent, never null) when the trader is not in the local database or native net economics is unavailable. Realized fields remain numbers when present, including a genuine zero. */
@@ -6145,6 +6262,23 @@ export type WhaleDatasetTrade = {
   /** Stored source trade identity. */
   trade_event_id: string;
   source_trade_ingested_at: string | null;
+  /** Closing line value: the clv object of the same trade on /api/v1/large-trades, judged at the generation's selected_at from close states read inside the same snapshot. A pending row can be measured in a later generation. The close is stored once (GET /api/v1/market/{condition_id}/close), so a measured clv_cents changes only if the market's kickoff or YES token changes afterwards, which makes it unavailable (anchor_stale, close_token_mismatch). */
+  clv: {
+    /** The CLV definition, clv@v1. */
+    basis_version: string;
+    /** The anchor pre_kickoff was judged against: the stored close's anchor, else the market's kickoff. */
+    close_anchor_at: string | null;
+    /** The traded outcome's closing price, 0 to 1, whenever a usable close is stored and the outcome is known, in play included. */
+    close_price: number | null;
+    /** Cents per share, positive when the trade beat the close: buy is (close_price - price) * 100, sell is (price - close_price) * 100. Gross of fees. Computed from the exact stored price this row carries, so a recomputation from price and close_price agrees to the stored digits. Set exactly when status is measured. */
+    clv_cents: number | null;
+    /** Whether the trade filled before close_anchor_at. null when the market has no anchor. */
+    pre_kickoff: boolean | null;
+    /** measured: clv_cents is set. in_play: traded at or after the close anchor (kickoff), no CLV is defined. pending: traded before kickoff and the market's close is not stored yet. unavailable: see unavailable_reason. */
+    status: "measured" | "in_play" | "pending" | "unavailable";
+    /** Set exactly when status is unavailable. The market's reasons (see MarketClose.unavailable_reason), plus anchor_stale (the kickoff moved after the close was captured) and outcome_unknown (the traded outcome is not known for this trade). */
+    unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
+  };
 };
 
 /**
@@ -6177,6 +6311,7 @@ export interface WebhookEventData {
  */
 export interface OperationData {
   activateWebhookSecret: WebhookEndpoint;
+  batchGetMarketClose: BatchMarketCloseItem[];
   batchGetMarketFlow: BatchMarketFlowItem[];
   batchGetMarketIntel: BatchMarketFlowItem[];
   batchGetTraders: BatchTraderItem[];
@@ -6347,6 +6482,7 @@ export interface OperationData {
   getInsiderRadarFlag: SuspiciousTrade;
   getLargeTrade: LargeTradeDetail;
   getMarketCandles: MarketCandles;
+  getMarketClose: MarketClose;
   getMarketContextMarkdown: string;
   getMarketFlow: MarketFlow;
   getMarketHolders: MarketHolder[];
@@ -6423,6 +6559,7 @@ export interface OperationData {
   getSuspiciousTrade: SuspiciousTrade;
   getTrader: Trader;
   getTraderCategoryRecords: TraderCategoryRecords;
+  getTraderClv: TraderClv;
   getTraderContext: TraderContext;
   getTraderContextMarkdown: string;
   getTraderExportSnapshot: TraderExportSnapshot;
@@ -6789,6 +6926,7 @@ export interface OperationData {
 /** Each operation's documented query parameters. */
 export interface OperationQuery {
   activateWebhookSecret: Record<string, never>;
+  batchGetMarketClose: Record<string, never>;
   batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
@@ -6907,6 +7045,7 @@ export interface OperationQuery {
     /** Inclusive upper bound as a URL-decoded unix timestamp in seconds; points after this timestamp are omitted. If from is also present, from must be less than or equal to to. */
     to?: number;
   };
+  getMarketClose: Record<string, never>;
   getMarketContextMarkdown: Record<string, never>;
   getMarketFlow: {
     /** Lookback window for whale flow aggregation. */
@@ -7036,6 +7175,16 @@ export interface OperationQuery {
   };
   getTraderCategoryRecords: {
     /** Filter to one canonical category, matched through the same rollup every other category surface uses: soccer, EPL and champions league all reach Soccer, every esports label folds into Esports, and football is AMERICAN football and reaches Football. A filter that reaches Esports returns the Esports record with all of its games; a game is not a filter of its own, so ask for esports and read games. A sports or esports category the wallet has no record in answers 200 with an empty records array, never 404. Sports and esports only (#27311): a category outside them, or a value that reaches no category, returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
+    category?: string;
+  };
+  getTraderClv: {
+    /** Inclusive RFC3339 lower bound on the trade time. Defaults to 90 days before to. */
+    from?: string;
+    /** Exclusive RFC3339 upper bound on the trade time. Defaults to now; must be after from, and at most 366 days after it. */
+    to?: string;
+    /** Minimum trade size in USD. The capture floor was 3,000 USD before 2026-07-06 and 10,000 USD from then (1,000 USD in earnings markets), so 10000 gives one size rule across the whole archive. From 2026-09-23 a fill must also be at least 0.1% of its market's recorded traded volume (Polymarket's own share count); rows written before that date were not re-filtered. */
+    min_size?: number;
+    /** Filter by market category (case-insensitive). A canonical bucket name (e.g. Basketball) matches every provider member that folds into it (NBA, WNBA, NCAAB); a raw provider value also resolves to its bucket. Sports and esports only (#27430): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
   };
   getTraderContext: Record<string, never>;
@@ -7458,6 +7607,7 @@ export interface OperationPath {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
   };
+  batchGetMarketClose: Record<string, never>;
   batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
@@ -7517,6 +7667,10 @@ export interface OperationPath {
     id: string;
   };
   getMarketCandles: {
+    /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses. */
+    condition_id: string;
+  };
+  getMarketClose: {
     /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses. */
     condition_id: string;
   };
@@ -7582,6 +7736,10 @@ export interface OperationPath {
     address: string;
   };
   getTraderCategoryRecords: {
+    /** Wallet address (0x...), username, or trd_-prefixed trader id. */
+    address: string;
+  };
+  getTraderClv: {
     /** Wallet address (0x...), username, or trd_-prefixed trader id. */
     address: string;
   };
@@ -7718,6 +7876,10 @@ export interface OperationPath {
 /** Each operation's JSON request body; `never` when it takes none. */
 export interface OperationBody {
   activateWebhookSecret: never;
+  batchGetMarketClose: {
+    /** Market condition IDs (raw or mkt_-prefixed) to resolve in input order. */
+    condition_ids: string[];
+  };
   batchGetMarketFlow: {
     /** Market condition IDs to resolve in input order. */
     condition_ids: string[];
@@ -7768,6 +7930,7 @@ export interface OperationBody {
   getInsiderRadarFlag: never;
   getLargeTrade: never;
   getMarketCandles: never;
+  getMarketClose: never;
   getMarketContextMarkdown: never;
   getMarketFlow: never;
   getMarketHolders: never;
@@ -7791,6 +7954,7 @@ export interface OperationBody {
   getSuspiciousTrade: never;
   getTrader: never;
   getTraderCategoryRecords: never;
+  getTraderClv: never;
   getTraderContext: never;
   getTraderContextMarkdown: never;
   getTraderExportSnapshot: never;
@@ -7858,6 +8022,11 @@ export interface OperationResponse {
     object: "webhook";
     data: OperationData["activateWebhookSecret"];
     meta: ResponseMeta;
+  };
+  batchGetMarketClose: {
+    object: "market_close_batch";
+    data: OperationData["batchGetMarketClose"];
+    meta: BatchResponseMeta;
   };
   batchGetMarketFlow: {
     object: "market_flow_batch";
@@ -7988,6 +8157,11 @@ export interface OperationResponse {
     data: OperationData["getMarketCandles"];
     meta: ResponseMeta;
   };
+  getMarketClose: {
+    object: "market_close";
+    data: OperationData["getMarketClose"];
+    meta: ResponseMeta;
+  };
   getMarketContextMarkdown: string;
   getMarketFlow: {
     object: "market_flow";
@@ -8109,6 +8283,11 @@ export interface OperationResponse {
   getTraderCategoryRecords: {
     object: "trader_category_records";
     data: OperationData["getTraderCategoryRecords"];
+    meta: ResponseMeta;
+  };
+  getTraderClv: {
+    object: "trader_clv";
+    data: OperationData["getTraderClv"];
     meta: ResponseMeta;
   };
   getTraderContext: {
