@@ -137,6 +137,15 @@ export type BatchGameHoldersItem = {
   error?: ApiErrorBody;
 };
 
+export type BatchMarketCloseItem = {
+  /** Zero-based request index. Duplicate inputs keep separate result rows. */
+  index: number;
+  input: string;
+  status: "ok" | "error";
+  data?: MarketClose;
+  error?: ApiErrorBody;
+};
+
 export type BatchMarketFlowItem = {
   /** Zero-based request index. Duplicate inputs keep separate result rows. */
   index: number;
@@ -6253,6 +6262,23 @@ export type WhaleDatasetTrade = {
   /** Stored source trade identity. */
   trade_event_id: string;
   source_trade_ingested_at: string | null;
+  /** Closing line value: the clv object of the same trade on /api/v1/large-trades, judged at the generation's selected_at from close states read inside the same snapshot. A pending row can be measured in a later generation. The close is stored once (GET /api/v1/market/{condition_id}/close), so a measured clv_cents changes only if the market's kickoff or YES token changes afterwards, which makes it unavailable (anchor_stale, close_token_mismatch). */
+  clv: {
+    /** The CLV definition, clv@v1. */
+    basis_version: string;
+    /** The anchor pre_kickoff was judged against: the stored close's anchor, else the market's kickoff. */
+    close_anchor_at: string | null;
+    /** The traded outcome's closing price, 0 to 1, whenever a usable close is stored and the outcome is known, in play included. */
+    close_price: number | null;
+    /** Cents per share, positive when the trade beat the close: buy is (close_price - price) * 100, sell is (price - close_price) * 100. Gross of fees. Computed from the exact stored price this row carries, so a recomputation from price and close_price agrees to the stored digits. Set exactly when status is measured. */
+    clv_cents: number | null;
+    /** Whether the trade filled before close_anchor_at. null when the market has no anchor. */
+    pre_kickoff: boolean | null;
+    /** measured: clv_cents is set. in_play: traded at or after the close anchor (kickoff), no CLV is defined. pending: traded before kickoff and the market's close is not stored yet. unavailable: see unavailable_reason. */
+    status: "measured" | "in_play" | "pending" | "unavailable";
+    /** Set exactly when status is unavailable. The market's reasons (see MarketClose.unavailable_reason), plus anchor_stale (the kickoff moved after the close was captured) and outcome_unknown (the traded outcome is not known for this trade). */
+    unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
+  };
 };
 
 /**
@@ -6285,6 +6311,7 @@ export interface WebhookEventData {
  */
 export interface OperationData {
   activateWebhookSecret: WebhookEndpoint;
+  batchGetMarketClose: BatchMarketCloseItem[];
   batchGetMarketFlow: BatchMarketFlowItem[];
   batchGetMarketIntel: BatchMarketFlowItem[];
   batchGetTraders: BatchTraderItem[];
@@ -6899,6 +6926,7 @@ export interface OperationData {
 /** Each operation's documented query parameters. */
 export interface OperationQuery {
   activateWebhookSecret: Record<string, never>;
+  batchGetMarketClose: Record<string, never>;
   batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
@@ -7579,6 +7607,7 @@ export interface OperationPath {
     /** Webhook endpoint id owned by the authenticated API key user. */
     id: number;
   };
+  batchGetMarketClose: Record<string, never>;
   batchGetMarketFlow: Record<string, never>;
   batchGetMarketIntel: Record<string, never>;
   batchGetTraders: Record<string, never>;
@@ -7847,6 +7876,10 @@ export interface OperationPath {
 /** Each operation's JSON request body; `never` when it takes none. */
 export interface OperationBody {
   activateWebhookSecret: never;
+  batchGetMarketClose: {
+    /** Market condition IDs (raw or mkt_-prefixed) to resolve in input order. */
+    condition_ids: string[];
+  };
   batchGetMarketFlow: {
     /** Market condition IDs to resolve in input order. */
     condition_ids: string[];
@@ -7989,6 +8022,11 @@ export interface OperationResponse {
     object: "webhook";
     data: OperationData["activateWebhookSecret"];
     meta: ResponseMeta;
+  };
+  batchGetMarketClose: {
+    object: "market_close_batch";
+    data: OperationData["batchGetMarketClose"];
+    meta: BatchResponseMeta;
   };
   batchGetMarketFlow: {
     object: "market_flow_batch";

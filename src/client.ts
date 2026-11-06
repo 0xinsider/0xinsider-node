@@ -443,6 +443,12 @@ export const API_CLIENT_OPERATIONS = [
     auth: "bearer",
   },
   {
+    method: "POST",
+    path: "/api/v1/markets/close/batch",
+    operationId: "batchGetMarketClose",
+    auth: "bearer",
+  },
+  {
     method: "GET",
     path: "/api/v1/market/{condition_id}/snapshot",
     operationId: "getMarketSnapshot",
@@ -872,7 +878,8 @@ export type IdempotentWriteOperationId =
 
 /**
  * POST operations that read and never write (#16182): the batch lookups.
- * `POST /api/v1/traders/batch` and `POST /api/v1/markets/flow/batch` resolve
+ * `POST /api/v1/traders/batch`, `POST /api/v1/markets/flow/batch` and
+ * `POST /api/v1/markets/close/batch` resolve
  * their inputs and store nothing (`backend/src/api_v1/handlers/batch.rs`), so
  * a repeat cannot duplicate a side effect. Each attempt is one request
  * against the account's quota and one reservation of batch item units, which
@@ -882,6 +889,7 @@ export type IdempotentWriteOperationId =
 export const READ_ONLY_POST_OPERATIONS = [
   "batchGetTraders",
   "batchGetMarketFlow",
+  "batchGetMarketClose",
 ] as const satisfies readonly ApiOperationId[];
 
 /**
@@ -2808,6 +2816,18 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("batchGetMarketFlow", { ...options, body });
+  }
+
+  /**
+   * Up to 25 markets' stored closing lines in one request
+   * (`POST /api/v1/markets/close/batch`, #33025). Each `ok` item's `data` is
+   * what `getMarketClose` returns for that market; `meta` is the batch's own.
+   */
+  batchGetMarketClose(
+    body: OperationBody["batchGetMarketClose"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("batchGetMarketClose", { ...options, body });
   }
 
   listLeaderboard(params: LeaderboardListParams = {}, options: ConvenienceOptions = {}) {

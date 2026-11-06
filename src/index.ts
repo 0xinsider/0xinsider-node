@@ -310,6 +310,7 @@ export type {
   ApiError,
   ApiErrorBody,
   BatchGameHoldersItem,
+  BatchMarketCloseItem,
   BatchMarketFlowItem,
   BatchRateLimitMeta,
   BatchResponseMeta,
