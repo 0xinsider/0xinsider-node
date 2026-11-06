@@ -152,6 +152,16 @@ for (const row of page.data) {
 }
 ```
 
+SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. New types: `MarketClose`, `TraderClv`.
+
+```ts
+const close = await client.getMarketClose("0x2faf55d4e596992b4c41c565cc83c0420c74d0b8a11d34c63f6403937c72aa13");
+if (close.data?.status === "measured") close.data.outcomes[0]?.close_price; // number, 0 to 1
+
+const clv = await client.getTraderClv("0x...", { category: "sports" });
+clv.data?.measured.stake_weighted_clv_cents; // number | null
+```
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
