@@ -22,7 +22,8 @@
  * Filters (per-connection, subscribe-time): `event` (comma-separated frame
  * types), `condition_id`, `min_grade` (S|A|B|C|D|F), and, for
  * `LargeTradeInsertedV2` frames, `wallet`, `min_size` (#32642) and
- * `min_grade_at_trade` (#32766).
+ * `min_grade_at_trade` (#32766). For `MarketPriceMoved` frames (#32518):
+ * `league`, `min_move_cents` and `window_seconds`.
  *
  * Protocol validity (#16248). The decoder is bounded and fails visibly:
  *   - A successful response whose media type is not `text/event-stream` is
@@ -130,6 +131,26 @@ export interface StreamFilters {
    * frame type is excluded while this is set.
    */
   min_size?: number | string;
+  /**
+   * Only deliver `MarketPriceMoved` frames whose `league` (the event slug's
+   * prefix, such as `nba` or `epl`) is one of these; matched
+   * case-insensitively. Every other frame type is excluded while this is set.
+   */
+  league?: readonly string[];
+  /**
+   * Only deliver the one `MarketPriceMoved` level step per market and window
+   * that crosses this threshold in whole cents (2 to 50):
+   * `previous_level_cents < min_move_cents <= level_cents`, the rule the
+   * `market_price_moved` webhook applies. Every other frame type is excluded
+   * while this is set; a value outside 2 to 50 is a 400 whose `param` is
+   * `min_move_cents`.
+   */
+  min_move_cents?: number;
+  /**
+   * Only deliver `MarketPriceMoved` frames measured over this window. Every
+   * other frame type is excluded while this is set.
+   */
+  window_seconds?: 60 | 120 | 300 | 900;
 }
 
 export interface StreamOptions extends StreamFilters {
@@ -1507,6 +1528,15 @@ function buildStreamUrl(
   // and answered with the server's 400 rather than silently dropped.
   if (options.min_size !== undefined && options.min_size !== "") {
     url.searchParams.set("min_size", String(options.min_size));
+  }
+  if (options.league && options.league.length > 0) {
+    url.searchParams.set("league", options.league.join(","));
+  }
+  if (options.min_move_cents !== undefined) {
+    url.searchParams.set("min_move_cents", String(options.min_move_cents));
+  }
+  if (options.window_seconds !== undefined) {
+    url.searchParams.set("window_seconds", String(options.window_seconds));
   }
   return url.toString();
 }

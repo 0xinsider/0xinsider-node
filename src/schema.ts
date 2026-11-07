@@ -541,6 +541,7 @@ export type CreateWebhookRequest = {
   url: string;
   event_types: WebhookEventType[];
   trade_filters?: LargeTradeSubscriptionFilters;
+  price_move_filters?: PriceMoveSubscriptionFilters;
 };
 
 export type CreateWebhookVerificationAttemptRequest = {
@@ -1596,7 +1597,8 @@ export type GameSharpMoney = {
     is_leader: boolean;
     label: string;
     pct: number;
-    side: "home" | "draw" | "away";
+    /** The side the provider designates this outcome's team: home or away, by Polymarket's own home/away designation (teams[].ordering), never the outcome's place in this list; draw for a 1X2 draw. null when the provider designates neither team home or away; never inferred from order. */
+    side: "home" | "draw" | "away" | null;
     usd: number;
     wallets: {
       a: number;
@@ -2397,6 +2399,63 @@ export type MarketHoldersTotals = {
   yes_grade_usd: MarketHoldersSideGradeUsd;
   /** no_usd split by grade: where the S, A and B money on NO sits. */
   no_grade_usd: MarketHoldersSideGradeUsd;
+};
+
+/** `market_price_moved` data, also the MarketPriceMoved frame on GET /api/v1/stream: a sports or esports market's outcome-0 midpoint moved a whole-cent level over one window. Prices are decimal strings at full precision. A missing value is null with its *_unavailable_reason. */
+export type MarketPriceMovedData = {
+  best_ask: string;
+  best_bid: string;
+  concurrent_sharp_flow: {
+    detected: boolean;
+    grade_floor: "S" | "A" | "B" | "C" | "D" | "F";
+    net_flow_usd: number;
+    ranked_large_trades: number;
+    /** Large trades on the market in the same window at any grade, ungraded wallets included. ranked_large_trades is the part of them at grade_floor or better. */
+    large_trades_in_window: number | null;
+  } | null;
+  concurrent_sharp_flow_unavailable_reason: "read_failed" | null;
+  condition_id: string;
+  detected_at: string;
+  direction: "up" | "down";
+  event_slug: string | null;
+  from_price: string;
+  game_state: {
+    clock: string | null;
+    ended: boolean;
+    live: boolean | null;
+    period: string | null;
+    scores: LiveSportsScoreEntry[];
+    status: string | null;
+    updated_at: string;
+  } | null;
+  game_state_unavailable_reason: "no_event_slug" | "no_game_state" | "read_failed" | null;
+  gap_before: boolean;
+  label: string | null;
+  league: string | null;
+  level_cents: number;
+  market_slug: string | null;
+  move_cents: string;
+  observed_at: string | null;
+  outcome_index: number;
+  /** Where the game stood at detected_at. in_play: its live state reports it live. pre_game: its live state is neither live nor ended, or it has no live state yet and the market's scheduled start (the games endpoints' scheduled_at) is after detected_at. unknown: neither holds or the live state could not be read; game_state_unavailable_reason says why. */
+  phase: "pre_game" | "in_play" | "unknown";
+  previous_level_cents: number;
+  source: string;
+  spread_cents: string;
+  to_price: string;
+  window_seconds: number;
+  window_start: string;
+  /** Why book_depth_within_2c is null, and null when it is present. no_book: no full order book has arrived for the market since tracking began, only quotes. book_changed: the best bid or ask moved after the latest full book, so its depth belongs to another top. band_not_covered: the latest full book shows no level beyond 2 cents from the midpoint on at least one side, so that side's sum could be cut short. */
+  book_depth_unavailable_reason: "no_book" | "book_changed" | "band_not_covered" | null;
+  /** USD resting within 2 cents of outcome 0's midpoint on each side at detected_at, or null with book_depth_unavailable_reason. */
+  book_depth_within_2c: {
+    /** USD resting on asks priced at or below the midpoint plus 0.02 (price times size), as a decimal string. */
+    ask_usd: string;
+    /** USD resting on bids priced at or above the midpoint minus 0.02 (price times size), as a decimal string. */
+    bid_usd: string;
+    /** When we received the full order book the sums come from. Its best bid and ask are the event's best_bid and best_ask; deeper levels may have changed since. */
+    book_observed_at: string;
+  } | null;
 };
 
 export type MarketSearchResult = {
@@ -3281,8 +3340,6 @@ export type PickOfTheDayLedgerOpenedEntry = {
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
-  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
-  selected_by: "auto" | "manual";
 };
 
 /** An unresolved published pick. Carries only date, rank, hash, algorithm, seal instant and permalink. Kickoff and game identity are withheld; seal time remains public commitment provenance. */
@@ -3316,8 +3373,6 @@ export type PickOfTheDayLedgerSealedEntry = {
   supersedes_pick_id: string | null;
   /** Explicit proof provenance: 1 retains historic eight-field canonical JSON; 2 binds stable pick_id and version without pick_rank. */
   commitment_version: 1 | 2;
-  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
-  selected_by: "auto" | "manual";
 };
 
 /** A pick without a commitment, retained so the record cannot omit unprovable entries. Unresolved entries omit game identity; once resolved, matchup, category and payload become public. Existing opened canonical payload bytes and hashes are unchanged. */
@@ -3357,8 +3412,6 @@ export type PickOfTheDayLedgerUncommittedEntry = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
-  /** How the pick was chosen: auto by the selection algorithm, manual by an operator (102 published picks from 2026-06-23 to 2026-10-15; none since). Outside the hashed payload, so it moves no commitment. */
-  selected_by: "auto" | "manual";
 };
 
 /** A successful current-day entitlement response when only unauthorized ranks have published. It carries an empty pick set, identity-free locked ranks and an upgrade message. Selection IDs, game identity, prices and unauthorized clocks are absent. Any scheduled or proof-pending rows are entitled rows. */
@@ -3784,37 +3837,6 @@ export type PickOfTheDayStats = {
     pick_date: string;
     pick_id: string;
     pick_rank: number;
-  }[];
-  selections: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
   }[];
 };
 
@@ -4257,37 +4279,6 @@ export type PickOfTheDayStatsSections = {
     pick_id: string;
     pick_rank: number;
   }[];
-  selections?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
@@ -4542,6 +4533,26 @@ export type PotdEntryAuthorization = {
   issued_at: string;
   /** Authorization expiry timestamp. Existing grants do not extend; an expired authorization cannot authorize a new automated entry. */
   expires_at: string;
+};
+
+/** Settings for market_price_moved: required when event_types includes it, refused (400) when it does not. A PATCH without it keeps the stored settings; removing the event clears them. A subscription receives at most one delivery per market per window: the one level step whose (previous_level_cents, level_cents] holds min_move_cents. */
+export type PriceMoveSubscriptionFilters = {
+  /** Move threshold in whole cents of outcome 0's midpoint. */
+  min_move_cents: number;
+  /** The window the move is measured over. */
+  window_seconds: 60 | 120 | 300 | 900;
+  /** One market only. Raw or mkt_-prefixed. */
+  condition_id?: string;
+  /** One Polymarket event (game) only. */
+  event_slug?: string;
+  /** Event slug league prefixes such as nba or epl, matched case-insensitively; any one matches. */
+  league?: string[];
+  /** Game phase when the move was detected. any includes unknown. */
+  phase: "any" | "pre_game" | "in_play";
+  /** Deliver only moves with concurrent_sharp_flow.detected true. */
+  require_concurrent_sharp_flow: boolean;
+  /** Deliver only moves whose book_depth_within_2c is known and holds at least this many USD on each side. A move with book_depth_within_2c null does not match. */
+  min_book_usd_within_2c?: number;
 };
 
 /** One PUBLISHED same-day pick whose holder proof is not readable yet: its stable slot rank, the release and kickoff instants, and the instant before which a retry cannot succeed. Every item in `picks` carries its full required shape, so a pick that cannot meet it is listed here instead of being served with missing fields or a synthetic zero. */
@@ -5953,6 +5964,7 @@ export type UpdateWebhookRequest = {
   url?: string;
   event_types?: WebhookEventType[];
   trade_filters?: LargeTradeSubscriptionFilters;
+  price_move_filters?: PriceMoveSubscriptionFilters;
   enabled?: boolean;
 };
 
@@ -6054,6 +6066,8 @@ export type WebhookEndpoint = {
   url: string;
   event_types: WebhookEventType[];
   trade_filters: LargeTradeSubscriptionFilters;
+  /** The market_price_moved settings; null unless that event is subscribed. */
+  price_move_filters: PriceMoveSubscriptionFilters | null;
   status: WebhookStatus;
   verified_at: string | null;
   verification_token_expires_at: string;
@@ -6078,7 +6092,7 @@ export type WebhookEventDescriptor = {
   status: "active" | "dormant";
 };
 
-export type WebhookEventType = "large_trade_inserted_v2" | "large_trades_inserted" | "whale_trades_inserted" | "live_sports_updated" | "trader_synced" | "whale_trader_synced" | "large_positions_updated" | "wallet_grade_changed" | "suspicious_trade_flagged" | "insider_radar_flag_raised" | "sharp_money_flow_detected" | "smart_money_flow_detected" | "export_job_ready" | "export_job_failed" | "export_job_expired" | "export_job_cancelled";
+export type WebhookEventType = "large_trade_inserted_v2" | "large_trades_inserted" | "whale_trades_inserted" | "live_sports_updated" | "trader_synced" | "whale_trader_synced" | "large_positions_updated" | "wallet_grade_changed" | "suspicious_trade_flagged" | "insider_radar_flag_raised" | "sharp_money_flow_detected" | "smart_money_flow_detected" | "export_job_ready" | "export_job_failed" | "export_job_expired" | "export_job_cancelled" | "market_price_moved";
 
 export type WebhookRetryPolicy = {
   max_attempts: 8;
@@ -6295,6 +6309,7 @@ export interface WebhookEventData {
   large_trade_inserted_v2: LargeTradeInsertedV2Data;
   large_trades_inserted: LargeTradesInsertedData;
   live_sports_updated: LiveSportsUpdatedData;
+  market_price_moved: MarketPriceMovedData;
   sharp_money_flow_detected: SharpMoneyFlowDetectedData;
   smart_money_flow_detected: SharpMoneyFlowDetectedData;
   suspicious_trade_flagged: SuspiciousTradeFlaggedData;
@@ -7104,10 +7119,10 @@ export interface OperationQuery {
   getPickOfTheDayStats: {
     /** full (default) is every section. summary returns view, sections and every section except the five that grow with the record: series, days, categories, months and voids. In summary and sections bodies hit_rate carries no series; series is its own top-level section. Ignored when sections is sent. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
-    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, selections, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
-    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "selections" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
+    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
     /** Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated, with the same names. */
-    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "selections" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
   };
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
@@ -7163,6 +7178,12 @@ export interface OperationQuery {
     wallet?: string;
     /** Filter LargeTradeInsertedV2 frames to trades at or above this USD notional. Positive decimal with at most six places; other event types are excluded when set. */
     min_size?: string;
+    /** Filter MarketPriceMoved frames to these event slug league prefixes (comma-separated, case-insensitive, e.g. nba,epl). Other event types are excluded when set. */
+    league?: string;
+    /** Filter MarketPriceMoved frames to the one level step per market and window that crosses this threshold, in whole cents (2 to 50): previous_level_cents < min_move_cents <= level_cents, the market_price_moved webhook rule. Other event types are excluded when set. */
+    min_move_cents?: number;
+    /** Filter MarketPriceMoved frames to moves measured over this window. Other event types are excluded when set. */
+    window_seconds?: 60 | 120 | 300 | 900;
   };
   getSuspiciousTrade: Record<string, never>;
   getTrader: {

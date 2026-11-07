@@ -167,9 +167,9 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
  * which `schema.ts` carries as the generated `WebhookEventType` union.
  * `large_trade_inserted_v2`, `large_trades_inserted`, `whale_trades_inserted`,
  * `wallet_grade_changed`, `suspicious_trade_flagged`,
- * `insider_radar_flag_raised`, `sharp_money_flow_detected`, and
- * `smart_money_flow_detected` are Pro and Max: they deliver only to API keys
- * on an active Pro or Max subscription.
+ * `insider_radar_flag_raised`, `sharp_money_flow_detected`,
+ * `smart_money_flow_detected`, and `market_price_moved` are Pro and Max: they
+ * deliver only to API keys on an active Pro or Max subscription.
  *
  * Some entries are two spellings of ONE event, not two events: either one
  * subscribes, and an endpoint receives its deliveries under the spelling it
@@ -214,6 +214,9 @@ export const WEBHOOK_EVENT_TYPES = [
   // Pro and Max. One large trade per delivery, with the trade in `data`
   // (#16149); `large_trades_inserted` and its twin carry only a count.
   "large_trade_inserted_v2",
+  // Pro and Max. A sports or esports market's line move (#32518); the
+  // endpoint's `price_move_filters` sets the threshold and window.
+  "market_price_moved",
 ] as const satisfies readonly WebhookEvent["type"][];
 
 /**
@@ -268,6 +271,7 @@ export type {
   LargeTradesInsertedData,
   LiveSportsScoreEntry,
   LiveSportsUpdatedData,
+  MarketPriceMovedData,
   SharpMoneyFlowDetectedData,
   SuspiciousTradeFlaggedData,
   TraderSyncedData,
@@ -297,6 +301,12 @@ export type ExportJobReadyEvent = EventFor<"export_job_ready">;
 export type ExportJobFailedEvent = EventFor<"export_job_failed">;
 export type ExportJobExpiredEvent = EventFor<"export_job_expired">;
 export type ExportJobCancelledEvent = EventFor<"export_job_cancelled">;
+/**
+ * A sports or esports market's outcome-0 midpoint moved at least the
+ * endpoint's `price_move_filters.min_move_cents` over its window (Pro and
+ * Max, #32518). At most one delivery per market per window.
+ */
+export type MarketPriceMovedEvent = EventFor<"market_price_moved">;
 
 /**
  * Discriminated union over every typed webhook delivery payload.
@@ -327,7 +337,8 @@ export type WebhookEvent =
   | ExportJobReadyEvent
   | ExportJobFailedEvent
   | ExportJobExpiredEvent
-  | ExportJobCancelledEvent;
+  | ExportJobCancelledEvent
+  | MarketPriceMovedEvent;
 
 /**
  * Parse a verified raw body into the typed delivery envelope. Call only AFTER
