@@ -53,7 +53,9 @@ export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
  * not: `pick_not_released` is "not YET" (sleep until `retryAt`), not "does not
  * exist"; `unknown_endpoint` is a wrong PATH (do not retry); `trader_not_tracked`
  * is a wallet we do not capture (stop asking for it); `market_out_of_scope`
- * is a market outside product scope, sports and esports only (stop asking for it); `cursor_expired` means
+ * is a market outside product scope, sports and esports only (stop asking for it); `fill_history_too_large`
+ * is a wallet and market pair whose fill history is too long for one timeline read
+ * (stop asking for that pair); `cursor_expired` means
  * re-request page 1; `read_model_warming` is endpoint-local unavailability,
  * not rate limiting. Retry only that route after the supplied interval; do not
  * infer dependency health from the reason.
@@ -64,6 +66,10 @@ export const API_ERROR_REASONS = [
   "pick_not_released",
   "trader_not_tracked",
   "market_out_of_scope",
+  // 404 `not_found` refinement (#33245): the position timeline sums every earlier
+  // fill into its running totals, and this wallet has more than 20,000 fills on
+  // the market before the requested page. Dispatched to FillHistoryTooLargeError.
+  "fill_history_too_large",
   "read_model_warming",
   "database_unavailable",
   "request_accounting_unavailable",
@@ -803,6 +809,25 @@ export class MarketOutOfScopeError extends NotFoundError {
   }
 }
 
+/**
+ * 404 `reason: fill_history_too_large` - the wallet and market are tracked, but the
+ * position timeline sums every earlier fill into `running_amount` and
+ * `running_avg_price`, and this wallet has more than 20,000 fills on the market
+ * before the requested page (#33245). Stop asking for this pair; neither a retry
+ * nor another page can succeed.
+ */
+export class FillHistoryTooLargeError extends NotFoundError {
+  override readonly reason = "fill_history_too_large" as const;
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
+    this.name = "FillHistoryTooLargeError";
+  }
+}
+
 /** Parse the RFC3339 `error.retry_at` off an error envelope, if present. */
 function parseRetryAt(body: unknown): Date | null {
   const raw = extractApiErrorBody(body)?.retry_at;
@@ -893,6 +918,8 @@ export function errorFromResponse(
       return new TraderNotTrackedError(status, body, metadata);
     case "market_out_of_scope":
       return new MarketOutOfScopeError(status, body, metadata);
+    case "fill_history_too_large":
+      return new FillHistoryTooLargeError(status, body, metadata);
     case "idempotency_in_progress":
       return new IdempotencyInProgressError(status, body, metadata);
     case "webhook_delivery_in_progress":
