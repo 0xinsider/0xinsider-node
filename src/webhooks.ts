@@ -168,8 +168,9 @@ function constantTimeEqual(candidate: string, expected: Buffer): boolean {
  * `large_trade_inserted_v2`, `large_trades_inserted`, `whale_trades_inserted`,
  * `wallet_grade_changed`, `suspicious_trade_flagged`,
  * `insider_radar_flag_raised`, `sharp_money_flow_detected`,
- * `smart_money_flow_detected`, and `market_price_moved` are Pro and Max: they
- * deliver only to API keys on an active Pro or Max subscription.
+ * `smart_money_flow_detected`, `market_price_moved` and `market_settled` are
+ * Pro and Max: they deliver only to API keys on an active Pro or Max
+ * subscription.
  *
  * Some entries are two spellings of ONE event, not two events: either one
  * subscribes, and an endpoint receives its deliveries under the spelling it
@@ -217,6 +218,9 @@ export const WEBHOOK_EVENT_TYPES = [
   // Pro and Max. A sports or esports market's line move (#32518); the
   // endpoint's `price_move_filters` sets the threshold and window.
   "market_price_moved",
+  // Pro and Max. A game market settled, once per settled state (#33443);
+  // the endpoint's `settlement_filters` picks the markets.
+  "market_settled",
 ] as const satisfies readonly WebhookEvent["type"][];
 
 /**
@@ -272,6 +276,7 @@ export type {
   LiveSportsScoreEntry,
   LiveSportsUpdatedData,
   MarketPriceMovedData,
+  MarketSettledData,
   SharpMoneyFlowDetectedData,
   SuspiciousTradeFlaggedData,
   TraderSyncedData,
@@ -307,6 +312,12 @@ export type ExportJobCancelledEvent = EventFor<"export_job_cancelled">;
  * Max, #32518). At most one delivery per market per window.
  */
 export type MarketPriceMovedEvent = EventFor<"market_price_moved">;
+/**
+ * A sports or esports game market settled (Pro and Max, #33443): once per
+ * settled state, the first time 0xinsider records it. `data.settlement` is
+ * the block the game markets routes serve.
+ */
+export type MarketSettledEvent = EventFor<"market_settled">;
 
 /**
  * Discriminated union over every typed webhook delivery payload.
@@ -338,7 +349,8 @@ export type WebhookEvent =
   | ExportJobFailedEvent
   | ExportJobExpiredEvent
   | ExportJobCancelledEvent
-  | MarketPriceMovedEvent;
+  | MarketPriceMovedEvent
+  | MarketSettledEvent;
 
 /**
  * Parse a verified raw body into the typed delivery envelope. Call only AFTER

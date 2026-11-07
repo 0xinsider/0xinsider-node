@@ -75,6 +75,12 @@ export type ClientResponseMeta = ResponseMeta & {
   queryIgnored?: string;
   /** Normalized query names and values the server actually applied. */
   effectiveQuery?: string;
+  /**
+   * Applied query names whose value matched nothing the server serves, so an
+   * empty page reflects that filter, not a quiet catalog (`X-Query-Unmatched`,
+   * #33373): `sport` on `listGames` when the bucket is not served.
+   */
+  queryUnmatched?: string;
 };
 
 
@@ -332,6 +338,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/games/{event_slug}/markets",
     operationId: "listGameMarkets",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/props",
+    operationId: "listProps",
     auth: "bearer",
   },
   {
@@ -1433,6 +1445,9 @@ export type GamesListParams = OperationQuery["listGames"];
 /** Query parameters accepted by {@link OxinsiderApiClient.listGameMarkets}. */
 export type GameMarketsListParams = OperationQuery["listGameMarkets"];
 
+/** Query parameters accepted by {@link OxinsiderApiClient.listProps}. */
+export type PropsListParams = OperationQuery["listProps"];
+
 /** Query parameters accepted by {@link OxinsiderApiClient.listGameTrades}. */
 export type GameTradesParams = OperationQuery["listGameTrades"];
 
@@ -1575,6 +1590,7 @@ export interface ApiNotModifiedResponse {
     request_id?: string;
     queryIgnored?: string;
     effectiveQuery?: string;
+    queryUnmatched?: string;
     [key: string]: unknown;
   };
 }
@@ -1606,6 +1622,16 @@ export type ClientMeta<M> = M & {
    * a caller could not tell a fresh job from a replayed one.
    */
   status?: number;
+  /** Lifted from `X-Query-Ignored`: unknown query names the server ignored. */
+  queryIgnored?: string;
+  /** Lifted from `X-Effective-Query`: the query names and values applied. */
+  effectiveQuery?: string;
+  /**
+   * Lifted from `X-Query-Unmatched` (#33373): applied query names whose value
+   * matched nothing the server serves, such as an unserved `sport` on
+   * `listGames`, so an empty page is not read as a quiet catalog.
+   */
+  queryUnmatched?: string;
 };
 
 /** Operations whose 200 is the JSON envelope (`object`, `data`, `meta`); the two text bodies and the JSON-RPC post are not. */
@@ -2172,6 +2198,7 @@ export class OxinsiderApiClient {
         const sandbox = response.headers.get("x-oxi-sandbox") === "true";
         const queryIgnored = response.headers.get("x-query-ignored");
         const effectiveQuery = response.headers.get("x-effective-query");
+        const queryUnmatched = response.headers.get("x-query-unmatched");
         // Only ADD to a meta the server actually sent. The contract makes
         // `meta` required on every envelope, so synthesizing one from `?? {}`
         // would hand a caller a `ResponseMeta` missing its required fields --
@@ -2187,6 +2214,7 @@ export class OxinsiderApiClient {
             ...(sandbox ? { sandbox: true as const } : {}),
             ...(queryIgnored ? { queryIgnored } : {}),
             ...(effectiveQuery ? { effectiveQuery } : {}),
+            ...(queryUnmatched ? { queryUnmatched } : {}),
           };
         }
         return envelope;
@@ -2726,9 +2754,13 @@ export class OxinsiderApiClient {
    * the wallet has no settled market in is absent, which means no record rather
    * than a 0% record. The `Esports` record carries `games`: the wallet's record
    * per esports title (`LoL`, `CS2`, `Dota 2`, ...) under the same rule, named
-   * as the holder chips name them in `category_win_rate_game`. Pass
-   * `params.category` to filter to one bucket; a filter that reaches Esports
-   * returns its games too.
+   * as the holder chips name them in `category_win_rate_game`. Every record
+   * carries `scopes`: its record per esports title, soccer league (`UEFA
+   * Champions League`, `LaLiga`, ...) or registered league of another sport
+   * (`NBA`, `ATP`, ...), each with `scope_key` and `display_name`, under the
+   * same rule. Pass `params.category` to filter to one bucket; a filter that
+   * reaches Esports returns its games and scopes too, and one that reaches
+   * Soccer returns every league.
    */
   getTraderCategoryRecords(
     address: OperationPath["getTraderCategoryRecords"]["address"],
@@ -2972,6 +3004,23 @@ export class OxinsiderApiClient {
       path: { event_slug: eventSlug },
       query: params,
     });
+  }
+
+  /**
+   * List player props across the catalog's games of one league, ordered by
+   * game, stat, player and line. Each row names the player (null, with
+   * `player_unavailable_reason`, when the provider stored no title), the
+   * provider stat and the typed line (null for a yes/no prop). Pass
+   * `expand: ["quotes"]` for each outcome's cached quote, the object
+   * {@link OxinsiderApiClient.listGameMarkets} returns. Follow `next_cursor`
+   * while `has_more` is true: a page can hold fewer than `limit` rows, or
+   * none, when a sparse `player` filter stops at its read budget.
+   * `coverage.sources_unavailable` names each game catalog source that could
+   * carry the league's games and did not answer; while it is non-empty the
+   * page can be missing that source's games.
+   */
+  listProps(params: PropsListParams, options: ConvenienceOptions = {}) {
+    return this.list("listProps", { ...options, query: params });
   }
 
   /**
@@ -3620,6 +3669,10 @@ function notModifiedResponse(response: Response): ApiNotModifiedResponse {
   const effectiveQuery = response.headers.get("x-effective-query");
   if (effectiveQuery) {
     meta.effectiveQuery = effectiveQuery;
+  }
+  const queryUnmatched = response.headers.get("x-query-unmatched");
+  if (queryUnmatched) {
+    meta.queryUnmatched = queryUnmatched;
   }
   return { object: "not_modified", data: null, meta };
 }
