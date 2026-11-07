@@ -22,7 +22,8 @@
  * Filters (per-connection, subscribe-time): `event` (comma-separated frame
  * types), `condition_id`, `min_grade` (S|A|B|C|D|F), and, for
  * `LargeTradeInsertedV2` frames, `wallet`, `min_size` (#32642) and
- * `min_grade_at_trade` (#32766).
+ * `min_grade_at_trade` (#32766). For `MarketPriceMoved` frames (#32518):
+ * `league`, `min_move_cents` and `window_seconds`.
  *
  * Protocol validity (#16248). The decoder is bounded and fails visibly:
  *   - A successful response whose media type is not `text/event-stream` is
@@ -130,6 +131,26 @@ export interface StreamFilters {
    * frame type is excluded while this is set.
    */
   min_size?: number | string;
+  /**
+   * Only deliver `MarketPriceMoved` frames whose `league` (the event slug's
+   * prefix, such as `nba` or `epl`) is one of these; matched
+   * case-insensitively. Every other frame type is excluded while this is set.
+   */
+  league?: readonly string[];
+  /**
+   * Only deliver the one `MarketPriceMoved` level step per market and window
+   * that crosses this threshold in whole cents (2 to 50):
+   * `previous_level_cents < min_move_cents <= level_cents`, the rule the
+   * `market_price_moved` webhook applies. Every other frame type is excluded
+   * while this is set; a value outside 2 to 50 is a 400 whose `param` is
+   * `min_move_cents`.
+   */
+  min_move_cents?: number;
+  /**
+   * Only deliver `MarketPriceMoved` frames measured over this window. Every
+   * other frame type is excluded while this is set.
+   */
+  window_seconds?: 60 | 120 | 300 | 900;
 }
 
 export interface StreamOptions extends StreamFilters {
@@ -551,6 +572,20 @@ export async function* streamFeed(
   client: OxinsiderApiClient,
   options: StreamOptions = {},
 ): AsyncGenerator<StreamEvent, void, undefined> {
+  yield* streamConnection(client, options);
+}
+
+/**
+ * One stream connection: `streamFeed`'s body. `onEstablished` runs once the
+ * `200 text/event-stream` body is readable, the moment the opening deadline
+ * is cleared, so `streamFeedResilient` can measure how long a connection was
+ * healthy (#33187) without widening the public options.
+ */
+async function* streamConnection(
+  client: OxinsiderApiClient,
+  options: StreamOptions,
+  onEstablished?: () => void,
+): AsyncGenerator<StreamEvent, void, undefined> {
   const { maxFrameBytes, maxErrorBodyBytes, openTimeoutMs } =
     streamConnectionOptions(options);
   const apiKey = client.getApiKey();
@@ -646,6 +681,7 @@ export async function* streamFeed(
     if (!response.body) throw new Error("Stream response has no readable body");
     reader = response.body.getReader();
     connection.established();
+    onEstablished?.();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
     let buffer = "";
@@ -735,8 +771,12 @@ export async function* streamFeed(
 export interface ResilientStreamOptions extends StreamOptions {
   /**
    * Consecutive failed connections tolerated before giving up with
-   * `StreamReconnectsExhaustedError`. A connection that delivers any frame
-   * resets the count. Default `DEFAULT_MAX_STREAM_RECONNECTS` (10).
+   * `StreamReconnectsExhaustedError`. A connection fails when it does not
+   * open, or when it ends within `STREAM_HEALTHY_CONNECTION_MS` (60 s) of
+   * opening without delivering a frame. A connection that delivers any frame,
+   * or stays open that long, resets the count: the server ends every stream
+   * after its lifetime and on each release, and a quiet filter can see no
+   * frame for hours (#33187). Default `DEFAULT_MAX_STREAM_RECONNECTS` (10).
    */
   maxReconnects?: number;
   /**
@@ -768,6 +808,18 @@ export const DEFAULT_MAX_STREAM_RECONNECTS = 10;
 
 /** Default for `ResilientStreamOptions.maxRetryAfterMs`. */
 export const DEFAULT_MAX_STREAM_RETRY_AFTER_MS = RETRY_AFTER_CEILING_MS;
+
+/**
+ * How long a connection must stay open after its `200 text/event-stream`
+ * before `streamFeedResilient` counts it as healthy, in ms (#33187). A
+ * healthy connection resets the reconnect count however it ends, like a
+ * delivered frame does; one that ends sooner with no frame counts toward
+ * `maxReconnects` and backs off, so a server that closes at once stays
+ * bounded. Well under the server's stream lifetime (14 minutes, #33169), and
+ * long enough that a server holding each connection just past it costs at
+ * most one reconnect a minute.
+ */
+export const STREAM_HEALTHY_CONNECTION_MS = 60_000;
 
 const STREAM_RECONNECT_BASE_MS = 1_000;
 const STREAM_RECONNECT_MAX_MS = 30_000;
@@ -916,8 +968,12 @@ function assertMaxRetryAfterMs(value: number): number {
  * - Any other 4xx (400, 401, 402, 403, 423) is thrown at once: it cannot heal
  *   on its own. So is `StreamProtocolError` (#16248): a resume from
  *   `lastSeq` would replay the malformed frame, so the decision is yours.
- * - After `maxReconnects` consecutive connections that delivered nothing, it
- *   throws `StreamReconnectsExhaustedError` carrying `lastSeq`.
+ * - After `maxReconnects` consecutive failed connections, it throws
+ *   `StreamReconnectsExhaustedError` carrying `lastSeq`. A connection fails
+ *   when it does not open, or ends within `STREAM_HEALTHY_CONNECTION_MS`
+ *   (60 s) of opening without delivering a frame. One that delivers a frame
+ *   or stays open 60 s resets the count, so a quiet filter that sees nothing
+ *   across many server-ended lifetimes keeps reconnecting (#33187).
  * - `resync` markers are yielded unchanged, and `onResync` still fires. The
  *   marker's `id` becomes the resume cursor, as the server intends, so a
  *   reconnect after one does not request the aged window again.
@@ -974,13 +1030,22 @@ export async function* streamFeedResilient(
   for (;;) {
     if (signal?.aborted) return;
     let cause: unknown;
+    // Monotonic, so a wall-clock step cannot make a short connection look
+    // healthy or a healthy one short.
+    let establishedAt: number | undefined;
     try {
-      for await (const frame of streamFeed(client, {
-        ...streamOptions,
-        ...connectionOptions,
-        cursor,
-        lastEventId: cursor.seq ?? initialLastEventId,
-      })) {
+      for await (const frame of streamConnection(
+        client,
+        {
+          ...streamOptions,
+          ...connectionOptions,
+          cursor,
+          lastEventId: cursor.seq ?? initialLastEventId,
+        },
+        () => {
+          establishedAt = performance.now();
+        },
+      )) {
         attempt = 0;
         if (frame.kind === "resync" && frame.seq !== null) {
           cursor.seq = frame.seq;
@@ -993,6 +1058,16 @@ export async function* streamFeedResilient(
       cause = error;
     }
     if (signal?.aborted) return;
+    // A connection that stayed open long enough was healthy, however it
+    // ended: the server's lifetime close, a release, or a later network drop.
+    // Without this a filter that matches nothing for hours would spend one
+    // reconnect per lifetime and give up after `maxReconnects` of them.
+    if (
+      establishedAt !== undefined &&
+      performance.now() - establishedAt >= STREAM_HEALTHY_CONNECTION_MS
+    ) {
+      attempt = 0;
+    }
 
     const lastSeq = cursor.seq ?? toSeq(initialLastEventId);
     // A server-requested wait past the ceiling is deferred to the caller
@@ -1453,6 +1528,15 @@ function buildStreamUrl(
   // and answered with the server's 400 rather than silently dropped.
   if (options.min_size !== undefined && options.min_size !== "") {
     url.searchParams.set("min_size", String(options.min_size));
+  }
+  if (options.league && options.league.length > 0) {
+    url.searchParams.set("league", options.league.join(","));
+  }
+  if (options.min_move_cents !== undefined) {
+    url.searchParams.set("min_move_cents", String(options.min_move_cents));
+  }
+  if (options.window_seconds !== undefined) {
+    url.searchParams.set("window_seconds", String(options.window_seconds));
   }
   return url.toString();
 }
