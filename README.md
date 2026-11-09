@@ -193,6 +193,8 @@ const next = await client.listSettledMarkets({ cursor: settled.next_cursor });
 
 The same release exports `PickHolderPriceEdge` and `PickHolderPriceEdgeHold`, the types of four optional `PickHolder` fields: `category_price_edge`, `category_scope_price_edge`, `category_price_edge_hold` and `category_scope_price_edge_hold`. `EdgeHunterObservation` gains `indexed_graded_holders`. The `settlement` block on game markets, market snapshots and `MarketSettledData` gains `oracle_updated_at`.
 
+SDK 0.44.1 exports `PropsListParams` and `SettledMarketsListParams`, the parameter types of `listProps()` and `listSettledMarkets()`, from `@0xinsider/sdk`. Earlier releases did not export them; `OperationQuery["listProps"]` and `OperationQuery["listSettledMarkets"]` are the same types and still work.
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
