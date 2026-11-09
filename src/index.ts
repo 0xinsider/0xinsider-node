@@ -487,6 +487,7 @@ export type {
   ScheduledPickSlot,
   ScoreCell,
   ScoreFormat,
+  SettledMarketData,
   SettlementSubscriptionFilters,
   SmartMoneyFlowMarket,
   SnapshotCompleteness,

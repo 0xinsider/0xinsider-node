@@ -3047,7 +3047,11 @@ export class OxinsiderApiClient {
    * webhook event. Start from `since` (RFC 3339) to catch up after downtime,
    * or pass the last page's `next_cursor` to poll for what was recorded
    * after it; the cursor keeps the filters it was issued for.
-   * `sports_market_type` defaults to `moneyline` (`*` for every type).
+   * `sports_market_type` defaults to `moneyline` (`*` for every type), or
+   * to every type when `condition_id` is set. `condition_id` (at most 20)
+   * and `event_slug` (at most 10) find one market or one game; a polyv2
+   * copy is listed when its own condition id or slug is named. Each row
+   * carries `protocol_version`, `v1` or `v2`.
    * `next_cursor` is always present: `has_more: true` means fetch it now,
    * `has_more: false` means the walk reached `complete_through` (two minutes
    * behind now), so keep it and read again later. A page can hold fewer than

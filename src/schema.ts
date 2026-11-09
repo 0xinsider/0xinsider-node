@@ -4925,6 +4925,12 @@ export type ScoreCell = {
 /** Shape the provider score string was parsed into. `two_side` is one aggregate per side (basketball `105-98`), `multi_set` is per-set columns (tennis `6-7(5-7), 6-0, 1-0`), `esports_series` is a maps/sets/format triplet (`000-000|2-0|Bo3`). Omitted when the score could not be parsed. */
 export type ScoreFormat = "two_side" | "multi_set" | "esports_series";
 
+/** One GET /api/v1/markets/settled row: the market_settled webhook's data, plus the market's protocol_version. */
+export type SettledMarketData = MarketSettledData & {
+  /** The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id. */
+  protocol_version: "v1" | "v2";
+};
+
 /** Settings for market_settled; every set field must match. Optional: subscribing without it stores {"sports_market_types": ["moneyline"]}, every market Polymarket labels moneyline, and sending it without the event is refused (400). That label is each head-to-head game's winner market, but in golf and other field events Polymarket labels every player market moneyline (winner, make the cut, round leader), so one tournament can send hundreds of states. Narrow it with leagues, which no market outside the list matches, including one whose league is null (a golf event slug that starts with a year, such as 2026-world-wide-technology-championship), or with condition_ids. A PATCH without it keeps the stored settings while the event stays subscribed; removing the event clears them. Stored as the API normalized it: trimmed and deduplicated, leagues, market types and condition IDs lowercased, and sports_market_types filled in when omitted. */
 export type SettlementSubscriptionFilters = {
   /** Event slug league prefixes such as nba or epl, matched case-insensitively; any one matches. A polyv2 copy's league is read after its polyv2 prefix. PGA Tour golf, whose event slugs start with the year, is pga. */
@@ -7009,7 +7015,7 @@ export interface OperationData {
     player_unavailable_reason: "missing_provider_title" | null;
     resolved_at: string | null;
   })[];
-  listSettledMarkets: MarketSettledData[];
+  listSettledMarkets: SettledMarketData[];
   listSharpMoneyFlows: SmartMoneyFlowMarket[];
   listSmartMoneyFlows: SmartMoneyFlowMarket[];
   listSuspiciousTrades: SuspiciousTrade[];
@@ -7686,9 +7692,13 @@ export interface OperationQuery {
     sports_market_type?: string;
     /** Comma-separated leagues to keep, as the rows' league reports them (nba, epl, or pga for PGA Tour golf); at most 32, each starting with a letter and holding no hyphen. Omitted: every league, or with cursor the cursor's filter. */
     league?: string;
+    /** Comma-separated market condition ids to keep (0x and 64 hex digits, case-insensitive); at most 20. A polyv2 copy of a game is listed when its own condition id is named. With condition_id, an omitted sports_market_type keeps every type. Omitted: every market, or with cursor the cursor's filter. */
+    condition_id?: string;
+    /** Comma-separated event slugs to keep, matched exactly; at most 10. A polyv2 copy has its own slug (polyv2-nba-phi-chi-2026-11-08), and naming it lists the copy. Omitted: every event, or with cursor the cursor's filter. */
+    event_slug?: string;
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque stl_v1_ cursor from next_cursor. It replaces since and keeps the filters it was issued for: a sports_market_type or league sent with it must match them, or the read answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    /** Opaque stl_v1_ cursor from next_cursor. It replaces since and keeps the filters it was issued for: a sports_market_type, league, condition_id or event_slug sent with it must match them, or the read answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
   };
   listSharpMoneyFlows: {
