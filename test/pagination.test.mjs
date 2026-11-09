@@ -13,7 +13,7 @@ import { jsonResponse, listPage, mockFetch } from "./helpers.mjs";
 
 const KEY = "oxi_sk_live_testkey";
 
-/** Serve `pages[cursor ?? "first"]` for GET /api/v1/whale-trades. */
+/** Serve `pages[cursor ?? "first"]` for GET /api/v1/large-trades. */
 function pagedFetch(pages) {
   return mockFetch((url) => {
     const page = pages[url.searchParams.get("cursor") ?? "first"];
@@ -29,7 +29,7 @@ test("the walk follows next_cursor and stops at has_more: false, whatever next_c
     first: listPage([{ id: 1 }, { id: 2 }], { hasMore: true, nextCursor: "c1" }),
     c1: listPage([{ id: 3 }], { hasMore: false, nextCursor: "c2" }),
   });
-  const items = await collect(client(fetchImpl), "listWhaleTrades", { query: { limit: 2 } });
+  const items = await collect(client(fetchImpl), "listLargeTrades", { query: { limit: 2 } });
   assert.deepEqual(items.map((item) => item.id), [1, 2, 3]);
   assert.equal(fetchImpl.calls.length, 2);
   assert.equal(fetchImpl.calls[1].url.searchParams.get("limit"), "2");
@@ -44,7 +44,7 @@ test("has_more: true with no next_cursor is missing_cursor, and the page travels
   const seen = [];
   await assert.rejects(
     (async () => {
-      for await (const item of paginate(client(fetchImpl), "listWhaleTrades")) seen.push(item.id);
+      for await (const item of paginate(client(fetchImpl), "listLargeTrades")) seen.push(item.id);
     })(),
     (error) => {
       assert.ok(error instanceof PaginationError, String(error));
@@ -64,7 +64,7 @@ test("a next_cursor the walk already requested is repeated_cursor, before a dupl
     first: listPage([{ id: 1 }], { hasMore: true, nextCursor: "c1" }),
     c1: listPage([{ id: 2 }], { hasMore: true, nextCursor: "c1" }),
   });
-  await assert.rejects(collect(client(fetchImpl), "listWhaleTrades"), (error) => {
+  await assert.rejects(collect(client(fetchImpl), "listLargeTrades"), (error) => {
     assert.ok(error instanceof PaginationError, String(error));
     assert.equal(error.reason, "repeated_cursor");
     assert.equal(error.nextCursor, "c1");
@@ -80,13 +80,13 @@ test("maxPages stops the walk and progress keeps the continuation", async () => 
   });
   const progress = {};
   const pages = [];
-  for await (const page of paginatePages(client(fetchImpl), "listWhaleTrades", { maxPages: 2, progress })) {
+  for await (const page of paginatePages(client(fetchImpl), "listLargeTrades", { maxPages: 2, progress })) {
     pages.push(page);
   }
   assert.equal(pages.length, 2);
   assert.equal(progress.stoppedBy, "max_pages");
   assert.equal(progress.nextCursor, "c2");
   assert.equal(fetchImpl.calls.length, 2);
-  await assert.rejects(paginatePages(client(fetchImpl), "listWhaleTrades", { maxPages: 0 }).next(), RangeError);
+  await assert.rejects(paginatePages(client(fetchImpl), "listLargeTrades", { maxPages: 0 }).next(), RangeError);
   assert.equal(fetchImpl.calls.length, 2);
 });
