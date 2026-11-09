@@ -723,10 +723,12 @@ export type EdgeHunterObservation = {
   directional_confidence: number | null;
   /** Recorded side ordering score; higher values sort first. */
   directional_rank_score: number;
-  /** 1-based rank within this observation cohort and snapshot. */
+  /** 1-based rank within this observation cohort and snapshot: directional_rank_score descending, then conviction_score descending, then category and condition_id. Admission decides which markets a response holds, not their rank, so under admission=most_held_48h or most_held_48h_by_type rank does not follow indexed_graded_holders. */
   rank: number;
   /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
   market_context: EdgeHunterMarketContext | null;
+  /** S, A and B graded wallets in the 0xinsider index holding either outcome of the market, as the stored market universe last counted them. Every most-held place ranks by this count: admission=most_held_48h and most_held_48h_by_type, the default selection's most_held places and in_play slots. It can be larger or smaller than graded_holders, which counts the piled side of the provider's holder page. Null only on a row of a generation computed before this field existed. */
+  indexed_graded_holders: number | null;
 };
 
 /** Measured coverage of the frozen canonical observation generation and this requested page. For sports and esports reads, the first four counts remain global through category, cohort and all selectors; with admission=most_held_48h they count that selection's generation, where every wider_holder candidate it did not take is capacity_limited. They are neither a census of all provider markets nor a count of successfully evaluated holders. Selected and returned counts describe the requested projection. An unmappable legacy category synthesizes a zero-work empty generation with all six counts zero and no degradation reasons; it does not read the all-sports cache. */
@@ -1500,6 +1502,7 @@ export type GameMarket = {
     status: "observed" | "not_posed" | "unavailable";
     was_disputed: boolean | null;
     winning_outcome_index: number | null;
+    oracle_updated_at: string | null;
   };
 };
 
@@ -2333,7 +2336,7 @@ export type MarketHolder = {
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Never `untracked`: this route lists S, A and B wallets only, all on file. Always present on this route. */
   category_win_rate_status: "measured" | "not_enough_data" | "unavailable" | "untracked";
   category_evidence?: HolderCategoryEvidence;
-  /** Whole days since this wallet's first trade, rounded down (3.6 days reads 3), so it changes once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
+  /** Whole UTC calendar days since this wallet's first trade: the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
   wallet_age_days?: number | null;
   /** True when the wallet's first trade was under 30 days ago. */
   is_new_wallet?: boolean;
@@ -2480,7 +2483,7 @@ export type MarketSearchResult = {
   event_slug?: string;
 };
 
-/** `market_settled` data, also the MarketSettled frame on GET /api/v1/stream: a sports or esports game market settled, sent once per settled state the first time 0xinsider records it. A market can settle in two states, a resolved UMA question row without payouts and then the condition row with them; each is its own event with its own settlement_id. */
+/** `market_settled` data, also the MarketSettled frame on GET /api/v1/stream: a sports or esports game market settled, sent once per settled state the first time 0xinsider records it. A market can settle in more than one state: a resolved UMA question row with no winner yet, the same row with the winner ConditionalTokens paid on chain, and the condition row with the provider's payouts; each is its own event with its own settlement_id, except a state naming the winner an earlier event named, which is not sent. */
 export type MarketSettledData = {
   /** Polymarket condition ID of the market, lowercase. */
   condition_id: string;
@@ -2490,7 +2493,7 @@ export type MarketSettledData = {
   event_slug: string | null;
   /** Polymarket game ID for the event as a string, the game_id of GET /api/v1/games, or null when the market stores none. */
   game_id: string | null;
-  /** The event slug league prefix (nba in nba-lal-gsw-2026-11-01), lowercase, read after a polyv2 copy prefix; null when the slug has none. */
+  /** The event slug league prefix (nba in nba-lal-gsw-2026-11-01), lowercase, read after a polyv2 copy prefix. A PGA Tour golf slug starts with the year, so its markets are pga, from their series. null when neither names a league. */
   league: string | null;
   /** Polymarket sportsMarketType of the market (moneyline, spreads, totals, a prop type) verbatim, or null when the market stores none. */
   sports_market_type: string | null;
@@ -2498,7 +2501,7 @@ export type MarketSettledData = {
   outcomes: string[];
   /** Set on a Polymarket polyv2 copy of a game whose original event has a moneyline market: the original event slug, which GET /api/v1/games serves. Such a copy reaches a webhook only when its settlement_filters name its condition ID or its own event slug. */
   copy_of_event_slug: string | null;
-  /** The settled state, the block GET /api/v1/games/{event_slug}/markets serves as settlement: status observed, oracle_status resolved, settled true. payouts is null on a resolved UMA question row and set on the condition row that follows, which is sent as its own event. observed_at is when 0xinsider first saw this state. */
+  /** The settled state, the block GET /api/v1/games/{event_slug}/markets serves as settlement: status observed, oracle_status resolved, settled true. payouts is null on a resolved UMA question row, whose result and winning_outcome_index come from the payout ConditionalTokens reported on chain (null in an event sent before it paid), and set on the condition row that follows, sent as its own event unless it names a winner already sent. observed_at is when 0xinsider first saw this state. */
   settlement: {
     expected_settlement_time: string | null;
     observed_at: string | null;
@@ -2512,6 +2515,7 @@ export type MarketSettledData = {
     status: "observed" | "not_posed" | "unavailable";
     was_disputed: boolean | null;
     winning_outcome_index: number | null;
+    oracle_updated_at: string | null;
   };
 };
 
@@ -2598,6 +2602,7 @@ export type MarketSnapshot = {
     status: "observed" | "not_posed" | "unavailable";
     was_disputed: boolean | null;
     winning_outcome_index: number | null;
+    oracle_updated_at: string | null;
   };
 };
 
@@ -2677,7 +2682,7 @@ export type MarketTopHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (the wallet is on file and under the floor of 5 decided markets in the category), `untracked` (0xinsider has no record of the wallet, so nothing was measured; `grade`, `in_scope_realized_pnl` and `in_scope_volume` are null too), or `unavailable` (a read failed; retry later). Absent when the market has no canonical category. */
   category_win_rate_status?: "measured" | "not_enough_data" | "unavailable" | "untracked";
-  /** Whole days since this wallet's first trade, rounded down (3.6 days reads 3), so it changes once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
+  /** Whole UTC calendar days since this wallet's first trade: the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
   wallet_age_days?: number | null;
   /** True when the wallet's first trade was under 30 days ago. */
   is_new_wallet?: boolean;
@@ -2719,6 +2724,34 @@ export type MarketTopHoldersTotals = {
   no_shares: number;
   /** The most holders the sample keeps per outcome (100). */
   sample_cap: number;
+};
+
+/** One taker fill of 100 USD or more on a market, from the exchange's on-chain fill events. */
+export type MarketTrade = {
+  /** {transaction_hash}:{log_index}: one fill event, listed once. Deduplicate on it across reads. */
+  id: string;
+  /** The fill's block time, to the second. */
+  traded_at: string;
+  /** The taker's side: BUY took outcome shares, SELL gave them. */
+  side: "BUY" | "SELL";
+  /** The traded outcome's label; null when the market names none. */
+  outcome: string | null;
+  /** 0 for the first (Yes) outcome token, 1 for the second (No). */
+  outcome_index: number;
+  /** The traded outcome token's id (decimal string); null when the market holds none for that outcome. */
+  token_id: string | null;
+  /** Fill price per share, 0 to 1. */
+  price: number;
+  /** Outcome shares filled. */
+  shares: number;
+  /** USDC notional of the fill. */
+  size_usd: number;
+  /** The taker's wallet, lowercase. */
+  taker: string;
+  /** The fill's transaction, lowercase 0x hex. */
+  transaction_hash: string;
+  /** The fill event's log index in its transaction. */
+  log_index: number;
 };
 
 /** One market's net buyers and net sellers over a 24h or 7d window, as the market page's wallets in/out panel shows a Pro viewer. */
@@ -2799,7 +2832,7 @@ export type PickHolder = {
   name: string | null;
   /** All-time trader grade (S, A, B, C, D, F). */
   grade: string | null;
-  /** The wallet's most recent recorded trade time, stamped at serve time from its current trader record rather than frozen with the pick. Always sent; null when no trade time is recorded. */
+  /** The UTC day of the wallet's most recent recorded trade, served as that day's 00:00:00Z, stamped at serve time from its current trader record rather than frozen with the pick. It changes at most once a day per wallet, so the pick's ETag holds between polls. Always sent; null when no trade time is recorded. */
   last_traded_at: string | null;
   /** 0xinsider profile path segment this wallet links to: `@<username>` when that username resolves to this wallet alone, otherwise the lowercase wallet. Percent-encode the part after `@` and append to `https://0xinsider.com/profile/`. Stamped at serve time; absent on a body cached before the field shipped. */
   profile_segment?: string;
@@ -2823,7 +2856,7 @@ export type PickHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the settled-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Never `untracked`: every recorded holder is a graded wallet 0xinsider has on file. Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample. */
   category_win_rate_status?: "measured" | "not_enough_data" | "unavailable" | "untracked";
-  /** Whole days since this wallet's first trade, rounded down (3.6 days reads 3), so it changes once a day, not on every request, and the pick's ETag holds between requests. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
+  /** Whole UTC calendar days since this wallet's first trade: the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request, and the pick's ETag holds between requests. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   wallet_age_days?: number | null;
   /** True when the wallet's first trade was under 30 days ago. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   is_new_wallet?: boolean;
@@ -2833,6 +2866,34 @@ export type PickHolder = {
   is_bot?: boolean;
   /** The wallet's X handle from its Polymarket profile, normalized to 1-15 characters of [A-Za-z0-9_] with no `@`. Link it as `https://x.com/<handle>`. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   x_username?: string | null;
+  /** The wallet's edge over the price it paid in the pick's canonical category (`category`): how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. The rule the site's sport leaderboards use for their Edge column, and the figure the pick card prints on the sport's line. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. Present only with `category_win_rate_status` = `measured`, when the edge ranks (30 or more such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate) and the wallet's realized P&L over them is above zero; otherwise `category_price_edge_hold` says why. Beside `category_win_rate_game` it is still the whole category's edge; the game's or league's is `category_scope_price_edge`. Recomputed at serve time from the daily record rebuild, not frozen with the pick. Absent otherwise and on payloads predating the field. */
+  category_price_edge?: PickHolderPriceEdge;
+  /** The same edge over the markets of the game or league `category_win_rate_game` names alone: the edge the pick card prints beside a game or league win rate (for example `-17.1 pp` in the Premier League). Present only beside `category_win_rate_game`, under the same rule over that game's or league's markets and the wallet's realized P&L there; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. Recomputed at serve time, not frozen with the pick. Absent otherwise and on payloads predating the field. */
+  category_scope_price_edge?: PickHolderPriceEdge;
+  /** Why there is no `category_price_edge` for a wallet with a measured rate, with the rule's figures when it has them. Present only with `category_win_rate_status` = `measured`, and never beside `category_price_edge`. Absent otherwise and on payloads predating the field. */
+  category_price_edge_hold?: PickHolderPriceEdgeHold;
+  /** Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`. Absent otherwise and on payloads predating the field. */
+  category_scope_price_edge_hold?: PickHolderPriceEdgeHold;
+};
+
+/** Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild. */
+export type PickHolderPriceEdge = {
+  /** Settled markets of $20 or more at a known entry price that the edge is measured over. */
+  markets: number;
+  /** Share of those markets whose bought side won, 0-1. */
+  hit_rate: number;
+  /** Mean entry price paid over the same markets, 0-1. Its sample is these markets, so it can differ from `category_avg_price` and `category_scope_avg_price`. */
+  avg_price: number;
+  /** hit_rate minus avg_price, full precision. */
+  edge: number;
+};
+
+/** An edge the holder row does not show, and why. */
+export type PickHolderPriceEdgeHold = {
+  /** category_loss: the edge ranks, and the wallet's realized P&L over the same markets is zero or below. too_few_markets: fewer than 30 counted markets. sample_mismatch: the share of the decided markets that made money at settlement is more than 10 points from the win rate over the same markets, so these markets do not describe the wallet's record. no_markets: no settled market of $20 or more at a known entry price. */
+  hold: "category_loss" | "too_few_markets" | "sample_mismatch" | "no_markets";
+  /** The rule's figures, as a shown edge carries them. Omitted for no_markets, and for too_few_markets when the wallet has fewer than 5 such markets. */
+  record?: PickHolderPriceEdge;
 };
 
 /** Recorded lead wallet facts on a full response when available. Position and category history are frozen at publication; they are not live balances or pick win probabilities. */
@@ -2897,7 +2958,7 @@ export type PickOfTheDay = {
   is_locked?: boolean;
   /** True once the backed game's kickoff has passed (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. Absent for a legacy pick with no stored kickoff (treat as not-started). */
   game_started?: boolean;
-  /** Whether the backed game is over according to the cached live scoreboard, read at serve time. Tells a finished game from one still in play before `outcome` settles. Omitted when the pick has no event slug or no scoreboard is cached for it; absence is unknown, never false. */
+  /** Whether the backed game is over, from the game's scoreboard. Once the game is recorded as finished it stays true, on later reads and on past days. A pick settled `win` or `loss` reads true unless the live scoreboard shows the game still in play. Tells a finished game from one still in play before `outcome` settles. Omitted when the game's state is unknown; absence is unknown, never false. */
   game_ended?: boolean;
   /** Settlement outcome of the backed side; 'pending' until the market resolves. */
   outcome?: "pending" | "win" | "loss" | "void";
@@ -4706,7 +4767,7 @@ export type ReportPayload = {
     grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
     count: number | null;
   })[] | null;
-  /** Which markets the report counts. sports_and_esports for a period that ends on or after 2026-10-21: totals, categories, top trades and the grade cohort cover sports and esports markets only. all_markets for an earlier period, whose stored report keeps every Polymarket market it published. */
+  /** Which markets the report counts. sports_and_esports: totals, categories, top trades and the grade cohort cover sports and esports markets only. Every period that ends on or after 2026-10-21 and every custom from/to range says so, as does an earlier stored period first built after 2026-10-24. all_markets: an earlier stored period built before then, which keeps every Polymarket market it published. A custom range can therefore count fewer trades than the stored report of the same dates. */
   market_scope: "all_markets" | "sports_and_esports";
 };
 
@@ -4864,9 +4925,9 @@ export type ScoreCell = {
 /** Shape the provider score string was parsed into. `two_side` is one aggregate per side (basketball `105-98`), `multi_set` is per-set columns (tennis `6-7(5-7), 6-0, 1-0`), `esports_series` is a maps/sets/format triplet (`000-000|2-0|Bo3`). Omitted when the score could not be parsed. */
 export type ScoreFormat = "two_side" | "multi_set" | "esports_series";
 
-/** Settings for market_settled; every set field must match. Optional: subscribing without it stores {"sports_market_types": ["moneyline"]}, each game's winner market, and sending it without the event is refused (400). A PATCH without it keeps the stored settings while the event stays subscribed; removing the event clears them. Stored as the API normalized it: trimmed and deduplicated, leagues, market types and condition IDs lowercased, and sports_market_types filled in when omitted. */
+/** Settings for market_settled; every set field must match. Optional: subscribing without it stores {"sports_market_types": ["moneyline"]}, every market Polymarket labels moneyline, and sending it without the event is refused (400). That label is each head-to-head game's winner market, but in golf and other field events Polymarket labels every player market moneyline (winner, make the cut, round leader), so one tournament can send hundreds of states. Narrow it with leagues, which no market outside the list matches, including one whose league is null (a golf event slug that starts with a year, such as 2026-world-wide-technology-championship), or with condition_ids. A PATCH without it keeps the stored settings while the event stays subscribed; removing the event clears them. Stored as the API normalized it: trimmed and deduplicated, leagues, market types and condition IDs lowercased, and sports_market_types filled in when omitted. */
 export type SettlementSubscriptionFilters = {
-  /** Event slug league prefixes such as nba or epl, matched case-insensitively; any one matches. A polyv2 copy's league is read after its polyv2 prefix. */
+  /** Event slug league prefixes such as nba or epl, matched case-insensitively; any one matches. A polyv2 copy's league is read after its polyv2 prefix. PGA Tour golf, whose event slugs start with the year, is pga. */
   leagues?: string[];
   /** Polymarket sportsMarketType values such as moneyline, spreads, totals or a prop type, matched case-insensitively; any one matches, and * matches every type. Omitted, it is ["moneyline"], or ["*"] when condition_ids names the markets. */
   sports_market_types?: string[];
@@ -6872,6 +6933,7 @@ export interface OperationData {
       status: "observed" | "not_posed" | "unavailable";
       was_disputed: boolean | null;
       winning_outcome_index: number | null;
+      oracle_updated_at: string | null;
     };
     trading_terms?: {
       fee_schedule: {
@@ -6906,6 +6968,7 @@ export interface OperationData {
   listLargeTrades: LargeTrade[];
   listLeaderboard: LeaderboardEntry[];
   listLeaderboardLeagues: LeaderboardLeagues;
+  listMarketTrades: MarketTrade[];
   listPositions: Position[];
   listProps: ({
     competitors: string[];
@@ -6946,6 +7009,7 @@ export interface OperationData {
     player_unavailable_reason: "missing_provider_title" | null;
     resolved_at: string | null;
   })[];
+  listSettledMarkets: MarketSettledData[];
   listSharpMoneyFlows: SmartMoneyFlowMarket[];
   listSmartMoneyFlows: SmartMoneyFlowMarket[];
   listSuspiciousTrades: SuspiciousTrade[];
@@ -7127,7 +7191,7 @@ export interface OperationQuery {
     category?: string;
     /** Required for view=observations; wider_holder, in_play or emerging_pile. Rejected for board and signals. wider_holder covers pregame markets that view=signals does not list at its widest selection (horizon_hours=48, min_grade=B, no selector), so until kickoff a market is read in one view or the other. A market view=signals lists leaves wider_holder as primary_slate_candidate, and is a wider_holder candidate again in the first refresh after view=signals stops listing it; signals_as_of names the view=signals snapshot each refresh read. Each refresh evaluates at most 8 markets per sport and cohort, wider_holder by soonest kickoff (most graded holders first among equal kickoffs) and in_play by most graded holders, so a market among a sport's 8 soonest stays evaluated until its game starts. wider_holder also evaluates up to 8 more markets per sport that kick off within 24 hours, most graded holders first, so the most-held markets appear up to a day before kickoff. Each of these keeps its place in later refreshes until its game starts while its holder page still shows a card or could not be read, so a more-held market waits for a free place instead of displacing it. Each row's admitted_by names its place, most_held or soonest_kickoff. The rest count in coverage.capacity_limited_markets. Emerging pile is a wider-holder projection with sharp_pct in [0.75,0.85), complete holder scans and future kickoff, not an independent population or arrival history. */
     cohort?: "wider_holder" | "in_play" | "emerging_pile";
-    /** Opt-in admission rule for view=observations with cohort=wider_holder; rejected for every other view and cohort. most_held_48h returns the most-held selection instead of the default one: per sport, up to 8 wider_holder markets kicking off within 48 hours, most graded holders first, then most volume, then soonest kickoff, at most 4 per event. It is recomputed every refresh and keeps no place, so a more-held market displaces a less-held one; markets view=signals lists stay excluded. Every row carries admitted_by most_held_48h, including a market the default selection also evaluates, and the response echoes admission. funnel, coverage, degraded and degradation_reasons describe this selection: a wider_holder candidate it did not take counts as capacity_limited. Its markets that no default place covers are read after every default market, at most once per 10 minutes, so a row can rest on a holder page up to 15 minutes old (holder_snapshot_at). most_held_48h_by_type requires market_types and runs the same rule within each named type: per sport and market_context.market_type, up to 8 markets (4 per event), most graded holders first, then volume, then soonest kickoff, so a type whose markets hold fewer wallets than team-win markets still gets its own places. Its rows carry admitted_by most_held_48h_by_type and it has no departures. Its markets no other selection read are read after every default and most_held_48h market, at most once per 10 minutes. A market type not asked for in the last 30 minutes answers 503 read_model_warming with Retry-After 45 s while the next refresh computes it. Omit for the default selection. Cursors and ETags bind it. */
+    /** Opt-in admission rule for view=observations with cohort=wider_holder; rejected for every other view and cohort. most_held_48h returns the most-held selection instead of the default one: per sport, up to 8 wider_holder markets kicking off within 48 hours, most indexed_graded_holders first, then most volume, then soonest kickoff, at most 4 per event. indexed_graded_holders, on every row, counts the S, A and B wallets in the 0xinsider index holding either outcome; graded_holders counts the piled side of the provider's holder page and can be larger or smaller, so check the selection against indexed_graded_holders. rank orders the admitted rows by directional_rank_score, as in the default selection, not by either count. It is recomputed every refresh and keeps no place, so a more-held market displaces a less-held one; markets view=signals lists stay excluded. Every row carries admitted_by most_held_48h, including a market the default selection also evaluates, and the response echoes admission. funnel, coverage, degraded and degradation_reasons describe this selection: a wider_holder candidate it did not take counts as capacity_limited, and one it skips counts as provider_excluded. It skips every market of a game the provider marks postponed, cancelled, suspended or final, its exact-score, half-time and other side events included, and a market of the game's main event at a Yes price of 0.02 or lower, or 0.98 or higher. Its markets that no default place covers are read at most once per 10 minutes, one with no holder page to serve right after every default market with none, so a row can rest on a holder page up to 15 minutes old, or up to 30 minutes for a market more than an hour before kickoff that has not traded since that page (holder_snapshot_at). most_held_48h_by_type requires market_types and runs the same rule within each named type: per sport and market_context.market_type, up to 8 markets (4 per event), most indexed_graded_holders first, then volume, then soonest kickoff, so a type whose markets hold fewer wallets than team-win markets still gets its own places. Its rows carry admitted_by most_held_48h_by_type and it has no departures. Its markets no other selection read take turns with the most_held_48h ones in that same order, at most once per 10 minutes. A market type not asked for in the last 30 minutes answers 503 read_model_warming with Retry-After 45 s while the next refresh computes it. Omit for the default selection. Cursors and ETags bind it. */
     admission?: "most_held_48h" | "most_held_48h_by_type";
     /** Board and signals: S, A or B, default B. Requires a piled-side holder at the selected grade floor or better, without removing other holders. Rejected for observations. */
     min_grade?: "S" | "A" | "B";
@@ -7555,6 +7619,16 @@ export interface OperationQuery {
     activity?: "all" | "active" | "inactive";
   };
   listLeaderboardLeagues: Record<string, never>;
+  listMarketTrades: {
+    /** Inclusive RFC 3339 lower bound on traded_at. Omitted or earlier than coverage.recorded_from: the walk runs to the start of the record (coverage.recorded_from). With cursor, it must match the cursor's. */
+    from?: string;
+    /** Exclusive RFC 3339 upper bound on traded_at. A first page ends at the earlier of to and coverage.complete_through. With cursor, it must match the cursor's. */
+    to?: string;
+    /** Page size. Out-of-range values are clamped to 1..500. */
+    limit?: number;
+    /** Opaque mtr_v1_ cursor from next_cursor. It continues the walk before the last fill of the previous page and keeps the market, from and to it was issued for: another market, or a from or to that differs from the cursor's, answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
+  };
   listPositions: {
     /** Maximum number of current positions to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
@@ -7604,6 +7678,18 @@ export interface OperationQuery {
     expand?: "quotes"[];
     /** Backward-compatible alias for expand. Repeatable: quotes. */
     "expand[]"?: "quotes"[];
+  };
+  listSettledMarkets: {
+    /** RFC 3339 time, required without cursor. Rows whose settlement.observed_at is at or after it. With cursor, the cursor's position replaces it. */
+    since?: string;
+    /** Comma-separated provider market types to keep, case-insensitive: moneyline, spreads, totals, a prop type; at most 64. Omitted: moneyline, or with cursor the cursor's filter. * keeps every type, including markets with no stored type. */
+    sports_market_type?: string;
+    /** Comma-separated leagues to keep, as the rows' league reports them (nba, epl, or pga for PGA Tour golf); at most 32, each starting with a letter and holding no hyphen. Omitted: every league, or with cursor the cursor's filter. */
+    league?: string;
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque stl_v1_ cursor from next_cursor. It replaces since and keeps the filters it was issued for: a sports_market_type or league sent with it must match them, or the read answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
   };
   listSharpMoneyFlows: {
     /** Lookback window for grade-filtered whale flow aggregation. */
@@ -7994,8 +8080,13 @@ export interface OperationPath {
   listLargeTrades: Record<string, never>;
   listLeaderboard: Record<string, never>;
   listLeaderboardLeagues: Record<string, never>;
+  listMarketTrades: {
+    /** Market condition ID. Accepts the raw provider-backed condition_id returned by /api/v1/markets/search or /api/v1/markets/explore, or the mkt_-prefixed market.id emitted by V1 responses. */
+    condition_id: string;
+  };
   listPositions: Record<string, never>;
   listProps: Record<string, never>;
+  listSettledMarkets: Record<string, never>;
   listSharpMoneyFlows: Record<string, never>;
   listSmartMoneyFlows: Record<string, never>;
   listSuspiciousTrades: Record<string, never>;
@@ -8161,8 +8252,10 @@ export interface OperationBody {
   listLargeTrades: never;
   listLeaderboard: never;
   listLeaderboardLeagues: never;
+  listMarketTrades: never;
   listPositions: never;
   listProps: never;
+  listSettledMarkets: never;
   listSharpMoneyFlows: never;
   listSmartMoneyFlows: never;
   listSuspiciousTrades: never;
@@ -8628,6 +8721,29 @@ export interface OperationResponse {
     data: OperationData["listLeaderboardLeagues"];
     meta: ResponseMeta;
   };
+  listMarketTrades: {
+    object: "list";
+    /** Newest first by traded_at, then transaction_hash, then log_index. */
+    data: OperationData["listMarketTrades"];
+    /** True when older fills in the window remain: send next_cursor for them. */
+    has_more: boolean;
+    /** Opaque mtr_v1_ cursor for the next page; null when has_more is false. */
+    next_cursor: string | null;
+    /** The market's raw condition_id, lowercase. */
+    condition_id: string;
+    /** What the record holds. A window outside it reads empty because it is outside the record, not because nothing traded. */
+    coverage: {
+      /** A fill smaller than this, in USD, is not stored: 100. */
+      min_size_usd: number;
+      /** Where the record starts: the later of when recording began and 00:00 UTC on the day retention_days before today. No fill before this instant is served. */
+      recorded_from: string;
+      /** Every fill at or before this instant is in the record, and a first page serves none after it. It trails now by a few minutes. */
+      complete_through: string;
+      /** A stored fill is served at least this many days, then deleted. */
+      retention_days: number;
+    };
+    meta: ResponseMeta;
+  };
   listPositions: {
     object: "list";
     data: OperationData["listPositions"];
@@ -8657,6 +8773,14 @@ export interface OperationResponse {
       sources_unavailable: string[];
       rows_without_book: number | null;
     };
+  };
+  listSettledMarkets: {
+    complete_through: string;
+    data: OperationData["listSettledMarkets"];
+    has_more: boolean;
+    meta: ResponseMeta;
+    next_cursor: string;
+    object: string;
   };
   listSharpMoneyFlows: {
     object: "list";

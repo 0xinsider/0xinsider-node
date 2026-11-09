@@ -166,6 +166,33 @@ SDK 0.42.0 types line moves and fixes how `streamFeedResilient()` counts reconne
 
 SDK 0.43.0 types game market settlement and game end times. The `market_settled` webhook and the `MarketSettled` stream frame report a sports or esports game market that settled, once per settled state, the first time 0xinsider records it (#33443): `MarketSettledEvent`, `MarketSettledData`, and `settlement_filters` (`SettlementSubscriptionFilters`) on webhook create, update and read. A `MarketSettled` stream frame carries the `MarketSettledData` fields beside `seq`, `published_at` and `type`. Deduplicate on `settlement_id`: a market can settle twice, first as a resolved UMA question row whose `settlement.payouts` is `null`, then as the condition row with payouts, and each is its own event. `GameStatus` gains `ended_at` and `ended_at_source` (#33444): when the game ended, as first observed, and who observed it (`sports_ws` or `gamma_finished`). Both are `null` when no end was observed; an end time is never inferred from the kickoff, the clock or the market's resolution. Also new: `listProps()` for `GET /api/v1/props`, `meta.queryUnmatched` from `X-Query-Unmatched` (#33373), and `FillHistoryTooLargeError` for a 404 `fill_history_too_large` (#33245).
 
+SDK 0.44.0 adds `listMarketTrades(conditionId, { from, to, limit, cursor })`: one market's taker fills of 100 USD or more in a time window, newest first, each fill once (`id` is its transaction hash and log index). Walk a window with `paginate()`, which resends the same `from` and `to` with each cursor. `coverage` says what the record holds: `recorded_from` is where the record starts, the later of when recording began and 00:00 UTC on the day `retention_days` (365) before today, so an earlier window reads empty because it is outside the record, and a first page serves no fill after `complete_through`, a few minutes behind now. New type: `MarketTrade`.
+
+```ts
+import { paginate } from "@0xinsider/sdk";
+
+for await (const fill of paginate(client, "listMarketTrades", {
+  path: { condition_id: "0x2faf55d4e596992b4c41c565cc83c0420c74d0b8a11d34c63f6403937c72aa13" },
+  query: { from: "2026-11-08T00:00:00Z", limit: 500 },
+})) {
+  fill.side; // "BUY" | "SELL", the taker's
+  fill.size_usd; // number, 100 or more
+}
+```
+
+SDK 0.44.0 also adds `listSettledMarkets({ since, sports_market_type, league, limit, cursor })` for `GET /api/v1/markets/settled`: the game markets Polymarket settled, oldest first, one row per market per settled state. Each row is the `data` of a `market_settled` webhook event (`MarketSettledData`), so a receiver can catch up from `since` after downtime. `sports_market_type` defaults to `moneyline`, and `*` keeps every type. `next_cursor` is always present: while `has_more` is `true`, fetch it at once; when `has_more` is `false`, the walk has reached `complete_through`, about two minutes behind now, so keep the cursor and read again later. A cursor keeps the filters it was issued for.
+
+```ts
+const settled = await client.listSettledMarkets({ since: "2026-11-08T00:00:00Z", league: "nba" });
+for (const row of settled.data) {
+  row.settlement.winning_outcome_index; // number | null, an index into row.outcomes
+}
+// Later: what was recorded after that page, with the same filters.
+const next = await client.listSettledMarkets({ cursor: settled.next_cursor });
+```
+
+The same release exports `PickHolderPriceEdge` and `PickHolderPriceEdgeHold`, the types of four optional `PickHolder` fields: `category_price_edge`, `category_scope_price_edge`, `category_price_edge_hold` and `category_scope_price_edge_hold`. `EdgeHunterObservation` gains `indexed_graded_holders`. The `settlement` block on game markets, market snapshots and `MarketSettledData` gains `oracle_updated_at`.
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.

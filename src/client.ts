@@ -348,6 +348,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/markets/settled",
+    operationId: "listSettledMarkets",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/games/{event_slug}/sharp-money",
     operationId: "getGameSharpMoney",
     auth: "bearer",
@@ -489,6 +495,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/market/{condition_id}/wallets-in-out",
     operationId: "getMarketWalletsInOut",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/trades",
+    operationId: "listMarketTrades",
     auth: "bearer",
   },
   {
@@ -1448,11 +1460,17 @@ export type GameMarketsListParams = OperationQuery["listGameMarkets"];
 /** Query parameters accepted by {@link OxinsiderApiClient.listProps}. */
 export type PropsListParams = OperationQuery["listProps"];
 
+/** Query parameters accepted by {@link OxinsiderApiClient.listSettledMarkets}. */
+export type SettledMarketsListParams = OperationQuery["listSettledMarkets"];
+
 /** Query parameters accepted by {@link OxinsiderApiClient.listGameTrades}. */
 export type GameTradesParams = OperationQuery["listGameTrades"];
 
 /** One fill in a game, as the game page's activity list shows it. */
 export type { GameTrade } from "./schema.js";
+
+/** Query parameters accepted by {@link OxinsiderApiClient.listMarketTrades}. */
+export type MarketTradesParams = OperationQuery["listMarketTrades"];
 
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
@@ -3024,6 +3042,22 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * List the game markets Polymarket settled, as recorded, oldest first: one
+   * row per market per settled state, the `data` of the `market_settled`
+   * webhook event. Start from `since` (RFC 3339) to catch up after downtime,
+   * or pass the last page's `next_cursor` to poll for what was recorded
+   * after it; the cursor keeps the filters it was issued for.
+   * `sports_market_type` defaults to `moneyline` (`*` for every type).
+   * `next_cursor` is always present: `has_more: true` means fetch it now,
+   * `has_more: false` means the walk reached `complete_through` (two minutes
+   * behind now), so keep it and read again later. A page can hold fewer than
+   * `limit` rows, or none, while `has_more` is true.
+   */
+  listSettledMarkets(params: SettledMarketsListParams, options: ConvenienceOptions = {}) {
+    return this.list("listSettledMarkets", { ...options, query: params });
+  }
+
+  /**
    * Read where the graded money sits on one whole game: S, A and B grade USD per
    * outcome summed across the game's markets, each outcome's share, the leader,
    * wallet counts by grade and the backend's verdict. Every aggregate field is
@@ -3223,6 +3257,49 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("getMarketWalletsInOut", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * List one market's taker fills of 100 USD or more in a time window,
+   * newest first, each fill once (`id` is its transaction hash and log
+   * index). Pass `params.from` (inclusive) and `params.to` (exclusive) as
+   * RFC 3339 times; walk the window with `paginate()`, which resends the
+   * same `from` and `to` with each cursor, as the cursor requires. `coverage`
+   * says what the record holds: a window before `coverage.recorded_from`
+   * reads empty because it is outside the record (not recorded, or past the
+   * `coverage.retention_days` a fill is served), and a first page serves no
+   * fill after `coverage.complete_through`. To follow a market, read again with
+   * `from` at the last `complete_through` and deduplicate on `id`. A 503
+   * `read_model_warming` means retry after `Retry-After`.
+   */
+  listMarketTrades(
+    conditionId: OperationPath["listMarketTrades"]["condition_id"],
+    params: MarketTradesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listMarketTrades", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listMarketTrades}. Returns the
+   * list envelope on 200 or the typed `not_modified` result on 304, where
+   * {@link listMarketTrades} throws on a 304. Send the last `ETag` as the
+   * `If-None-Match` header in `options.headers`.
+   */
+  listMarketTradesConditional(
+    conditionId: OperationPath["listMarketTrades"]["condition_id"],
+    params: MarketTradesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("listMarketTrades", {
       ...options,
       path: { condition_id: conditionId },
       query: params,
@@ -3479,8 +3556,9 @@ export class OxinsiderApiClient {
 
   /**
    * Fetch one UTC day's resolution report (single-object envelope): how often
-   * the profitable wallets' side won on the day's resolved sports and esports
-   * markets. `view: "totals"` drops the per-market list.
+   * the profitable wallets' side won on the day's resolved markets: sports and
+   * esports only from 2026-10-21, every Polymarket market before, as
+   * `market_scope` says. `view: "totals"` drops the per-market list.
    */
   getResolutionReport(
     date: OperationQuery["getResolutionReport"]["date"],
