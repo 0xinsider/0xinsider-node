@@ -56,7 +56,7 @@ test("the key is sent as a bearer header to the configured origin", async () => 
 test("a bearer operation without a key fails locally in production, before fetch", async () => {
   const fetchImpl = mockFetch(() => jsonResponse(200, {}));
   const client = new OxinsiderApiClient({ fetch: fetchImpl });
-  await assert.rejects(client.listWhaleTrades({ limit: 1 }), /requires an API key/);
+  await assert.rejects(client.listLargeTrades({ limit: 1 }), /requires an API key/);
   assert.equal(fetchImpl.calls.length, 0);
 });
 
