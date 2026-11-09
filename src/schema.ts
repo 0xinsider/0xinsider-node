@@ -2517,6 +2517,8 @@ export type MarketSettledData = {
     winning_outcome_index: number | null;
     oracle_updated_at: string | null;
   };
+  /** The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id, the same value on the webhook, the MarketSettled stream frame and GET /api/v1/markets/settled. A redelivery resends its event as first delivered, so one first delivered before the field shipped lacks it. */
+  protocol_version: "v1" | "v2";
 };
 
 export type MarketSnapshot = {
@@ -4925,11 +4927,8 @@ export type ScoreCell = {
 /** Shape the provider score string was parsed into. `two_side` is one aggregate per side (basketball `105-98`), `multi_set` is per-set columns (tennis `6-7(5-7), 6-0, 1-0`), `esports_series` is a maps/sets/format triplet (`000-000|2-0|Bo3`). Omitted when the score could not be parsed. */
 export type ScoreFormat = "two_side" | "multi_set" | "esports_series";
 
-/** One GET /api/v1/markets/settled row: the market_settled webhook's data, plus the market's protocol_version. */
-export type SettledMarketData = MarketSettledData & {
-  /** The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id. */
-  protocol_version: "v1" | "v2";
-};
+/** One GET /api/v1/markets/settled row: the market_settled webhook's data, MarketSettledData, protocol_version included. Kept as its own name for clients generated since SDK 0.45.0. */
+export type SettledMarketData = MarketSettledData;
 
 /** Settings for market_settled; every set field must match. Optional: subscribing without it stores {"sports_market_types": ["moneyline"]}, every market Polymarket labels moneyline, and sending it without the event is refused (400). That label is each head-to-head game's winner market, but in golf and other field events Polymarket labels every player market moneyline (winner, make the cut, round leader), so one tournament can send hundreds of states. Narrow it with leagues, which no market outside the list matches, including one whose league is null (a golf event slug that starts with a year, such as 2026-world-wide-technology-championship), or with condition_ids. A PATCH without it keeps the stored settings while the event stays subscribed; removing the event clears them. Stored as the API normalized it: trimmed and deduplicated, leagues, market types and condition IDs lowercased, and sports_market_types filled in when omitted. */
 export type SettlementSubscriptionFilters = {

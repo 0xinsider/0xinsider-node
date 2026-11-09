@@ -15412,7 +15412,7 @@
       "get": {
         "operationId": "listSettledMarkets",
         "summary": "List settled game markets since a time",
-        "description": "Game markets Polymarket settled, as 0xinsider recorded them, oldest first by (settlement.observed_at, settlement_id): one row per market per settled state, the object the market_settled webhook delivers as data plus protocol_version. It is the webhook's pull side: catch up after downtime from since, or poll with next_cursor instead of receiving pushes. A market can appear twice: once as a question row without payouts, then again with them, each with its own settlement_id. Each row carries condition_id, settlement_id, event_slug, game_id, league, sports_market_type, outcomes (labels at their outcome index, so payouts and winning_outcome_index index into it) and settlement: status observed, oracle_status resolved, settled true, payouts (micro-USDC per share per outcome index), result (outcome, or split for a 50-50), winning_outcome_index, was_disputed, resolved_at (null on a resolved UMA question row, which carries none), oracle_updated_at (Polymarket's last_update_timestamp, its latest lifecycle change, never a resolution time; on such a row, when UMA's answer settled the question), expected_settlement_time, settlement_time_basis and observed_at, when 0xinsider first saw this state, and protocol_version: v1 for a ConditionalTokens market, v2 for a Polymarket Protocol V2 market (the new markets from 2026-11-09 and the polyv2 copies), which redeems through the V2 modules. The filters are the webhook's settlement_filters: sports_market_type (default moneyline, or every type with condition_id; * for every type), league, condition_id (at most 20) and event_slug (at most 10). A polyv2 copy of a game whose original event has a moneyline market is left out unless condition_id or event_slug names it, as the webhook leaves it out of a filter that names neither; a named copy carries copy_of_event_slug, the original's slug. Unlike the webhook, a state first recorded more than 6 hours after its market resolved is listed, and so is a state naming the winner an earlier state of its market named (Polymarket's payouts row after the ConditionalTokens payout). complete_through trails now by two minutes: rows observed at or before it are served, in this page or the ones after it, so a row is never passed before the settlement writer records it. has_more true means more rows up to complete_through remain: fetch next_cursor now. has_more false means the walk reached complete_through: keep next_cursor and read it again later for what is recorded after it. next_cursor is always present. A page can hold fewer than limit rows, or none, while has_more is true: a read that has not filled its page stops after about 120 ms of scanning and resumes on the next page. Every plan with an API key; push delivery (the webhook) is Pro and Max. Cost is 1.",
+        "description": "Game markets Polymarket settled, as 0xinsider recorded them, oldest first by (settlement.observed_at, settlement_id): one row per market per settled state, the object the market_settled webhook delivers as data. It is the webhook's pull side: catch up after downtime from since, or poll with next_cursor instead of receiving pushes. A market can appear twice: once as a question row without payouts, then again with them, each with its own settlement_id. Each row carries condition_id, settlement_id, event_slug, game_id, league, sports_market_type, outcomes (labels at their outcome index, so payouts and winning_outcome_index index into it) and settlement: status observed, oracle_status resolved, settled true, payouts (micro-USDC per share per outcome index), result (outcome, or split for a 50-50), winning_outcome_index, was_disputed, resolved_at (null on a resolved UMA question row, which carries none), oracle_updated_at (Polymarket's last_update_timestamp, its latest lifecycle change, never a resolution time; on such a row, when UMA's answer settled the question), expected_settlement_time, settlement_time_basis and observed_at, when 0xinsider first saw this state, and protocol_version: v1 for a ConditionalTokens market, v2 for a Polymarket Protocol V2 market (the new markets from 2026-11-09 and the polyv2 copies), which redeems through the V2 modules. The filters are the webhook's settlement_filters: sports_market_type (default moneyline, or every type with condition_id; * for every type), league, condition_id (at most 20) and event_slug (at most 10). A polyv2 copy of a game whose original event has a moneyline market is left out unless condition_id or event_slug names it, as the webhook leaves it out of a filter that names neither; a named copy carries copy_of_event_slug, the original's slug. Unlike the webhook, a state first recorded more than 6 hours after its market resolved is listed, and so is a state naming the winner an earlier state of its market named (Polymarket's payouts row after the ConditionalTokens payout). complete_through trails now by two minutes: rows observed at or before it are served, in this page or the ones after it, so a row is never passed before the settlement writer records it. has_more true means more rows up to complete_through remain: fetch next_cursor now. has_more false means the walk reached complete_through: keep next_cursor and read it again later for what is recorded after it. next_cursor is always present. A page can hold fewer than limit rows, or none, while has_more is true: a read that has not filled its page stops after about 120 ms of scanning and resumes on the next page. Every plan with an API key; push delivery (the webhook) is Pro and Max. Cost is 1.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -42619,7 +42619,7 @@
     "market_settled": {
       "post": {
         "summary": "market_settled",
-        "description": "Fires once per settled state when a sports or esports game market settles, the first time 0xinsider records Polymarket's resolution of it: usually within a few minutes. A market can settle in more than one state: a resolved oracle question with no winner yet, the same question with the winner Polymarket's ConditionalTokens contract paid on chain, and the provider's row with payouts; each state fires once, with its own settlement_id, except one naming the winner an earlier state named. Carries the game, its league, the market type, the outcome names and the settlement object the game markets routes serve: payouts per share in micro-USDC, result (outcome or split), the winning outcome index, whether it was disputed, and when it resolved. settlement_filters narrows it by league, market type, game or market, and defaults to the markets Polymarket labels moneyline: each head-to-head game's winner market, but in golf and other field events every player market (winner, make the cut, round leader), so one tournament can send hundreds of states; scope it with leagues or condition_ids. Most settling markets are props, spreads and totals. A state first seen more than 6 hours after it resolved is not sent. Pro and Max only.",
+        "description": "Fires once per settled state when a sports or esports game market settles, the first time 0xinsider records Polymarket's resolution of it: usually within a few minutes. A market can settle in more than one state: a resolved oracle question with no winner yet, the same question with the winner Polymarket's ConditionalTokens contract paid on chain, and the provider's row with payouts; each state fires once, with its own settlement_id, except one naming the winner an earlier state named. Carries the game, its league, the market type, the outcome names and the settlement object the game markets routes serve: payouts per share in micro-USDC, result (outcome or split), the winning outcome index, whether it was disputed, and when it resolved, and protocol_version: v1 for a ConditionalTokens market, v2 for a Polymarket Protocol V2 market (the new markets from 2026-11-09 and the polyv2 copies), the same value GET /api/v1/markets/settled lists. settlement_filters narrows it by league, market type, game or market, and defaults to the markets Polymarket labels moneyline: each head-to-head game's winner market, but in golf and other field events every player market (winner, make the cut, round leader), so one tournament can send hundreds of states; scope it with leagues or condition_ids. Most settling markets are props, spreads and totals. A state first seen more than 6 hours after it resolved is not sent. Pro and Max only.",
         "tags": [
           "Webhooks"
         ],
@@ -42714,7 +42714,8 @@
                         "settlement_time_basis": null,
                         "proposed_answer": null,
                         "observed_at": "2026-11-07T17:18:39.795275Z"
-                      }
+                      },
+                      "protocol_version": "v1"
                     }
                   }
                 }
@@ -49255,7 +49256,8 @@
           "sports_market_type",
           "outcomes",
           "copy_of_event_slug",
-          "settlement"
+          "settlement",
+          "protocol_version"
         ],
         "properties": {
           "condition_id": {
@@ -49431,25 +49433,19 @@
                 "format": "date-time"
               }
             }
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id, the same value on the webhook, the MarketSettled stream frame and GET /api/v1/markets/settled. A redelivery resends its event as first delivered, so one first delivered before the field shipped lacks it."
           }
         }
       },
       "SettledMarketData": {
-        "description": "One GET /api/v1/markets/settled row: the market_settled webhook's data, plus the market's protocol_version.",
+        "description": "One GET /api/v1/markets/settled row: the market_settled webhook's data, MarketSettledData, protocol_version included. Kept as its own name for clients generated since SDK 0.45.0.",
         "allOf": [
           {
             "$ref": "#/components/schemas/MarketSettledData"
-          },
-          {
-            "type": "object",
-            "required": ["protocol_version"],
-            "properties": {
-              "protocol_version": {
-                "type": "string",
-                "enum": ["v1", "v2"],
-                "description": "The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id."
-              }
-            }
           }
         ]
       },

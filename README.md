@@ -195,7 +195,9 @@ The same release exports `PickHolderPriceEdge` and `PickHolderPriceEdgeHold`, th
 
 SDK 0.44.1 exports `PropsListParams` and `SettledMarketsListParams`, the parameter types of `listProps()` and `listSettledMarkets()`, from `@0xinsider/sdk`. Earlier releases did not export them; `OperationQuery["listProps"]` and `OperationQuery["listSettledMarkets"]` are the same types and still work.
 
-SDK 0.45.0 adds `condition_id` and `event_slug` to `listSettledMarkets()`: comma-separated, at most 20 condition ids or 10 event slugs, so a caller can ask whether one market or one game settled without walking the whole list. With `condition_id`, an omitted `sports_market_type` keeps every type. A polyv2 copy of a game has its own condition id and its own slug (`polyv2-nba-phi-chi-2026-11-08`), and naming either one lists the copy. Every row is now a `SettledMarketData`: the webhook's `MarketSettledData` plus `protocol_version`, `"v1"` or `"v2"`, the Polymarket protocol the market settles and redeems on.
+SDK 0.45.0 adds `condition_id` and `event_slug` to `listSettledMarkets()`: comma-separated, at most 20 condition ids or 10 event slugs, so a caller can ask whether one market or one game settled without walking the whole list. With `condition_id`, an omitted `sports_market_type` keeps every type. A polyv2 copy of a game has its own condition id and its own slug (`polyv2-nba-phi-chi-2026-11-08`), and naming either one lists the copy. Every row carries `protocol_version`, `"v1"` or `"v2"`, the Polymarket protocol the market settles and redeems on.
+
+SDK 0.46.0 puts `protocol_version` on `MarketSettledData` too, the `data` of a `market_settled` webhook event and of a `MarketSettled` stream frame. `SettledMarketData`, the list row type, is now the same type under its own name.
 
 ```ts
 const one = await client.listSettledMarkets({
@@ -204,6 +206,8 @@ const one = await client.listSettledMarkets({
 });
 one.data[0]?.protocol_version; // "v1" | "v2"
 ```
+
+A webhook handler reads the same field: `event.data.protocol_version` on a `MarketSettledEvent`.
 
 ## Combos
 
