@@ -195,6 +195,16 @@ The same release exports `PickHolderPriceEdge` and `PickHolderPriceEdgeHold`, th
 
 SDK 0.44.1 exports `PropsListParams` and `SettledMarketsListParams`, the parameter types of `listProps()` and `listSettledMarkets()`, from `@0xinsider/sdk`. Earlier releases did not export them; `OperationQuery["listProps"]` and `OperationQuery["listSettledMarkets"]` are the same types and still work.
 
+SDK 0.45.0 adds `condition_id` and `event_slug` to `listSettledMarkets()`: comma-separated, at most 20 condition ids or 10 event slugs, so a caller can ask whether one market or one game settled without walking the whole list. With `condition_id`, an omitted `sports_market_type` keeps every type. A polyv2 copy of a game has its own condition id and its own slug (`polyv2-nba-phi-chi-2026-11-08`), and naming either one lists the copy. Every row is now a `SettledMarketData`: the webhook's `MarketSettledData` plus `protocol_version`, `"v1"` or `"v2"`, the Polymarket protocol the market settles and redeems on.
+
+```ts
+const one = await client.listSettledMarkets({
+  since: "2026-11-09T00:00:00Z",
+  condition_id: "0x01540d2cdf1385a16149e77cc33b73ba8d000000000000000000000000000000",
+});
+one.data[0]?.protocol_version; // "v1" | "v2"
+```
+
 ## Combos
 
 `client.combos.fills()` returns observed Polymarket combo fills with their legs, wallet context, and coverage. `client.combos.summary()` reads the live combo count, and `client.combos.get(conditionId)` reads one combo's fills and lifecycle. These reads require an active Pro or Max credential.
