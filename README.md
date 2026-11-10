@@ -964,7 +964,7 @@ Direct error constructors accept optional `ApiErrorTransportMetadata` after thei
 
 ## Authentication
 
-Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getCoverage`, `getHealth`, `getPickOfTheDayLedger`, and `registerAgent`, which mints the sandbox key) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
+Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `getCoverage`, `getHealth`, `getPickOfTheDayLedger`, `getPickOfTheDayLedgerEntry`, and `registerAgent`, which mints the sandbox key) do not require a key; everything else does, and the SDK throws before making a request if a key is missing for a bearer operation, unless the client is in [sandbox](#sandbox) mode, where no operation needs one. Pro-only data (graded webhook events, parts of the stream) requires a key on an active Pro subscription.
 
 ## Examples
 

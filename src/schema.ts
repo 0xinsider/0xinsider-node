@@ -2858,7 +2858,7 @@ export type PickHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent on a `display_holders` entry: `measured` (rate present), `not_enough_data` (the wallet is below the settled-market floor of 5 in the category), or `unavailable` (the annotation read failed; retry later). Never `untracked`: every recorded holder is a graded wallet 0xinsider has on file. Absent entirely on `holders` entries, legacy rows, and payloads predating the field -- absence means the roster was never annotated, not a small sample. */
   category_win_rate_status?: "measured" | "not_enough_data" | "unavailable" | "untracked";
-  /** Whole UTC calendar days since this wallet's first trade: the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request, and the pick's ETag holds between requests. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
+  /** Whole UTC calendar days since this wallet's first trade, as an integer (271, not 271.0): the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request, and the pick's ETag holds between requests. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   wallet_age_days?: number | null;
   /** True when the wallet's first trade was under 30 days ago. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   is_new_wallet?: boolean;
@@ -2972,7 +2972,7 @@ export type PickOfTheDay = {
   token_id?: string;
   /** The backed side phrased as a bet (e.g. "Portugal to win"). */
   position?: string;
-  /** One-line summary of which side sharp money is backing. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
+  /** One-line summary of which side sharp money is backing. On a pick dated 2026-08-12 or later it counts the S and A grade wallets on the backed side, the sharp_wallet_count value, and names those grades: "26 S and A grade wallets on Alexander Shevchenko", or "1 S or A grade wallet on ...". The site's "profitable wallets" counts S, A and B grade wallets, so its number can be larger for the same pick. A pick whose only recorded backing is its lead wallet reads "Recorded lead wallet on ...". Earlier picks, and a pick recorded without graded holders, keep the sentence recorded with them. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
   side_summary?: string;
   /** S/A wallet count on the backed side in the public V1 compatibility projection. */
   sharp_wallet_count?: number;
@@ -2983,7 +2983,7 @@ export type PickOfTheDay = {
   smart_wallet_count?: number;
   /** Best recorded S/A grade in the public V1 compatibility projection. */
   top_grade?: string;
-  /** Recorded sharp-money magnitude in USD when available. */
+  /** Recorded graded-flow magnitude in USD on the backed side. Absent when the recorded value is zero, and on every pick that carries lead_backer. */
   sharp_usd?: number;
   /**
    * Deprecated spelling of sharp_usd with the same value.
@@ -3020,7 +3020,7 @@ export type PickOfTheDay = {
   unit_score?: number;
   /** Backend-formatted signed unit score, present exactly when unit_score is present. */
   unit_score_display?: string;
-  /** Recorded sharp-money share as a 0..1 fraction when available. This is not a winning probability. */
+  /** Recorded sharp-money share as a 0..1 fraction. This is not a winning probability. Absent on every pick dated 2026-08-12 or later: from that date the recorded share includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. */
   sharp_pct?: number;
   /** Recorded market-implied probability as a 0..1 fraction when available. */
   market_pct?: number;
@@ -3047,7 +3047,7 @@ export type PickOfTheDay = {
   };
   /** Public V1 S/A wallet count on the backed side, equal to sharp_wallet_count. */
   traders?: number;
-  /** Recorded aggregate backed-side position value in USD when available, not a live balance or entry cost. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster. */
+  /** Recorded aggregate backed-side position value in USD, not a live balance or entry cost. Absent on every pick dated 2026-08-12 or later: from that date the recorded value includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster. */
   backed_sharp_usd?: number;
   /** Bounded S/A holder display projection from the recorded snapshot. Historical rows retain their recorded display shape. */
   holders?: PickHolder[];
@@ -3093,6 +3093,71 @@ export type PickOfTheDay = {
   supersedes_pick_id: string | null;
   /** Optional full-only lead wallet publication facts. Omitted on legacy picks or when the recorded evidence is unavailable. */
   lead_backer?: PickLeadBacker;
+  /** On the top level of today's set read. The instant until which today's list of published picks can still grow: present while another pick can still be added to the day, absent once the day is final. Absent for a past `date`, on `picks` items and on a `pick_id` read. A later pick is possible, not promised; schedule one read before this instant instead of polling. */
+  more_picks_until?: string;
+  /** Display identity for the pick's game: the league and the two sides, with names, crests and records, and for a tennis player the headshot, tour and ranking. Sent on a pick whose sports identity resolved; absent otherwise. It carries no market, event or provider identifier. An image value that starts with / is a path relative to https://0xinsider.com. */
+  public_sports_identity?: {
+    /** True when yes_team and no_team are the parent game's two sides in display order, on a Yes/No market whose own outcomes name no team (a draw, a total, a prop); they then say nothing about which side Yes backs. False when the market's outcomes chose the sides, so Yes resolving means yes_team won. */
+    event_matchup: boolean;
+    /** League crest: an absolute https URL, or a path relative to https://0xinsider.com for a crest 0xinsider serves. */
+    league_logo?: string;
+    /** League or competition name. */
+    league_name?: string;
+    /** The side the market's No outcome names; when event_matchup is true, the parent game's second side in display order. */
+    no_team?: {
+      /** Full display name of the team or player. */
+      full_name?: string;
+      /** Tennis player photo as a path relative to https://0xinsider.com, for example /api/tennis/headshots/...; prefix that origin to fetch it. Absent when no photo is on file. */
+      headshot?: string;
+      /** Revision of the headshot image; it changes when the photo changes. Present only with headshot. */
+      headshot_revision?: number;
+      /** Display name of the team or player. */
+      label?: string;
+      /** Team crest: an absolute https URL, or a path relative to https://0xinsider.com for a crest 0xinsider serves. Absent when no specific crest is on file. */
+      logo?: string;
+      /** True when the logo artwork disappears on a dark background. Sent only when true. */
+      logo_mark_dark?: boolean;
+      /** True when the logo artwork disappears on a light background. Sent only when true. */
+      logo_mark_light?: boolean;
+      /** True when logo_mark_dark and logo_mark_light were measured from this logo. Sent only when true; when absent, their absence makes no claim about the artwork. */
+      logo_mark_measured?: boolean;
+      ranking?: TennisRanking;
+      /** Win-loss record as the provider reports it. */
+      record?: string;
+      /** Short display name, such as an abbreviation. */
+      short_label?: string;
+      /** Tennis tour of the player: atp, wta or itf. Sent for a tennis player whether or not a headshot is on file. */
+      tour?: string;
+    };
+    /** The side the market's Yes outcome names; when event_matchup is true, the parent game's first side in display order. */
+    yes_team?: {
+      /** Full display name of the team or player. */
+      full_name?: string;
+      /** Tennis player photo as a path relative to https://0xinsider.com, for example /api/tennis/headshots/...; prefix that origin to fetch it. Absent when no photo is on file. */
+      headshot?: string;
+      /** Revision of the headshot image; it changes when the photo changes. Present only with headshot. */
+      headshot_revision?: number;
+      /** Display name of the team or player. */
+      label?: string;
+      /** Team crest: an absolute https URL, or a path relative to https://0xinsider.com for a crest 0xinsider serves. Absent when no specific crest is on file. */
+      logo?: string;
+      /** True when the logo artwork disappears on a dark background. Sent only when true. */
+      logo_mark_dark?: boolean;
+      /** True when the logo artwork disappears on a light background. Sent only when true. */
+      logo_mark_light?: boolean;
+      /** True when logo_mark_dark and logo_mark_light were measured from this logo. Sent only when true; when absent, their absence makes no claim about the artwork. */
+      logo_mark_measured?: boolean;
+      ranking?: TennisRanking;
+      /** Win-loss record as the provider reports it. */
+      record?: string;
+      /** Short display name, such as an abbreviation. */
+      short_label?: string;
+      /** Tennis tour of the player: atp, wta or itf. Sent for a tennis player whether or not a headshot is on file. */
+      tour?: string;
+    };
+  };
+  /** When the pick was published: the recorded instant, the same one the archive returns for it. release_at is the scheduled release. Sent on every pick; absent with the other pick fields on a state=none body. */
+  published_at?: string;
 };
 
 export type PickOfTheDayArchive = {
@@ -3549,6 +3614,8 @@ export type PickOfTheDayNoEntitledPicks = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
+  /** The instant until which today's list of published picks can still grow: present while another pick can still be added to the day, absent once the day is final. A later pick is possible, not promised. */
+  more_picks_until?: string;
 };
 
 export type PickOfTheDayStats = {
@@ -6712,6 +6779,7 @@ export interface OperationData {
     })[];
     state: string;
     view: string;
+    more_picks_until?: string;
   };
   getPickOfTheDayArchive: PickOfTheDayArchive | PickOfTheDayArchiveSummary;
   getPickOfTheDayLedger: PickOfTheDayLedger;
@@ -7301,9 +7369,9 @@ export interface OperationQuery {
   getPickOfTheDay: {
     /** A product day (America/New_York) in YYYY-MM-DD format, on or before today. Omit it, or send today, for the current read. A past day with no published pick returns 404 not_found with error.param=date; a date after today, or a value that is not a date, returns 400 bad_request with error.param=date. */
     date?: string;
-    /** full (default) is the whole recorded set: every pick with its holders, lead backer, sports context, thesis and entry_authorization, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks and locked_picks. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
+    /** full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
-    /** One entitled published pick of the day, by its stable decimal-string pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks and locked_picks. Pair it with date for a past day's pick. A pick_id that is not among the day's entitled published picks returns 404 not_found with error.param=pick_id; one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id. */
+    /** One entitled published pick of the day, by its stable decimal-string pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. Pair it with date for a past day's pick. A pick_id that is not among the day's entitled published picks returns 404 not_found with error.param=pick_id; one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id. */
     pick_id?: string;
   };
   getPickOfTheDayArchive: {
