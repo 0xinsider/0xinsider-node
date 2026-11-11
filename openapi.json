@@ -11824,7 +11824,7 @@
       "get": {
         "operationId": "getPickOfTheDayStats",
         "summary": "Get the Pick of the Day track-record breakdown",
-        "description": "The figures behind the stats page, computed from the same rows the archive publishes: the hit rate, the win rate the market expected at publication, flat-stake outcome stats (drawdown, rolling form, profit factor, concentration), and buckets by day, sport, category, access group, month, entry-price band, market type and totals side, plus streaks, records and every void pick. Withdrawn picks are outside every figure, as in the archive. Pro reads the Pro view; Max counts every selection whose backed side Max sees.\n\n`view=summary` drops the five sections that grow with the record (`series`, `days`, `categories`, `months` and `voids`; the first four were 127,020 of the 151,774 bytes on 2026-11-03), and `sections` returns exactly the sections named, `series` among them as its own top-level key. Both add `view` and `sections` to the body; the default `view=full` body is unchanged. The MCP tool defaults to the summary.",
+        "description": "The figures behind the stats page, computed from the same rows the archive publishes: the hit rate, the win rate the market expected at publication, flat-stake outcome stats (drawdown, rolling form, profit factor, concentration), and buckets by day, sport, category, access group, month, entry-price band, market type and totals side, plus streaks, records and every void pick. Withdrawn picks are outside every figure, as in the archive. `ask_comparison` is the record at the ask: the settled picks that recorded the best ask at publication (since 2026-10-17), valued at the midpoint the record uses and at that ask, before fees. The record itself stays at the midpoint. Pro reads the Pro view; Max counts every selection whose backed side Max sees.\n\n`view=summary` drops the five sections that grow with the record (`series`, `days`, `categories`, `months` and `voids`; the first four were 127,020 of the 151,774 bytes on 2026-11-03), and `sections` returns exactly the sections named, `series` among them as its own top-level key. Both add `view` and `sections` to the body; the default `view=full` body is unchanged. The MCP tool defaults to the summary.",
         "tags": ["Pick of the Day"],
         "parameters": [
           {
@@ -11852,7 +11852,7 @@
             "name": "sections",
             "in": "query",
             "required": false,
-            "description": "Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored.",
+            "description": "Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, ask_comparison, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored.",
             "schema": {
               "type": "array",
               "items": {
@@ -11862,6 +11862,7 @@
                   "series",
                   "market_expectations",
                   "outcome_stats",
+                  "ask_comparison",
                   "days",
                   "categories",
                   "sports",
@@ -11893,6 +11894,7 @@
                   "series",
                   "market_expectations",
                   "outcome_stats",
+                  "ask_comparison",
                   "days",
                   "categories",
                   "sports",
@@ -12129,6 +12131,23 @@
                             "remaining_valued_decided": 855,
                             "roi_without_top_wins_pct": 1.2294530188767054,
                             "roi_without_top_wins_display": "+1.2%"
+                          }
+                        },
+                        "ask_comparison": {
+                          "valued_decided": 438,
+                          "from_date": "2026-10-17",
+                          "from_date_display": "Oct 17, 2026",
+                          "midpoint": {
+                            "units": -17.261107492343608,
+                            "units_display": "-17.26u",
+                            "roi_pct": -3.9408921215396366,
+                            "roi_display": "-3.9%"
+                          },
+                          "ask": {
+                            "units": -21.326486209334464,
+                            "units_display": "-21.33u",
+                            "roi_pct": -4.869060778386864,
+                            "roi_display": "-4.9%"
                           }
                         },
                         "days": [
@@ -44686,6 +44705,58 @@
                 }
               }
             }
+          },
+          "ask_comparison": {
+            "type": "object",
+            "required": ["valued_decided", "from_date", "from_date_display", "midpoint", "ask"],
+            "properties": {
+              "ask": {
+                "type": "object",
+                "required": ["units", "units_display", "roi_pct", "roi_display"],
+                "properties": {
+                  "roi_display": {
+                    "type": ["string", "null"]
+                  },
+                  "roi_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "units": {
+                    "type": ["number", "null"]
+                  },
+                  "units_display": {
+                    "type": ["string", "null"]
+                  }
+                }
+              },
+              "from_date": {
+                "type": ["string", "null"],
+                "format": "date"
+              },
+              "from_date_display": {
+                "type": ["string", "null"]
+              },
+              "midpoint": {
+                "type": "object",
+                "required": ["units", "units_display", "roi_pct", "roi_display"],
+                "properties": {
+                  "roi_display": {
+                    "type": ["string", "null"]
+                  },
+                  "roi_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "units": {
+                    "type": ["number", "null"]
+                  },
+                  "units_display": {
+                    "type": ["string", "null"]
+                  }
+                }
+              },
+              "valued_decided": {
+                "type": "integer"
+              }
+            }
           }
         },
         "required": [
@@ -44702,7 +44773,8 @@
           "market_types",
           "total_sides",
           "streaks",
-          "records"
+          "records",
+          "ask_comparison"
         ]
       },
       "PickOfTheDayStatsSections": {
@@ -46305,6 +46377,58 @@
                 "pick_rank": {
                   "type": "integer"
                 }
+              }
+            }
+          },
+          "ask_comparison": {
+            "type": "object",
+            "required": ["valued_decided", "from_date", "from_date_display", "midpoint", "ask"],
+            "properties": {
+              "ask": {
+                "type": "object",
+                "required": ["units", "units_display", "roi_pct", "roi_display"],
+                "properties": {
+                  "roi_display": {
+                    "type": ["string", "null"]
+                  },
+                  "roi_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "units": {
+                    "type": ["number", "null"]
+                  },
+                  "units_display": {
+                    "type": ["string", "null"]
+                  }
+                }
+              },
+              "from_date": {
+                "type": ["string", "null"],
+                "format": "date"
+              },
+              "from_date_display": {
+                "type": ["string", "null"]
+              },
+              "midpoint": {
+                "type": "object",
+                "required": ["units", "units_display", "roi_pct", "roi_display"],
+                "properties": {
+                  "roi_display": {
+                    "type": ["string", "null"]
+                  },
+                  "roi_pct": {
+                    "type": ["number", "null"]
+                  },
+                  "units": {
+                    "type": ["number", "null"]
+                  },
+                  "units_display": {
+                    "type": ["string", "null"]
+                  }
+                }
+              },
+              "valued_decided": {
+                "type": "integer"
               }
             }
           }

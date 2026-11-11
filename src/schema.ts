@@ -4018,6 +4018,23 @@ export type PickOfTheDayStats = {
     pick_id: string;
     pick_rank: number;
   }[];
+  ask_comparison: {
+    ask: {
+      roi_display: string | null;
+      roi_pct: number | null;
+      units: number | null;
+      units_display: string | null;
+    };
+    from_date: string | null;
+    from_date_display: string | null;
+    midpoint: {
+      roi_display: string | null;
+      roi_pct: number | null;
+      units: number | null;
+      units_display: string | null;
+    };
+    valued_decided: number;
+  };
 };
 
 /** The stats with `view=summary` or `sections`: only the named sections, listed in `sections`. `view=summary` names every section except `series`, `days`, `categories`, `months` and `voids`. */
@@ -4459,6 +4476,23 @@ export type PickOfTheDayStatsSections = {
     pick_id: string;
     pick_rank: number;
   }[];
+  ask_comparison?: {
+    ask: {
+      roi_display: string | null;
+      roi_pct: number | null;
+      units: number | null;
+      units_display: string | null;
+    };
+    from_date: string | null;
+    from_date_display: string | null;
+    midpoint: {
+      roi_display: string | null;
+      roi_pct: number | null;
+      units: number | null;
+      units_display: string | null;
+    };
+    valued_decided: number;
+  };
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
@@ -7391,10 +7425,10 @@ export interface OperationQuery {
   getPickOfTheDayStats: {
     /** full (default) is every section. summary returns view, sections and every section except the five that grow with the record: series, days, categories, months and voids. In summary and sections bodies hit_rate carries no series; series is its own top-level section. Ignored when sections is sent. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
-    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
-    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    /** Exactly the sections to return, in the body's order whatever the request order. Repeatable and comma-separated: hit_rate, series, market_expectations, outcome_stats, ask_comparison, days, categories, sports, tiers, months, price_bands, market_types, total_sides, streaks, records, voids. The body names them in sections and carries view=sections. An unrecognized name returns 400 bad_request with error.param=sections rather than being ignored. */
+    sections?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "ask_comparison" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
     /** Backward-compatible bracket alias for sections, for clients that emit array keys. Repeatable and comma-separated, with the same names. */
-    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
+    "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "ask_comparison" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
   };
   getPlatforms: Record<string, never>;
   getPositionTimeline: {
