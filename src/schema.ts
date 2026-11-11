@@ -2958,7 +2958,7 @@ export type PickOfTheDay = {
   release_at?: string;
   /** True only before the pick's stored release instant (a pre-release embargo flag); effectively always false on a served, already-published pick. To detect that the backed game has kicked off, use `game_started`. */
   is_locked?: boolean;
-  /** True once the backed game's kickoff has passed (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. Absent for a legacy pick with no stored kickoff (treat as not-started). */
+  /** True once the backed game has started (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. It compares the start recorded with the pick, which can briefly trail a provider reschedule that kickoff already shows. Absent for a legacy pick with no recorded start (treat as not-started). */
   game_started?: boolean;
   /** Whether the backed game is over, from the game's scoreboard. Once the game is recorded as finished it stays true, on later reads and on past days. A pick settled `win` or `loss` reads true unless the live scoreboard shows the game still in play. Tells a finished game from one still in play before `outcome` settles. Omitted when the game's state is unknown; absence is unknown, never false. */
   game_ended?: boolean;
@@ -3160,6 +3160,8 @@ export type PickOfTheDay = {
   published_at?: string;
   /** When outcome was LAST written to a settled value (RFC3339 UTC), the same instant the archive and the commitment ledger return for the pick. It moves with a corrected market re-mapping an already-settled pick. Omitted (not null) for a pending pick and for a pick that settled before the instant was recorded, so absence means the instant is unknown, never that the pick is unsettled -- outcome answers that. Additive and optional for mixed-version client compatibility. */
   resolved_at?: string;
+  /** When the backed game starts (RFC3339 UTC): the same instant the 0xinsider site shows for the pick, read from the provider's current schedule, so a rescheduled game shows its new start, else the start recorded with the pick. scheduled_picks and proof_pending_picks use the same name for a pick's start. Omitted (not null) only when neither is on record, on a legacy pick; never estimated. Additive and optional for mixed-version client compatibility. */
+  kickoff?: string;
 };
 
 export type PickOfTheDayArchive = {
@@ -6795,6 +6797,8 @@ export interface OperationData {
       token_id?: string;
       top_grade?: string;
       unit_score?: number;
+      /** When the backed game starts (RFC3339 UTC): the full pick's kickoff. */
+      kickoff?: string;
     }[];
     proof_pending_picks?: ({
       is_free_selection: boolean;
@@ -7407,7 +7411,7 @@ export interface OperationQuery {
   getPickOfTheDay: {
     /** A product day (America/New_York) in YYYY-MM-DD format, on or before today. Omit it, or send today, for the current read. A past day with no published pick returns 404 not_found with error.param=date; a date after today, or a value that is not a date, returns 400 bad_request with error.param=date. */
     date?: string;
-    /** full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
+    /** full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, kickoff, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
     /** One entitled published pick, by its stable decimal-string pick_id. Without date it reads the pick on its own product day, whatever day published it, under the same tier rule as date with pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. With date, the pick must be one of that day's. A pick_id that is not among the day's entitled published picks (its own day without date, or the date sent) returns 404 not_found with error.param=pick_id, as does one that no served pick has (unknown, skipped or withdrawn); one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id. */
     pick_id?: string;
