@@ -53134,7 +53134,7 @@
           },
           "backed_price": {
             "type": "number",
-            "description": "Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present exactly when return_usd is, and on a void, which carries no return: so it is omitted for a still-pending pick, an unpriced win, and any pick whose backed side is withheld."
+            "description": "Frozen price of the backed side (0..1) that return_usd and return_per_100 were computed from: on a win, stake_usd / backed_price equals return_usd. It is the Polymarket CLOB order book midpoint at release, frozen write-once at publication, not an executed fill: a buyer lifts the ask, so a subscriber's own entry is usually a little worse than this price. Present when return_usd is, on a void, which carries no return, and on a still-pending pick whose CLV is measured (clv_pct present), where it equals clv_entry_price. Omitted for any other still-pending pick, an unpriced win, and any pick whose backed side is withheld."
           },
           "clv_pct": {
             "type": "number",
