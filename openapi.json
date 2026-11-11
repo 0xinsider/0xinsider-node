@@ -52374,7 +52374,7 @@
           },
           "entry_authorization": {
             "$ref": "#/components/schemas/PotdEntryAuthorization",
-            "description": "Optional full-response entry authorization. Missing or expired authorization cannot authorize an automated entry."
+            "description": "Optional full-response entry authorization. The pick's release issues it once, only when a fresh check then finds the pick meets the selection standard in force at release and its current price still allows an entry. A pick released without one never gains one later, so read its absence as no automated entry for this pick, not as pending. Missing or expired authorization cannot authorize an automated entry."
           },
           "locked_picks": {
             "type": "array",
@@ -52420,7 +52420,7 @@
           },
           "lead_backer": {
             "$ref": "#/components/schemas/PickLeadBacker",
-            "description": "Optional full-only lead wallet publication facts. Omitted on legacy picks or when the recorded evidence is unavailable."
+            "description": "Optional full-only lead wallet publication facts: the profitable wallet whose position and record certified the pick when it was released. Many picks have no certified lead, and a pick released without one never gains one later. Also omitted on legacy picks or when the recorded evidence is unavailable in this response."
           },
           "more_picks_until": {
             "type": "string",
