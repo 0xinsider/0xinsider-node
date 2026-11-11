@@ -3158,6 +3158,8 @@ export type PickOfTheDay = {
   };
   /** When the pick was published: the recorded instant, the same one the archive returns for it. release_at is the scheduled release. Sent on every pick; absent with the other pick fields on a state=none body. */
   published_at?: string;
+  /** When outcome was LAST written to a settled value (RFC3339 UTC), the same instant the archive and the commitment ledger return for the pick. It moves with a corrected market re-mapping an already-settled pick. Omitted (not null) for a pending pick and for a pick that settled before the instant was recorded, so absence means the instant is unknown, never that the pick is unsettled -- outcome answers that. Additive and optional for mixed-version client compatibility. */
+  resolved_at?: string;
 };
 
 export type PickOfTheDayArchive = {

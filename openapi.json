@@ -11153,7 +11153,7 @@
             }
           },
           "404": {
-            "description": "Without `date`: no Pick of the Day is published for the current product day, which uses America/New_York. Explicitly scheduled selections retain their returned release time. The body carries error.code=\"not_found\", error.reason=\"pick_not_released\", and error.retry_at (RFC3339, always in the future); the response also sets Retry-After. Branch on the reason and schedule the next request from the returned retry guidance instead of polling. With a past `date`: no pick was published that day, or every pick that day was withdrawn. The body carries error.code=\"not_found\" and error.param=\"date\", with no reason, retry_at or Retry-After: a past day does not change, so do not retry it.",
+            "description": "Without `date`: no Pick of the Day is published for the current product day, which uses America/New_York. Explicitly scheduled selections retain their returned release time. The body carries error.code=\"not_found\", error.reason=\"pick_not_released\", and error.retry_at (RFC3339, always in the future); the response also sets Retry-After. Branch on the reason and schedule the next request from the returned retry guidance instead of polling. With `pick_id` the same state answers error.code=\"not_found\" and error.param=\"pick_id\", with no reason, retry_at or Retry-After: no pick of the day is published yet, so the id is not among the day's published picks, and a past day's pick_id never will be (send its pick_date as `date`). With a past `date`: no pick was published that day, or every pick that day was withdrawn. The body carries error.code=\"not_found\" and error.param=\"date\", with no reason, retry_at or Retry-After: a past day does not change, so do not retry it.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds until the recommended next request, always at least 1. This names the same instant as error.retry_at. The recommendation is advisory and can change. Schedule one request using the returned guidance rather than inferring a release schedule; prefer this relative duration to avoid client clock skew.",
@@ -52556,6 +52556,11 @@
             "type": "string",
             "format": "date-time",
             "description": "When the pick was published: the recorded instant, the same one the archive returns for it. release_at is the scheduled release. Sent on every pick; absent with the other pick fields on a state=none body."
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When outcome was LAST written to a settled value (RFC3339 UTC), the same instant the archive and the commitment ledger return for the pick. It moves with a corrected market re-mapping an already-settled pick. Omitted (not null) for a pending pick and for a pick that settled before the instant was recorded, so absence means the instant is unknown, never that the pick is unsettled -- outcome answers that. Additive and optional for mixed-version client compatibility."
           }
         }
       },
