@@ -594,6 +594,15 @@ export type EdgeHunterBoard = {
   /** Ranked rows after normalized selections and grade filtering, before the view-specific limit cap. */
   total: number;
   rows: EdgeHunterRow[];
+  /** Markets the window and selection evaluated without a row, by reason. Every one drew a large trade from an S, A or B wallet in the last 24 hours, as every row did, so total plus the three counts is every market evaluated, and total 0 with all three 0 means no market in the window drew such a trade. Null on a snapshot cached before the counts existed. */
+  unranked: {
+    /** A side is backed, but no wallet on it is at or above min_grade. */
+    below_grade_floor: number;
+    /** No S, A or B wallet holds either side now. */
+    no_graded_holders: number;
+    /** Graded money on the two sides is too evenly split to back a side. */
+    split_holder_pile: number;
+  } | null;
 };
 
 export type EdgeHunterBoardResponse = {
@@ -2069,6 +2078,8 @@ export type LeaderboardEntry = {
   platform: "polymarket";
   /** When the wallet last traded: its most recent recorded trade, as of the leaderboard row's last refresh, which re-reads it hourly, so a new trade can take about an hour to show. It agrees with the activity filter: every wallet listed under activity=inactive last traded more than 30 days ago. Since 2026-11-02 (#32322); before, it carried the time 0xinsider last synced the wallet, usually within the past week whether or not the wallet traded. Omitted when the wallet has no recorded trade. */
   last_active?: string;
+  /** Additive (since 2026-11-11, #34333): in_scope.win_rate_status, lifted to the row beside win_rate. measured from 5 decided markets (in_scope.markets_decided), not_enough_data below, the floor the 0xinsider leaderboard page applies before it shows a win rate. Below it win_rate is still sent; quote in_scope.markets_decided instead of win_rate as a rate. Omitted exactly when in_scope.win_rate_status is. */
+  win_rate_status?: "measured" | "not_enough_data";
 };
 
 /** Every league with a skill leaderboard, by sport: the league values GET /api/v1/leaderboard/sports/{sport} accepts. */
@@ -4677,6 +4688,10 @@ export type Position = {
     wallet_age_days?: number;
     /** True when wallet_age_days is under the new-wallet threshold (30 days), which means 0xinsider first recorded the wallet in the last 30 days. False when wallet_age_days is absent. This public V1 field is first-seen recency, not the wallet's on-chain age. */
     is_new_wallet: boolean;
+    /** Additive (since 2026-11-11, #34333): sports and esports markets the wallet closed with a profit or a loss, the divisor of win_rate; pnl.in_scope.markets_decided on GET /api/v1/trader/{address}. Absent when the wallet has no record. */
+    markets_decided?: number;
+    /** Additive (since 2026-11-11, #34333): measured from 5 decided markets (markets_decided), not_enough_data below, the floor the 0xinsider profile and leaderboards apply before they show a win rate. Below it win_rate is still sent; quote markets_decided instead of win_rate as a rate. Sent with markets_decided. */
+    win_rate_status?: "measured" | "not_enough_data";
   };
   market: {
     /** Prefixed ID (`mkt_...`). */
@@ -5378,7 +5393,7 @@ export type Trader = {
   stats: {
     /** Sports and esports markets the wallet traded, any status: pnl.in_scope.markets, dated by the sports_record data_quality group. Omitted until the record is computed. 0 for a wallet that traded no sports or esports market, which never gets a record: at its last completed sync Polymarket counted no market for it, or the sync read its Polymarket positions and found no sports or esports market; none is stored, and no Polymarket sports or esports board lists it; the sports_record group then carries the sync clock (since 2026-10-29, #30589; the second case since #30657). Omitted for a wallet that trades only combos and holds no single sports or esports market, which has no record (since 2026-10-29, #30637). Counted every Polymarket market before 2026-10-27. */
     markets_traded?: number;
-    /** Won over decided sports and esports markets, 0 to 1: pnl.in_scope.win_rate truncated to four places, dated by the sports_record data_quality group. Omitted until the record is computed, while the wallet has no decided sports or esports market, for a wallet that traded no sports or esports market (#30589, #30657), and for one that trades only combos (#30637). Counted every Polymarket market before 2026-10-27. */
+    /** Won over decided sports and esports markets, 0 to 1: pnl.in_scope.win_rate truncated to four places, dated by the sports_record data_quality group. Omitted until the record is computed, while the wallet has no decided sports or esports market, for a wallet that traded no sports or esports market (#30589, #30657), and for one that trades only combos (#30637). Counted every Polymarket market before 2026-10-27. Sent at any count of decided markets: read win_rate_status before showing it as a rate (since 2026-11-11, #34315). */
     win_rate?: number;
     /**
      * Deprecated since 2026-10-27 and never sent. It counted mark-to-market days over every Polymarket market of the wallet (#29830). Read stats.all.win_days and stats.all.loss_days from GET /api/v1/trader/{address}/pnl, which count sports and esports days.
@@ -5389,6 +5404,12 @@ export type Trader = {
     total_volume?: number;
     /** Additive lossless counterpart to `total_volume`, present exactly when it is. */
     exact?: TraderStatsExact;
+    /** Additive (since 2026-11-11, #34315): sports and esports markets the wallet closed with a profit or a loss, the divisor of win_rate. A market that closed at zero P&L is in neither count, so it can be below pnl.in_scope.markets_resolved. Sent exactly when pnl.in_scope is, dated by the sports_record data_quality group. */
+    markets_decided?: number;
+    /** Additive (since 2026-11-11, #34315): decided sports and esports markets the wallet closed with a profit; win_rate is markets_won / markets_decided. Sent exactly when pnl.in_scope is, dated by the sports_record data_quality group. */
+    markets_won?: number;
+    /** Additive (since 2026-11-11, #34315): measured from 5 decided markets (markets_decided), not_enough_data below. It is the floor the 0xinsider leaderboards, profile and trade rows apply before they show a win rate, so one lucky market never reads as 100%. Below it win_rate is still sent when present, as the ratio of the counts; quote markets_won of markets_decided instead of a rate. Sent exactly when pnl.in_scope is. */
+    win_rate_status?: "measured" | "not_enough_data";
   };
   strategy?: {
     /** Observed trading style identifier. New rows use two_sided, category_focused, high_activity, diversified, mixed, or unclassified, counted over the wallet's sports and esports markets only. Historical identifiers remain readable during normal reclassification; style does not predict skill or intent. */
@@ -5592,12 +5613,16 @@ export type TraderContext = {
 export type TraderEntryPriceAnalysis = {
   /** One bucket per price band that has a market, in bucket_order. */
   buckets: TraderEntryPriceBucket[];
-  /** The bucket with the highest win rate among buckets of at least 3 markets. null when no bucket has 3. */
+  /** The bucket with the highest win rate among buckets of at least 3 markets. null when no bucket has 3. The 3 counts markets, not decided ones: best_measured_bucket is the pick behind the decided-market floor. */
   best_bucket: string | null;
-  /** The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3. */
+  /** The bucket with the lowest win rate among buckets of at least 3 markets. null when no bucket has 3. The 3 counts markets, not decided ones: worst_measured_bucket is the pick behind the decided-market floor. */
   worst_bucket: string | null;
   /** What the buckets cover (since 2026-11-03, #32671). */
   coverage: TraderEntryPriceCoverage;
+  /** Additive (since 2026-11-11, #34355): the bucket with the highest win rate among buckets whose win_rate_status is measured (5 or more decided markets), so one lucky market is never the best range at 100%. The 0xinsider profile shows this pick. null when no bucket has 5 decided markets. */
+  best_measured_bucket: string | null;
+  /** Additive (since 2026-11-11, #34355): the bucket with the lowest win rate among buckets whose win_rate_status is measured. Equal to best_measured_bucket when one bucket is measured. null exactly when best_measured_bucket is. */
+  worst_measured_bucket: string | null;
 };
 
 /** One entry-price band. Each measure is an analytic value: read state before value. */
@@ -5616,6 +5641,10 @@ export type TraderEntryPriceBucket = {
   total_pnl: AnalyticNumber;
   /** Mean realized P&L of a market in the band, USD. */
   avg_pnl: AnalyticNumber;
+  /** Additive (since 2026-11-11, #34355): the band's markets with a nonzero P&L, win_rate's divisor. Present on every band. */
+  markets_decided: number;
+  /** Additive (since 2026-11-11, #34355): measured from 5 decided markets (markets_decided), not_enough_data below, the floor the 0xinsider profile applies before it shows a band's win rate, so one lucky market never reads as 100%. Below it win_rate is still sent as before; quote wins of markets_decided instead of a rate. Present on every band. */
+  win_rate_status: "measured" | "not_enough_data";
 };
 
 /** The settled sports and esports positions the entry-price section reads. The buckets' markets plus every unbucketed row's are settled_markets, and their realized P&L sums to settled_pnl. settled_pnl adds up the wallet's per-market realized P&L, so it differs from pnl.in_scope.realized_pnl, which is Polymarket's published sports and esports P&L with a share of the wallet's rebates. */
@@ -5842,12 +5871,16 @@ export type TraderHourlyPerformance = {
     total_pnl: number;
     /** total_pnl over markets, USD. */
     avg_pnl: number;
+    /** Additive (since 2026-11-11, #34349): the hour's settled markets with a nonzero P&L, win_rate's divisor. */
+    markets_decided: number;
+    /** Additive (since 2026-11-11, #34349): measured from 5 decided markets (markets_decided), not_enough_data below, the floor the 0xinsider profile applies before it shows an hour's win rate, so one lucky market never reads as 100%. Below it win_rate is still sent; quote wins of markets_decided instead of a rate. */
+    win_rate_status: "measured" | "not_enough_data";
   })[];
-  /** The hour with the highest win_rate. null when no entry exists. */
+  /** The hour with the highest win_rate. null when no entry exists. Picked over every hour, an hour of one decided market included: best_measured_hour is the pick behind the decided-market floor. */
   best_hour: number | null;
   /** best_hour's win_rate, percentage 0-100. null exactly when best_hour is. */
   best_win_rate: number | null;
-  /** The hour with the lowest win_rate. null when no entry exists. */
+  /** The hour with the lowest win_rate. null when no entry exists. Picked over every hour, an hour of one decided market included: worst_measured_hour is the pick behind the decided-market floor. */
   worst_hour: number | null;
   /** worst_hour's win_rate, percentage 0-100. null exactly when worst_hour is. */
   worst_win_rate: number | null;
@@ -5855,6 +5888,16 @@ export type TraderHourlyPerformance = {
   spread_pp: number | null;
   /** true when at least 12 hours have markets and every one of them has the same P&L sign, so the hour-to-hour spread says little about timing. */
   is_approximate: boolean;
+  /** Additive (since 2026-11-11, #34355): the hour with the highest win_rate among entries whose win_rate_status is measured (5 or more decided markets), so one lucky market is never the best hour at 100%. The 0xinsider profile shows this pick. null when no hour has 5 decided markets; the five measured fields are null together. */
+  best_measured_hour: number | null;
+  /** Additive (since 2026-11-11, #34355): best_measured_hour's win_rate, percentage 0-100. null exactly when best_measured_hour is. */
+  best_measured_win_rate: number | null;
+  /** Additive (since 2026-11-11, #34355): best_measured_win_rate minus worst_measured_win_rate, percentage points. null exactly when best_measured_hour is. */
+  measured_spread_pp: number | null;
+  /** Additive (since 2026-11-11, #34355): the hour with the lowest win_rate among entries whose win_rate_status is measured. Equal to best_measured_hour when one hour is measured. null exactly when best_measured_hour is. */
+  worst_measured_hour: number | null;
+  /** Additive (since 2026-11-11, #34355): worst_measured_hour's win_rate, percentage 0-100. null exactly when worst_measured_hour is. */
+  worst_measured_win_rate: number | null;
 };
 
 /** A trader's sports and esports daily P&L object. `id`, `freshness_at`, `series_status` and `realized` are always present. The five sections -- `entries`, `stats`, `monthly`, `year_totals`, `drawdown` -- are present unless the request's `sections` parameter excluded them, so a request that sends no `sections` always carries all five. An excluded section is absent from the object, never null and never an empty array. While `series_status` is `pending` the sections are empty and never mean zero. */
@@ -6011,6 +6054,10 @@ export type TraderPnlInScope = {
   markets_out_of_scope: number;
   /** When the record behind these figures was computed. */
   as_of: string;
+  /** Additive (since 2026-11-11, #34333): sports and esports markets the wallet closed with a profit or a loss, the divisor of win_rate. A market that closed at zero P&L is in neither count, so it can be below markets_resolved. */
+  markets_decided?: number;
+  /** Additive (since 2026-11-11, #34333): measured from 5 decided markets (markets_decided), not_enough_data below. It is the floor the 0xinsider leaderboards, profile and trade rows apply before they show a win rate, so one lucky market never reads as 100%. Below it win_rate is still sent; quote the decided count instead of win_rate as a rate. Sent with markets_decided. */
+  win_rate_status?: "measured" | "not_enough_data";
 };
 
 /** Edge over the price paid (#32270, #32622): how often the side a wallet bought won, minus the average price it paid, over its settled sports and esports markets of $20 or more at a known entry price. Probabilities throughout: edge 0.012 is 1.2 percentage points. The same figures as LeaderboardPriceEdge, plus the shrunk edge the profile badge and the leaderboard show. No hold: a hold is a fact of a leaderboard row, not of the wallet. */
@@ -6077,6 +6124,12 @@ export type TraderTimeBreakdownBand = {
   profit_factor: number | null;
   /** Realized P&L of the band's markets, USD. */
   total_pnl: number | null;
+  /** Additive (since 2026-11-11, #34349): the band's resolved markets that made money, win_rate's numerator. Present on every band. */
+  markets_won?: number;
+  /** Additive (since 2026-11-11, #34349): the band's resolved markets with a nonzero P&L, win_rate's divisor. Present on every band. */
+  markets_decided?: number;
+  /** Additive (since 2026-11-11, #34349): measured from 5 decided markets (markets_decided), not_enough_data below, the floor the 0xinsider profile applies before it shows a band's win rate, so one lucky market never reads as 100%. Below it win_rate is still sent when present; quote markets_won of markets_decided instead of a rate. Present on every band. */
+  win_rate_status?: "measured" | "not_enough_data";
 };
 
 /** The hold-time and first-trade-hour bands of the profile's Performance breakdown card, over the wallet's sports and esports markets with a realized P&L. */
@@ -6147,7 +6200,7 @@ export type TrendingWallet = {
   window_markets_traded: number;
   /** Distinct in-window UTC trade days from our trades (0 if the winner is not in our DB). */
   window_trade_days: number;
-  /** All-time trader grade; a separate axis from streak_tier. Led by realized profit on sports and esports markets (the money actually banked, about 95 percent of the grade; since 2026-10-22, the sports and esports share of the wallet's realized P&L), with forecasting calibration, risk-adjusted returns, and consistency as the tie-breaker and proven-trader guardrails: any grade above C requires verified net-positive realized profit on those markets, and the top grades also require a real track record of resolved sports and esports markets plus a survivable drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 markets, or too little verified record to cohort-rank). */
+  /** All-time trader grade; a separate axis from streak_tier. Led by realized profit on sports and esports markets (the money actually banked, about 95 percent of the grade; since 2026-10-22, the sports and esports share of the wallet's realized P&L), with forecasting calibration, risk-adjusted returns, and consistency as the tie-breaker and proven-trader guardrails: any grade above C requires verified net-positive realized profit on those markets, and the top grades also require a real track record of resolved sports and esports markets plus a survivable drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 sports or esports markets, or too little verified record to cohort-rank). */
   grade?: "S" | "A" | "B" | "C" | "D" | "F";
   /** Hot-streak tier (trailing-7d cross-sectional percentile). Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
@@ -7628,6 +7681,8 @@ export interface OperationQuery {
     severity?: "flag" | "watch";
     /** Pagination mode. live (default) keeps the 120-second response cache; stable pins the walk to one published scoring generation and binds the cursor to the limit and filters. */
     mode?: "live" | "stable";
+    /** List order. suspicion_score (default) lists the highest score first; recent lists the newest flagged trade (greatest created_at) first. Each sort, in each mode, issues its own cursor, and a cursor from another sort returns 400 bad_request. An unknown value returns 400 bad_request with param sort. */
+    sort?: "suspicion_score" | "recent";
   };
   listLargePositions: {
     /** Maximum number of large positions to return. Out-of-range values are clamped to 1..100. */
@@ -7861,6 +7916,8 @@ export interface OperationQuery {
     severity?: "flag" | "watch";
     /** Pagination mode. live (default) keeps the 120-second response cache; stable pins the walk to one published scoring generation and binds the cursor to the limit and filters. */
     mode?: "live" | "stable";
+    /** List order. suspicion_score (default) lists the highest score first; recent lists the newest flagged trade (greatest created_at) first. Each sort, in each mode, issues its own cursor, and a cursor from another sort returns 400 bad_request. An unknown value returns 400 bad_request with param sort. */
+    sort?: "suspicion_score" | "recent";
   };
   listTrendingWallets: {
     /** Polymarket's weekly leaderboard caps the ranked set at 50 wallets; requests above 50 still return at most 50. Out-of-range values are clamped to 1..50. */

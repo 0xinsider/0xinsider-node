@@ -2014,7 +2014,7 @@ export type LargePositionsListParams = OperationQuery["listLargePositions"];
 /** Query parameters of `GET /api/v1/markets/sharp-money-flows`. */
 export type SharpMoneyFlowsParams = OperationQuery["listSharpMoneyFlows"];
 
-/** Query parameters of `GET /api/v1/suspicious-trades`: `min_suspicion` and `severity`, not a grade. */
+/** Query parameters of `GET /api/v1/suspicious-trades`: `min_suspicion` and `severity`, not a grade; `sort: "recent"` lists the newest flag first. */
 export type SuspiciousTradesListParams = OperationQuery["listSuspiciousTrades"];
 
 /** Query parameters of `GET /api/v1/markets/explore`. */
