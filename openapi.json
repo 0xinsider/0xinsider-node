@@ -10653,7 +10653,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "description": "full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view.",
+            "description": "full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, kickoff, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view.",
             "schema": {
               "type": "string",
               "enum": ["full", "summary"],
@@ -10843,6 +10843,11 @@
                                   },
                                   "unit_score": {
                                     "type": "number"
+                                  },
+                                  "kickoff": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "When the backed game starts (RFC3339 UTC): the full pick's kickoff."
                                   }
                                 }
                               }
@@ -52257,7 +52262,7 @@
           },
           "game_started": {
             "type": "boolean",
-            "description": "True once the backed game's kickoff has passed (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. Absent for a legacy pick with no stored kickoff (treat as not-started)."
+            "description": "True once the backed game has started (kickoff <= now). When true the snapshotted pre-game price is no longer actionable. It compares the start recorded with the pick, which can briefly trail a provider reschedule that kickoff already shows. Absent for a legacy pick with no recorded start (treat as not-started)."
           },
           "game_ended": {
             "type": "boolean",
@@ -52685,6 +52690,11 @@
             "type": "string",
             "format": "date-time",
             "description": "When outcome was LAST written to a settled value (RFC3339 UTC), the same instant the archive and the commitment ledger return for the pick. It moves with a corrected market re-mapping an already-settled pick. Omitted (not null) for a pending pick and for a pick that settled before the instant was recorded, so absence means the instant is unknown, never that the pick is unsettled -- outcome answers that. Additive and optional for mixed-version client compatibility."
+          },
+          "kickoff": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the backed game starts (RFC3339 UTC): the same instant the 0xinsider site shows for the pick, read from the provider's current schedule, so a rescheduled game shows its new start, else the start recorded with the pick. scheduled_picks and proof_pending_picks use the same name for a pick's start. Omitted (not null) only when neither is on record, on a legacy pick; never estimated. Additive and optional for mixed-version client compatibility."
           }
         }
       },
