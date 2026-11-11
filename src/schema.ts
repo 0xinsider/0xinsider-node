@@ -3071,7 +3071,7 @@ export type PickOfTheDay = {
   disclaimer?: string;
   /** Entitled published picks whose holder proof is unreadable, ordered by rank. Unauthorized ranks appear only in locked_picks and cannot trigger proof warming. Read retry_at for the next read. */
   proof_pending_picks?: ProofPendingPickSlot[];
-  /** Optional full-response entry authorization. Missing or expired authorization cannot authorize an automated entry. */
+  /** Optional full-response entry authorization. The pick's release issues it once, only when a fresh check then finds the pick meets the selection standard in force at release and its current price still allows an entry. A pick released without one never gains one later, so read its absence as no automated entry for this pick, not as pending. Missing or expired authorization cannot authorize an automated entry. */
   entry_authorization?: PotdEntryAuthorization;
   /** Unauthorized unresolved published or scheduled ranks. Contains no game, provider identity, price, or identifying clock. Pro may upgrade to Max to open these ranks. */
   locked_picks?: {
@@ -3091,7 +3091,7 @@ export type PickOfTheDay = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
-  /** Optional full-only lead wallet publication facts. Omitted on legacy picks or when the recorded evidence is unavailable. */
+  /** Optional full-only lead wallet publication facts: the profitable wallet whose position and record certified the pick when it was released. Many picks have no certified lead, and a pick released without one never gains one later. Also omitted on legacy picks or when the recorded evidence is unavailable in this response. */
   lead_backer?: PickLeadBacker;
   /** On the top level of today's set read. The instant until which today's list of published picks can still grow: present while another pick can still be added to the day, absent once the day is final. Absent for a past `date`, on `picks` items and on a `pick_id` read. A later pick is possible, not promised; schedule one read before this instant instead of polling. */
   more_picks_until?: string;
