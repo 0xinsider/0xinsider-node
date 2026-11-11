@@ -11050,7 +11050,7 @@
                           "event_matchup": false,
                           "matchup_title": "Portugal – Uzbekistan"
                         },
-                        "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research.",
+                        "disclaimer": "Pick of the Day is analytics, not a prediction or a guarantee. Prediction markets carry risk; do your own research and never stake more than you can lose.",
                         "pick_id": "1000",
                         "publication_order": 1,
                         "is_free_selection": true,
@@ -11368,7 +11368,7 @@
                 "event_matchup": false,
                 "matchup_title": "Portugal – Uzbekistan"
               },
-              "disclaimer": "Not financial advice. Prediction markets carry risk; do your own research."
+              "disclaimer": "Pick of the Day is analytics, not a prediction or a guarantee. Prediction markets carry risk; do your own research and never stake more than you can lose."
             },
             "meta": {
               "request_id": "req_example",
@@ -12278,7 +12278,7 @@
                         "price_bands": [
                           {
                             "key": "under_35",
-                            "label": "Longshot (<35c)",
+                            "label": "Longshot (<35¢)",
                             "picks": 12,
                             "wins": 6,
                             "losses": 6,
@@ -52150,7 +52150,7 @@
           },
           "pick_outcome_label": {
             "type": "string",
-            "description": "The backed side phrased as a bet: a team for a moneyline (e.g. \"Portugal\"), the handicap line for a spread (e.g. \"Belgium (-2.5)\"), or \"{team} to advance\" for a knockout advancement market (e.g. \"Spain to advance\")."
+            "description": "The backed side as a short label: a team for a moneyline (e.g. \"Bengals\"), the team and handicap for a spread (e.g. \"Seahawks (-14.5)\"), the line and side for a total (e.g. \"O/U 38.5 (Under)\"), or \"{team} to advance\" for a knockout advancement market (e.g. \"Spain to advance\")."
           },
           "token_id": {
             "type": "string",
@@ -52158,7 +52158,7 @@
           },
           "position": {
             "type": "string",
-            "description": "The backed side phrased as a bet (e.g. \"Portugal to win\")."
+            "description": "The backed side as the pick's headline reads it (e.g. \"Bengals to win\", \"Seahawks (-14.5)\", \"O/U 38.5 (Under)\")."
           },
           "side_summary": {
             "type": "string",

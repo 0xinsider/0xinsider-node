@@ -2966,11 +2966,11 @@ export type PickOfTheDay = {
   outcome?: "pending" | "win" | "loss" | "void";
   /** Pre-formatted SETTLEMENT STATUS for display: "Win" / "Loss" / "Void" / "Pending" -- the outcome enum above as a label. Convenience only; outcome is the source value. NOTE: this is the win/loss STATUS, not the backed side. The backed side is pick_outcome_label ("Belgium (-2.5)") -- a different field answering a different question. */
   outcome_display?: string;
-  /** The backed side phrased as a bet: a team for a moneyline (e.g. "Portugal"), the handicap line for a spread (e.g. "Belgium (-2.5)"), or "{team} to advance" for a knockout advancement market (e.g. "Spain to advance"). */
+  /** The backed side as a short label: a team for a moneyline (e.g. "Bengals"), the team and handicap for a spread (e.g. "Seahawks (-14.5)"), the line and side for a total (e.g. "O/U 38.5 (Under)"), or "{team} to advance" for a knockout advancement market (e.g. "Spain to advance"). */
   pick_outcome_label?: string;
   /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the backed outcome; omitted when unavailable (e.g. unsynced markets). */
   token_id?: string;
-  /** The backed side phrased as a bet (e.g. "Portugal to win"). */
+  /** The backed side as the pick's headline reads it (e.g. "Bengals to win", "Seahawks (-14.5)", "O/U 38.5 (Under)"). */
   position?: string;
   /** One-line summary of which side sharp money is backing. On a pick dated 2026-08-12 or later it counts the S and A grade wallets the pick lists on the backed side, the sharp_wallet_count value, and names those grades: "26 S and A grade wallets on Alexander Shevchenko", or "1 S or A grade wallet on ...". The list can leave out wallets that hold the side. The site's "profitable wallets" counts the S, A and B grade wallets the pick lists, so its number can be larger for the same pick. A pick whose only recorded backing is its lead wallet reads "Recorded lead wallet on ...". Earlier picks, and a pick recorded without graded holders, keep the sentence recorded with them. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
   side_summary?: string;
