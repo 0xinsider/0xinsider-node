@@ -52585,7 +52585,7 @@
                 "type": "null"
               }
             ],
-            "description": "The team mapped to the market's YES outcome, or the parent-event home/first team when event_matchup is true."
+            "description": "The team mapped to the market's YES outcome, or the game's first team when event_matchup is true. To lay the two teams out in the game's order, read side_order."
           },
           "no_team": {
             "oneOf": [
@@ -52596,7 +52596,7 @@
                 "type": "null"
               }
             ],
-            "description": "The team mapped to the market's NO outcome, or the parent-event away/second team when event_matchup is true."
+            "description": "The team mapped to the market's NO outcome, or the game's second team when event_matchup is true."
           },
           "game_id": {
             "type": "integer",
@@ -52614,9 +52614,14 @@
             ],
             "description": "Present only alongside event_matchup: the event team the binary leg is about (provider group_item_title matched to a matchup team, e.g. Belgium for \"Will Belgium win?\"), i.e. the winner on a Yes resolution. Omitted for teamless legs (draw, totals, prop)."
           },
+          "side_order": {
+            "type": "string",
+            "enum": ["yes_first", "no_first"],
+            "description": "Which of yes_team and no_team the game lists first, in Polymarket's order for the event (the order of its title: the away team first in US leagues, the home team first in soccer). yes_first when yes_team is the first team, no_first when no_team is. A spread's Yes side is the favorite, so it is often the game's second team. Lay the teams out in this order to show every pick on one game the same way; yes_team and no_team keep their Yes and No meaning. Omitted when the order is unknown: lay out yes_team first."
+          },
           "matchup_title": {
             "type": "string",
-            "description": "The two teams as a single whole-game label, joined \"<home> – <away>\" (en-dash) in provider display order (e.g. \"Portugal – Uzbekistan\"). Composed server-side from the provider team names (no title/slug parsing). Present when both teams resolve a name; omitted for single-subject, teamless, or non-two-team contexts."
+            "description": "The two teams as a single whole-game label, joined \"<first> – <second>\" (en-dash) in the game's order, the order side_order names (e.g. \"LA Clippers – Phoenix Suns\"), so every pick on one game carries the same title. Composed server-side from the provider team names (no title/slug parsing). Present when both teams resolve a name; omitted for single-subject, teamless, or non-two-team contexts."
           }
         }
       },
@@ -52643,7 +52648,7 @@
           },
           "short_label": {
             "type": ["string", "null"],
-            "description": "Abbreviated team label (e.g. \"POR\")."
+            "description": "The team's abbreviation in upper case (e.g. \"POR\"), the same on every market of the game. A competitor Polymarket gives no abbreviation can carry its name here instead."
           },
           "full_name": {
             "type": ["string", "null"],

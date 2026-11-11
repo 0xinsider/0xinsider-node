@@ -4487,9 +4487,9 @@ export type PickSportsContext = {
   competition_label?: string;
   /** League logo URL (provider-owned). */
   league_logo: string | null;
-  /** The team mapped to the market's YES outcome, or the parent-event home/first team when event_matchup is true. */
+  /** The team mapped to the market's YES outcome, or the game's first team when event_matchup is true. To lay the two teams out in the game's order, read side_order. */
   yes_team: PickSportsTeam | null;
-  /** The team mapped to the market's NO outcome, or the parent-event away/second team when event_matchup is true. */
+  /** The team mapped to the market's NO outcome, or the game's second team when event_matchup is true. */
   no_team: PickSportsTeam | null;
   /** Provider game identifier (Polymarket Gamma gameId); omitted when the provider supplies none. */
   game_id?: number;
@@ -4497,7 +4497,9 @@ export type PickSportsContext = {
   event_matchup: boolean;
   /** Present only alongside event_matchup: the event team the binary leg is about (provider group_item_title matched to a matchup team, e.g. Belgium for "Will Belgium win?"), i.e. the winner on a Yes resolution. Omitted for teamless legs (draw, totals, prop). */
   event_subject_team?: PickSportsTeam;
-  /** The two teams as a single whole-game label, joined "<home> – <away>" (en-dash) in provider display order (e.g. "Portugal – Uzbekistan"). Composed server-side from the provider team names (no title/slug parsing). Present when both teams resolve a name; omitted for single-subject, teamless, or non-two-team contexts. */
+  /** Which of yes_team and no_team the game lists first, in Polymarket's order for the event (the order of its title: the away team first in US leagues, the home team first in soccer). yes_first when yes_team is the first team, no_first when no_team is. A spread's Yes side is the favorite, so it is often the game's second team. Lay the teams out in this order to show every pick on one game the same way; yes_team and no_team keep their Yes and No meaning. Omitted when the order is unknown: lay out yes_team first. */
+  side_order?: "yes_first" | "no_first";
+  /** The two teams as a single whole-game label, joined "<first> – <second>" (en-dash) in the game's order, the order side_order names (e.g. "LA Clippers – Phoenix Suns"), so every pick on one game carries the same title. Composed server-side from the provider team names (no title/slug parsing). Present when both teams resolve a name; omitted for single-subject, teamless, or non-two-team contexts. */
   matchup_title?: string;
 };
 
@@ -4505,7 +4507,7 @@ export type PickSportsContext = {
 export type PickSportsTeam = {
   /** Team display label as it appears on the market outcome (e.g. "Portugal"). */
   label: string | null;
-  /** Abbreviated team label (e.g. "POR"). */
+  /** The team's abbreviation in upper case (e.g. "POR"), the same on every market of the game. A competitor Polymarket gives no abbreviation can carry its name here instead. */
   short_label: string | null;
   /** The name to show for this team or competitor, the same on every surface (e.g. "UCF Knights", "Oklahoma City Thunder", "Portugal"). `label` keeps the market outcome's own spelling. */
   full_name: string | null;
