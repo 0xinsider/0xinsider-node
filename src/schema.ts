@@ -3518,6 +3518,8 @@ export type PickOfTheDayLedgerOpenedEntry = {
   outcome: "win" | "loss" | "void";
   /** Why the site withdrew this pick from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick keeps its commitment and its real outcome here, but the site's record leaves it out of every count and money figure. Not part of the hashed payload, so it never moves commitment_hash. */
   withdrawal_reason: "provider_game_cancelled" | "published_after_kickoff" | null;
+  /** When the site withdrew this pick from its track record, or null when the pick counts. Set beside withdrawal_reason by the same write and never without it, so a reader can tell a correction made after the pick settled (withdrawn_at later than resolved_at) from a withdrawal made while it was pending. null beside a reason only if that instant was not stored. Not part of the hashed payload, so it never moves commitment_hash. */
+  withdrawn_at: string | null;
   /** Frozen matchup, for a reader. */
   matchup: string;
   /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
@@ -3588,6 +3590,8 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   outcome: "pending" | "win" | "loss" | "void";
   /** Omitted while the pick is pending; once it settles, why the site withdrew it from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick stays here with its real outcome, but the site's record leaves it out of every count and money figure. */
   withdrawal_reason?: "provider_game_cancelled" | "published_after_kickoff" | null;
+  /** Omitted while the pick is pending; once it settles, when the site withdrew it from its track record, or null when the pick counts. Set beside withdrawal_reason by the same write and never without it, so a reader can tell a correction made after the pick settled (withdrawn_at later than resolved_at) from a withdrawal made while it was pending. null beside a reason only if that instant was not stored. */
+  withdrawn_at?: string | null;
   /** Frozen matchup, for a reader. */
   matchup?: string;
   /** Frozen canonical sport bucket (for example Basketball or MMA), not the exact public league identity; the archive owns that. */
@@ -5321,6 +5325,34 @@ export type SuspiciousTrade = {
     /** What the fill made or lost at settlement, in USDC: shares times (payout - price) for a buy, shares times (price - payout) for a sell, the payout 1 for the winning outcome and 0 for a losing one. Gross of fees and of anything the wallet did after the trade. Set exactly when status is won or lost. */
     pnl_usdc: number | null;
   };
+  /** What else the wallet holds that pays if the flagged outcome loses: the hedge the Suspicious trades page shows. Only outcomes that cannot win together with the flagged one count: the other outcome of the same market, and for a Yes buy on a negative-risk market, Yes on the event's other negative-risk markets of the same type. Null when the trade is older than 90 days, the window the page measures. */
+  hedge: {
+    /** Which positions were measured. `live`: the wallet's current positions, while they can still show the hedge. `at_flag`: the positions frozen when the trade was flagged, served once the current ones cannot (the market decided, or the listing went stale or missing). */
+    basis: "live" | "at_flag";
+    /** Each opposing position, largest cost first. Empty unless `state` is `hedged`. */
+    legs: ({
+      /** The leg's market. */
+      condition_id: string;
+      /** The leg's outcome index in that market, 0 or 1 in Polymarket's outcome order (0 is Yes on a Yes/No market). */
+      outcome_index: number;
+      /** Where the money is, in the market's words: the outcome's name ("Raptors"), the market for a generic Yes ("Draw (Real Madrid CF vs. Sevilla FC)"), or "No on" the market for a generic No. */
+      place: string;
+      /** True for the other outcome of the flagged market itself. */
+      same_market: boolean;
+      /** Shares held. Null only when the amount has no finite number. */
+      shares: number | null;
+      /** Shares times the wallet's average entry price, in USD. Null when Polymarket gave no entry price. */
+      usd: number | null;
+    })[];
+    /** The legs' total cost in USD: `0` for `none`, null when a leg's entry price is unknown or nothing was measured. */
+    opposing_usd: number | null;
+    /** When Polymarket listed the positions measured. For `unknown` with `stale`, the last listing, too old to measure from (null on a flag recorded before that time was kept). Null for every other state. */
+    positions_at: string | null;
+    /** `hedged`: holds at least one leg. `none`: holds no leg. `unknown`: see `unknown_reason`, and never read it as `none`. `sell`: the flagged trade is a sell, which takes no side, so nothing is measured. */
+    state: "hedged" | "none" | "unknown" | "sell";
+    /** Set exactly when `state` is `unknown`. `not_loaded`: no position listing for the wallet. `stale`: the last listing is older than the freshness bound. `market_decided`: the flagged market resolved or closed. `read_failed`: the positions read failed. `not_recorded`: the trade was flagged before hedges were recorded. */
+    unknown_reason: "not_loaded" | "stale" | "market_decided" | "read_failed" | "not_recorded" | null;
+  } | null;
 };
 
 /** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object until its sunset on 2027-02-01 (#29352). */

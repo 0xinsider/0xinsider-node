@@ -12780,6 +12780,7 @@
                             "pre_commitment": true,
                             "outcome": "win",
                             "withdrawal_reason": null,
+                            "withdrawn_at": null,
                             "matchup": "Spain vs. France",
                             "category": "Soccer",
                             "resolved_at": null,
@@ -12821,6 +12822,7 @@
                             },
                             "outcome": "win",
                             "withdrawal_reason": null,
+                            "withdrawn_at": null,
                             "matchup": "Lakers vs. Warriors",
                             "category": "Basketball",
                             "permalink": "https://0xinsider.com/pick-of-the-day/picks/350",
@@ -23740,6 +23742,23 @@
                           "basis_version": "clv@v1",
                           "taker_fee_cents": 0.7,
                           "clv_after_fees_cents": 11.3
+                        },
+                        "hedge": {
+                          "basis": "at_flag",
+                          "state": "hedged",
+                          "unknown_reason": null,
+                          "positions_at": "2026-09-21T18:09:12Z",
+                          "opposing_usd": 2140.5,
+                          "legs": [
+                            {
+                              "place": "No on Sacramento Kings",
+                              "condition_id": "0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
+                              "outcome_index": 1,
+                              "same_market": true,
+                              "shares": 3567.5,
+                              "usd": 2140.5
+                            }
+                          ]
                         }
                       },
                       "meta": {
@@ -27449,6 +27468,23 @@
                           "basis_version": "clv@v1",
                           "taker_fee_cents": 0.7,
                           "clv_after_fees_cents": 11.3
+                        },
+                        "hedge": {
+                          "basis": "at_flag",
+                          "state": "hedged",
+                          "unknown_reason": null,
+                          "positions_at": "2026-09-21T18:09:12Z",
+                          "opposing_usd": 2140.5,
+                          "legs": [
+                            {
+                              "place": "No on Sacramento Kings",
+                              "condition_id": "0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
+                              "outcome_index": 1,
+                              "same_market": true,
+                              "shares": 3567.5,
+                              "usd": 2140.5
+                            }
+                          ]
                         }
                       },
                       "meta": {
@@ -39081,6 +39117,7 @@
                         "pre_commitment": true,
                         "outcome": "win",
                         "withdrawal_reason": null,
+                        "withdrawn_at": null,
                         "matchup": "Spain vs. France",
                         "category": "Soccer",
                         "resolved_at": null,
@@ -53870,6 +53907,7 @@
           "payload",
           "outcome",
           "withdrawal_reason",
+          "withdrawn_at",
           "matchup",
           "category",
           "permalink",
@@ -53934,6 +53972,11 @@
             "type": ["string", "null"],
             "enum": ["provider_game_cancelled", "published_after_kickoff", null],
             "description": "Why the site withdrew this pick from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick keeps its commitment and its real outcome here, but the site's record leaves it out of every count and money figure. Not part of the hashed payload, so it never moves commitment_hash."
+          },
+          "withdrawn_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the site withdrew this pick from its track record, or null when the pick counts. Set beside withdrawal_reason by the same write and never without it, so a reader can tell a correction made after the pick settled (withdrawn_at later than resolved_at) from a withdrawal made while it was pending. null beside a reason only if that instant was not stored. Not part of the hashed payload, so it never moves commitment_hash."
           },
           "matchup": {
             "type": "string",
@@ -54020,6 +54063,11 @@
             "type": ["string", "null"],
             "enum": ["provider_game_cancelled", "published_after_kickoff", null],
             "description": "Omitted while the pick is pending; once it settles, why the site withdrew it from its track record, or null when the pick counts. provider_game_cancelled: Polymarket marked the game Cancelled while the pick was pending. published_after_kickoff: the pick was published at or after its game started, including a suspended match that resumed later, so it was never a pre-game pick; this can be set after the pick settled. A withdrawn pick stays here with its real outcome, but the site's record leaves it out of every count and money figure."
+          },
+          "withdrawn_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Omitted while the pick is pending; once it settles, when the site withdrew it from its track record, or null when the pick counts. Set beside withdrawal_reason by the same write and never without it, so a reader can tell a correction made after the pick settled (withdrawn_at later than resolved_at) from a withdrawal made while it was pending. null beside a reason only if that instant was not stored."
           },
           "matchup": {
             "type": "string",
@@ -56015,7 +56063,8 @@
           "evidence",
           "created_at",
           "result",
-          "clv"
+          "clv",
+          "hedge"
         ],
         "properties": {
           "id": {
@@ -56190,6 +56239,86 @@
               }
             },
             "description": "How the market settled for the trade's side. A flag is a lead, not a verdict; this is what followed it."
+          },
+          "hedge": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["basis", "state", "unknown_reason", "positions_at", "opposing_usd", "legs"],
+                "properties": {
+                  "basis": {
+                    "type": "string",
+                    "enum": ["live", "at_flag"],
+                    "description": "Which positions were measured. `live`: the wallet's current positions, while they can still show the hedge. `at_flag`: the positions frozen when the trade was flagged, served once the current ones cannot (the market decided, or the listing went stale or missing)."
+                  },
+                  "legs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["place", "condition_id", "outcome_index", "same_market", "shares", "usd"],
+                      "properties": {
+                        "condition_id": {
+                          "type": "string",
+                          "description": "The leg's market."
+                        },
+                        "outcome_index": {
+                          "type": "integer",
+                          "description": "The leg's outcome index in that market, 0 or 1 in Polymarket's outcome order (0 is Yes on a Yes/No market)."
+                        },
+                        "place": {
+                          "type": "string",
+                          "description": "Where the money is, in the market's words: the outcome's name (\"Raptors\"), the market for a generic Yes (\"Draw (Real Madrid CF vs. Sevilla FC)\"), or \"No on\" the market for a generic No."
+                        },
+                        "same_market": {
+                          "type": "boolean",
+                          "description": "True for the other outcome of the flagged market itself."
+                        },
+                        "shares": {
+                          "type": ["number", "null"],
+                          "description": "Shares held. Null only when the amount has no finite number."
+                        },
+                        "usd": {
+                          "type": ["number", "null"],
+                          "description": "Shares times the wallet's average entry price, in USD. Null when Polymarket gave no entry price."
+                        }
+                      }
+                    },
+                    "description": "Each opposing position, largest cost first. Empty unless `state` is `hedged`."
+                  },
+                  "opposing_usd": {
+                    "type": ["number", "null"],
+                    "description": "The legs' total cost in USD: `0` for `none`, null when a leg's entry price is unknown or nothing was measured."
+                  },
+                  "positions_at": {
+                    "type": ["string", "null"],
+                    "format": "date-time",
+                    "description": "When Polymarket listed the positions measured. For `unknown` with `stale`, the last listing, too old to measure from (null on a flag recorded before that time was kept). Null for every other state."
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["hedged", "none", "unknown", "sell"],
+                    "description": "`hedged`: holds at least one leg. `none`: holds no leg. `unknown`: see `unknown_reason`, and never read it as `none`. `sell`: the flagged trade is a sell, which takes no side, so nothing is measured."
+                  },
+                  "unknown_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["not_loaded", "stale", "market_decided", "read_failed", "not_recorded"]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Set exactly when `state` is `unknown`. `not_loaded`: no position listing for the wallet. `stale`: the last listing is older than the freshness bound. `market_decided`: the flagged market resolved or closed. `read_failed`: the positions read failed. `not_recorded`: the trade was flagged before hedges were recorded."
+                  }
+                },
+                "description": "A fact about positions, never a verdict."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What else the wallet holds that pays if the flagged outcome loses: the hedge the Suspicious trades page shows. Only outcomes that cannot win together with the flagged one count: the other outcome of the same market, and for a Yes buy on a negative-risk market, Yes on the event's other negative-risk markets of the same type. Null when the trade is older than 90 days, the window the page measures."
           }
         }
       },
