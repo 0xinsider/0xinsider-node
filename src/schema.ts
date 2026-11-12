@@ -3031,7 +3031,7 @@ export type PickOfTheDay = {
   unit_score?: number;
   /** Backend-formatted signed unit score, present exactly when unit_score is present. */
   unit_score_display?: string;
-  /** Recorded sharp-money share as a 0..1 fraction. This is not a winning probability. Absent on every pick dated 2026-08-12 or later: from that date the recorded share includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. */
+  /** Recorded sharp-money share as a 0..1 fraction. This is not a winning probability. Absent on every pick dated 2026-08-12 or later: from that date the recorded share includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. backed_side_share carries the recorded share on every pick, on the pick's own grade basis. */
   sharp_pct?: number;
   /** Recorded market-implied probability as a 0..1 fraction when available. */
   market_pct?: number;
@@ -3058,7 +3058,7 @@ export type PickOfTheDay = {
   };
   /** Public V1 S/A wallet count on the backed side, equal to sharp_wallet_count. */
   traders?: number;
-  /** Recorded aggregate backed-side position value in USD, not a live balance or entry cost. Absent on every pick dated 2026-08-12 or later: from that date the recorded value includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster. */
+  /** Recorded aggregate backed-side position value in USD, not a live balance or entry cost. Absent on every pick dated 2026-08-12 or later: from that date the recorded value includes B grade wallets, which this S and A projection does not count. Earlier picks carry it when it was recorded. sharp_positioned_usd carries the recorded value on every pick, on the pick's own grade basis. The display_holders roster can include additional wallets; use the returned aggregate rather than summing that roster. */
   backed_sharp_usd?: number;
   /** Bounded S/A holder display projection from the recorded snapshot. Historical rows retain their recorded display shape. */
   holders?: PickHolder[];
@@ -3140,6 +3140,8 @@ export type PickOfTheDay = {
       /** Tennis tour of the player: atp, wta or itf. Sent for a tennis player whether or not a headshot is on file. */
       tour?: string;
     };
+    /** Which of yes_team and no_team the game lists first, the same value as sports_context.side_order: Polymarket's order for the event (the order of its title: the away team first in US leagues, the home team first in soccer). yes_first when yes_team is the first team, no_first when no_team is. A spread's Yes side is the favorite, so it is often the game's second team. Lay the teams out in this order to show every pick on one game the same way; yes_team and no_team keep their Yes and No meaning. Omitted when the order is unknown: lay out yes_team first. */
+    side_order?: "yes_first" | "no_first";
     /** The side the market's Yes outcome names; when event_matchup is true, the parent game's first side in display order. */
     yes_team?: {
       /** Full display name of the team or player. */
@@ -3173,6 +3175,10 @@ export type PickOfTheDay = {
   resolved_at?: string;
   /** When the backed game starts (RFC3339 UTC): the same instant the 0xinsider site shows for the pick, read from the provider's current schedule, so a rescheduled game shows its new start, else the start recorded with the pick. scheduled_picks and proof_pending_picks use the same name for a pick's start. Omitted (not null) only when neither is on record, on a legacy pick; never estimated. Additive and optional for mixed-version client compatibility. */
   kickoff?: string;
+  /** Recorded share of graded-wallet money on the backed side, as a 0..1 fraction: the Side share the pick's page shows, from the same recorded value. It counts the grades of the pick's own wallet policy: S, A and B wallets on picks dated 2026-08-12 or later, where sharp_pct is absent, and S and A wallets before that date, where it equals sharp_pct. A measure of positioning, not a winning probability. Absent when the pick recorded no share. Additive and optional. */
+  backed_side_share?: number;
+  /** Recorded USD value of the counted wallets' positions on the backed side: the Sharp positioned value the pick's page shows, from the same recorded value. Same grade basis as backed_side_share; on picks dated before 2026-08-12 it equals backed_sharp_usd. Not a live balance or entry cost. The display_holders roster can include additional wallets; use this value rather than summing that roster. Absent when the pick recorded no value. Additive and optional. */
+  sharp_positioned_usd?: number;
 };
 
 export type PickOfTheDayArchive = {
@@ -5266,9 +5272,15 @@ export type SuspiciousTrade = {
     title: string | null;
   };
   scores: {
-    /** Null because the live scorer does not record this component. */
+    /**
+     * Deprecated: always null, because the live scorer records no timing component. How long before kickoff the trade filled is clv.close_anchor_at minus created_at.
+     * @deprecated
+     */
     timing: number | null;
-    /** Null because the live scorer does not record this component. */
+    /**
+     * Deprecated: always null, because the live scorer records no edge component. The trade's edge over the closing line is clv.clv_cents.
+     * @deprecated
+     */
     edge: number | null;
     /** Numeric evidence.size when recorded; otherwise null. */
     size: number | null;
@@ -5279,6 +5291,36 @@ export type SuspiciousTrade = {
   evidence: unknown;
   /** Stored trade timestamp. */
   created_at: string;
+  /** Closing line value against the market's stored close (GET /api/v1/market/{condition_id}/close), the same object large trades carry. Always present; status says whether it is measured. */
+  clv: {
+    /** The CLV definition, clv@v1. */
+    basis_version: string;
+    /** The anchor pre_kickoff was judged against: the stored close's anchor, else the market's kickoff. */
+    close_anchor_at: string | null;
+    /** The traded outcome's closing price, 0 to 1, whenever a usable close is stored and the outcome is known, in play included. */
+    close_price: number | null;
+    /** Cents per share, positive when the trade beat the close: buy is (close_price - price) * 100, sell is (price - close_price) * 100. Gross of fees. Computed from the trade's exact stored price; price on the wire is rounded to 4 places, so a recomputation from it agrees within 0.005 cents. Set exactly when status is measured. */
+    clv_cents: number | null;
+    /** Whether the trade filled before close_anchor_at. null when the market has no anchor. */
+    pre_kickoff: boolean | null;
+    /** measured: clv_cents is set. in_play: traded at or after the close anchor (kickoff), no CLV is defined. pending: traded before kickoff and the market's close is not stored yet. unavailable: see unavailable_reason. */
+    status: "measured" | "in_play" | "pending" | "unavailable";
+    /** Set exactly when status is unavailable. The market's reasons (see MarketClose.unavailable_reason), plus anchor_stale (the kickoff moved after the close was captured) and outcome_unknown (the traded outcome is not known for this trade). */
+    unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
+    /** clv_cents - taker_fee_cents: the CLV after the fee the fill paid, cents per share. Set exactly when both are set. */
+    clv_after_fees_cents: number | null;
+    /** The fee the fill paid as taker, cents per share, from the exchange's on-chain record of the fill (the OrderFilled event in its Polygon receipt); the trader is its taker. Polymarket charges only takers, so a buy's fee adds to its cost and a sell's comes out of its proceeds, and either way it lowers the CLV by this amount. Includes any builder fee an app added; excludes maker and taker rebates, which Polymarket pays later and no fill records. Set whatever status is; null until the record is decoded (about a minute after the trade) and for trades before 2026-08-16. */
+    taker_fee_cents: number | null;
+  };
+  /** How the market settled for the trade's side. A flag is a lead, not a verdict; this is what followed it. */
+  result: {
+    /** won: the trade's side won at settlement, a buy whose outcome won or a sell whose outcome lost. lost: the opposite. void: the market resolved to neither side (cancelled or 50-50). pending: the market has not resolved to a side yet. unknown: the market resolved, but the trade's outcome is not known. */
+    status: "won" | "lost" | "void" | "pending" | "unknown";
+    /** When the market resolved. Set when status is won, lost or void. */
+    resolved_at: string | null;
+    /** What the fill made or lost at settlement, in USDC: shares times (payout - price) for a buy, shares times (price - payout) for a sell, the payout 1 for the winning outcome and 0 for a losing one. Gross of fees and of anything the wallet did after the trade. Set exactly when status is won or lost. */
+    pnl_usdc: number | null;
+  };
 };
 
 /** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object until its sunset on 2027-02-01 (#29352). */
@@ -6852,6 +6894,10 @@ export interface OperationData {
       unit_score?: number;
       /** When the backed game starts (RFC3339 UTC): the full pick's kickoff. */
       kickoff?: string;
+      /** The full pick's backed_side_share: the Side share the pick's page shows, as a 0..1 fraction. */
+      backed_side_share?: number;
+      /** The full pick's sharp_positioned_usd: the Sharp positioned value the pick's page shows, in USD. */
+      sharp_positioned_usd?: number;
     }[];
     proof_pending_picks?: ({
       is_free_selection: boolean;
@@ -7464,7 +7510,7 @@ export interface OperationQuery {
   getPickOfTheDay: {
     /** A product day (America/New_York) in YYYY-MM-DD format, on or before today. Omit it, or send today, for the current read. A past day with no published pick returns 404 not_found with error.param=date; a date after today, or a value that is not a date, returns 400 bad_request with error.param=date. */
     date?: string;
-    /** full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, clv_status, clv_pct, release_at, kickoff, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
+    /** full (default) is the whole recorded set: every pick with its thesis, and its holders, lead backer, sports context and entry_authorization when recorded, and the top-level copy of the first pick. summary returns pick_date, pick_count, the disclaimer once, and each entitled pick's identity, side, price, result, return and grade (pick_id, publication_order, is_free_selection, matchup, category, display_category, event_slug, polymarket_url, token_id, pick_outcome_label, outcome, backed_price, stake_usd, return_usd, unit_score, top_grade, holder_count, backed_side_share, sharp_positioned_usd, clv_status, clv_pct, release_at, kickoff, game_started, game_ended), with the same scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. The locked-only state=none body is the same in both views. Any other value returns 400 bad_request with error.param=view. */
     view?: "full" | "summary";
     /** One entitled published pick, by its stable decimal-string pick_id. Without date it reads the pick on its own product day, whatever day published it, under the same tier rule as date with pick_id. The body carries that pick once, as picks[0], beside state, pick_date and pick_count=1. It leaves out the top-level copy of the first pick that a set read without pick_id repeats, and scheduled_picks, proof_pending_picks, locked_picks and more_picks_until. With date, the pick must be one of that day's. A pick_id that is not among the day's entitled published picks (its own day without date, or the date sent) returns 404 not_found with error.param=pick_id, as does one that no served pick has (unknown, skipped or withdrawn); one whose holder proof is not readable yet returns 503 read_model_warming with Retry-After; a value that is not a positive canonical decimal returns 400 bad_request with error.param=pick_id. */
     pick_id?: string;
@@ -7474,7 +7520,7 @@ export interface OperationQuery {
     view?: "full" | "summary";
     /** Rows per page of picks, 1 to 200, default 50. An integer outside that range is clamped into it, like every list limit, and X-Effective-Query reports the limit applied; a value that is not an integer returns 400 invalid_query. On view=full, sending limit or cursor pages picks and adds page, while days and hit_rate still describe the whole record; with neither, the response is the whole record. */
     limit?: number;
-    /** The page.next_cursor of the previous page: the rows after it, newest first. A cursor is a position in the record, so a pick published while you page does not shift later pages. A value this route did not return returns 400 bad_request with error.param=cursor. */
+    /** The page.next_cursor of the previous page: the rows after it, newest first. A cursor is a position in the record, pick_date.pick_rank (YYYY-MM-DD.N), so a pick published while you page does not shift later pages. Any value in that form is read as a position, including one this route did not return, and the page holds the rows after it; a value not in that form returns 400 bad_request with error.param=cursor. */
     cursor?: string;
   };
   getPickOfTheDayLedger: Record<string, never>;
