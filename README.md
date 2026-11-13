@@ -166,6 +166,18 @@ SDK 0.42.0 types line moves and fixes how `streamFeedResilient()` counts reconne
 
 SDK 0.43.0 types game market settlement and game end times. The `market_settled` webhook and the `MarketSettled` stream frame report a sports or esports game market that settled, once per settled state, the first time 0xinsider records it (#33443): `MarketSettledEvent`, `MarketSettledData`, and `settlement_filters` (`SettlementSubscriptionFilters`) on webhook create, update and read. A `MarketSettled` stream frame carries the `MarketSettledData` fields beside `seq`, `published_at` and `type`. Deduplicate on `settlement_id`: a market can settle twice, first as a resolved UMA question row whose `settlement.payouts` is `null`, then as the condition row with payouts, and each is its own event. `GameStatus` gains `ended_at` and `ended_at_source` (#33444): when the game ended, as first observed, and who observed it (`sports_ws` or `gamma_finished`). Both are `null` when no end was observed; an end time is never inferred from the kickoff, the clock or the market's resolution. Also new: `listProps()` for `GET /api/v1/props`, `meta.queryUnmatched` from `X-Query-Unmatched` (#33373), and `FillHistoryTooLargeError` for a 404 `fill_history_too_large` (#33245).
 
+SDK 0.68.0 adds `getClv(params)` (#34558): the closing line value of one price against a market's stored close, the close `getMarketClose` reads. Pass `condition_id`, `outcome` (0 or 1) and either `price` (a Polymarket fill, 0 to 1) or `odds` with `format` (`american` or `decimal`); `side: "sell"` grades a price received, and `placed_at` at or after kickoff answers `in_play`. When `status` is `measured`, `clv` carries `points` (percentage points), `price_pct`, `ev_at_close_pct` and, for a price entry, `cents`; otherwise every figure is null, never 0. New types: `Clv`, `ClvOutcome`.
+
+```ts
+const graded = await client.getClv({
+  condition_id: "0x87b847e161ea1a750e1f094223a644ca374e4d97a7b9d0397974a2f3c67e547d",
+  outcome: 0,
+  odds: "+130",
+  format: "american",
+});
+if (graded.data?.status === "measured") graded.data.clv.points; // number | null, percentage points
+```
+
 SDK 0.44.0 adds `listMarketTrades(conditionId, { from, to, limit, cursor })`: one market's taker fills of 100 USD or more in a time window, newest first, each fill once (`id` is its transaction hash and log index). Walk a window with `paginate()`, which resends the same `from` and `to` with each cursor. `coverage` says what the record holds: `recorded_from` is where the record starts, the later of when recording began and 00:00 UTC on the day `retention_days` (365) before today, so an earlier window reads empty because it is outside the record, and a first page serves no fill after `complete_through`, a few minutes behind now. New type: `MarketTrade`.
 
 ```ts
@@ -208,6 +220,21 @@ one.data[0]?.protocol_version; // "v1" | "v2"
 ```
 
 A webhook handler reads the same field: `event.data.protocol_version` on a `MarketSettledEvent`.
+
+## Price moves
+
+SDK 0.67.0 adds `listPriceMoves({ league, event_slug, condition_id, min_move_cents, window_seconds, phase, held, min_book_usd_within_2c, since, until, limit, cursor })` and `listMarketPriceMoves(conditionId, params)`: the stored `market_price_moved` detections, kept 90 days, newest episode first. Each item is the webhook payload plus `move_id`, `episode_started_at` and `outcome_after`, outcome 0's midpoint 15 and 60 minutes after the move and at a pre-game move's kickoff, with `held_15m`, `held_60m` and `held_kickoff`: whether the midpoint there kept at least half of the move. A `null` held flag means not measured, never false; the checkpoint's `unavailable_reason` says why, or `status` is still `pending`. A page reads a fixed share of the history, so with narrow filters it can hold fewer than `limit` moves, even none, while `has_more` is true: walk with `paginate()`. New types: `StoredPriceMove`, `PriceMoveOutcomeAfter`.
+
+```ts
+import { paginate } from "@0xinsider/sdk";
+
+for await (const move of paginate(client, "listPriceMoves", {
+  query: { league: "nba", phase: "pre_game", min_move_cents: 3 },
+})) {
+  move.move_cents; // decimal string, signed: "-3.5"
+  move.outcome_after.held_kickoff; // boolean | null
+}
+```
 
 ## Combos
 

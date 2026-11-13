@@ -248,6 +248,12 @@ export const API_CLIENT_OPERATIONS = [
     operationId: "getTraderClv",
     auth: "bearer",
   },
+  {
+    method: "GET",
+    path: "/api/v1/trader/{address}/markets",
+    operationId: "getTraderMarkets",
+    auth: "bearer",
+  },
   // Pre-existing op-table drift (surfaced by test/drift.test.ts, #6915): these
   // 200-returning openapi operations were never mirrored into the client table.
   // Added so the table stays contract-complete against the checked-in spec. All
@@ -344,6 +350,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/props",
     operationId: "listProps",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/fair-price",
+    operationId: "getFairPrice",
     auth: "bearer",
   },
   {
@@ -493,6 +505,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/tools/clv",
+    operationId: "getClv",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/market/{condition_id}/wallets-in-out",
     operationId: "getMarketWalletsInOut",
     auth: "bearer",
@@ -501,6 +519,18 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/market/{condition_id}/trades",
     operationId: "listMarketTrades",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/market/{condition_id}/price-moves",
+    operationId: "listMarketPriceMoves",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/price-moves",
+    operationId: "listPriceMoves",
     auth: "bearer",
   },
   {
@@ -689,6 +719,12 @@ export const API_CLIENT_OPERATIONS = [
     method: "GET",
     path: "/api/v1/pick-of-the-day/stats",
     operationId: "getPickOfTheDayStats",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
+    path: "/api/v1/pick-of-the-day/picks/{pick_id}/wallets/{address}/markets",
+    operationId: "getPickOfTheDayWalletMarkets",
     auth: "bearer",
   },
   {
@@ -1460,6 +1496,9 @@ export type GameMarketsListParams = OperationQuery["listGameMarkets"];
 /** Query parameters accepted by {@link OxinsiderApiClient.listProps}. */
 export type PropsListParams = OperationQuery["listProps"];
 
+/** Query parameters accepted by {@link OxinsiderApiClient.getFairPrice}. */
+export type FairPriceParams = OperationQuery["getFairPrice"];
+
 /** Query parameters accepted by {@link OxinsiderApiClient.listSettledMarkets}. */
 export type SettledMarketsListParams = OperationQuery["listSettledMarkets"];
 
@@ -1471,6 +1510,12 @@ export type { GameTrade } from "./schema.js";
 
 /** Query parameters accepted by {@link OxinsiderApiClient.listMarketTrades}. */
 export type MarketTradesParams = OperationQuery["listMarketTrades"];
+
+/** Query parameters accepted by {@link OxinsiderApiClient.listPriceMoves}. */
+export type PriceMovesParams = OperationQuery["listPriceMoves"];
+
+/** Query parameters accepted by {@link OxinsiderApiClient.listMarketPriceMoves}. */
+export type MarketPriceMovesParams = OperationQuery["listMarketPriceMoves"];
 
 /** One game: both sides, its schedule, its provider status and its markets. */
 export type { Game } from "./schema.js";
@@ -2825,6 +2870,23 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * One wallet's sports and esports markets, the profile positions table.
+   * `status` defaults to `closed`. `cost` and `realized_pnl` are exact
+   * decimals; null means the stored column is null.
+   */
+  getTraderMarkets(
+    address: OperationPath["getTraderMarkets"]["address"],
+    params: OperationQuery["getTraderMarkets"] = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getTraderMarkets", {
+      ...options,
+      path: { address },
+      query: params,
+    });
+  }
+
+  /**
    * Resolve 1 to 25 traders in one request (`POST /api/v1/traders/batch`).
    *
    * `traders` is sent as the request body's `traders` array, the field the
@@ -3042,6 +3104,20 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * The Polymarket fair price of one game outcome (#34557), to price a bet
+   * offered elsewhere against. Name the outcome by `condition_id` and
+   * `outcome`, or by `event_slug`, `market_type`, `outcome_label` and (on a
+   * spread or total) `line`. `data.fair.prob` is the midpoint normalised over
+   * the market's outcomes; `data.status` is `ok` only when the book is
+   * two-sided, within `max_spread_c` (default 3 cents), at or above
+   * `min_book_usd_within_2c` (default $500) where the depth is known, and
+   * observed within 60 seconds. A missing value is null, never 0.
+   */
+  getFairPrice(params: FairPriceParams, options: ConvenienceOptions = {}) {
+    return this.call("getFairPrice", { ...options, query: params });
+  }
+
+  /**
    * List the game markets Polymarket settled, as recorded, oldest first: one
    * row per market per settled state, the `data` of the `market_settled`
    * webhook event. Start from `since` (RFC 3339) to catch up after downtime,
@@ -3232,6 +3308,20 @@ export class OxinsiderApiClient {
   }
 
   /**
+   * Closing line value of one price against a market's stored close
+   * (#34558), the close `getMarketClose` reads. Pass `outcome` (0 or 1) and
+   * either `price` (a Polymarket fill, 0 to 1) or `odds` with `format`.
+   * `data.status` is `measured` (with `data.clv`), `in_play`, `pending` or
+   * `unavailable`; a missing close is null, never 0.
+   */
+  getClv(params: OperationQuery["getClv"], options: ConvenienceOptions = {}) {
+    return this.call("getClv", {
+      ...options,
+      query: params,
+    });
+  }
+
+  /**
    * Fetch bucketed OHLC candles for a market's outcome tokens.
    * Resolution defaults to the server default; pass `params.resolution` as
    * `"1d"` or `"1w"` to override. `params.from` is exclusive and `params.to`
@@ -3305,6 +3395,69 @@ export class OxinsiderApiClient {
     options: ConvenienceOptions = {},
   ) {
     return this.call("listMarketTrades", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * List stored price moves, newest episode first: every move of 2 cents or
+   * more in a sports or esports market's outcome-0 midpoint that the
+   * detector published as `market_price_moved`, kept 90 days, each with
+   * `outcome_after`, the midpoint 15 and 60 minutes later and at a pre-game
+   * move's kickoff and whether the move held there (kept at least half of
+   * it). A `null` held flag means not measured, never false. Narrow with at
+   * most one of `league`, `event_slug` and `condition_id`. A page reads a
+   * fixed share of the history, so it can hold fewer than `limit` moves, even
+   * none, while `has_more` is true: walk with `paginate()`, which follows
+   * `next_cursor` until `has_more` is false. A 503 `read_model_warming`
+   * means retry after `Retry-After`.
+   */
+  listPriceMoves(params: PriceMovesParams = {}, options: ConvenienceOptions = {}) {
+    return this.list("listPriceMoves", { ...options, query: params });
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listPriceMoves}. Returns the
+   * list envelope on 200 or the typed `not_modified` result on 304, where
+   * {@link listPriceMoves} throws on a 304. Send the last `ETag` as the
+   * `If-None-Match` header in `options.headers`.
+   */
+  listPriceMovesConditional(params: PriceMovesParams = {}, options: ConvenienceOptions = {}) {
+    return this.call("listPriceMoves", { ...options, query: params });
+  }
+
+  /**
+   * List one market's stored price moves, newest episode first: the items,
+   * filters and paging of {@link listPriceMoves} for one market. A market
+   * with no stored move returns an empty page; a market outside sports and
+   * esports answers 404 `market_out_of_scope`.
+   */
+  listMarketPriceMoves(
+    conditionId: OperationPath["listMarketPriceMoves"]["condition_id"],
+    params: MarketPriceMovesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.list("listMarketPriceMoves", {
+      ...options,
+      path: { condition_id: conditionId },
+      query: params,
+    });
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listMarketPriceMoves}. Returns
+   * the list envelope on 200 or the typed `not_modified` result on 304, where
+   * {@link listMarketPriceMoves} throws on a 304. Send the last `ETag` as the
+   * `If-None-Match` header in `options.headers`.
+   */
+  listMarketPriceMovesConditional(
+    conditionId: OperationPath["listMarketPriceMoves"]["condition_id"],
+    params: MarketPriceMovesParams = {},
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("listMarketPriceMoves", {
       ...options,
       path: { condition_id: conditionId },
       query: params,
@@ -3557,6 +3710,27 @@ export class OxinsiderApiClient {
   /** Fetch the Pick of the Day track-record breakdown the stats page shows (single-object envelope). */
   getPickOfTheDayStats(options: ConvenienceOptions = {}) {
     return this.call("getPickOfTheDayStats", options);
+  }
+
+  /**
+   * Fetch one page of the decided markets behind a pick wallet row's printed
+   * count (single-object envelope): `sample: "edge"` lists the edge's sample
+   * ("won 57% of 119 markets"), `"record"` the any-size record ("58 of 121
+   * markets in profit"). `basis` says whether the list stands at the instant the figures
+   * were counted (`at_release`) or now (`current`); `listed` is the list's own
+   * count beside `printed`. Page with `next_cursor`.
+   */
+  getPickOfTheDayWalletMarkets(
+    pickId: string,
+    address: string,
+    params: OperationQuery["getPickOfTheDayWalletMarkets"],
+    options: ConvenienceOptions = {},
+  ) {
+    return this.call("getPickOfTheDayWalletMarkets", {
+      ...options,
+      path: { pick_id: pickId, address },
+      query: params,
+    });
   }
 
   /**
