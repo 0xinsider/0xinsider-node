@@ -6944,7 +6944,7 @@
           {
             "name": "suspicious_only",
             "in": "query",
-            "description": "When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination.",
+            "description": "When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -7459,7 +7459,7 @@
           {
             "name": "suspicious_only",
             "in": "query",
-            "description": "When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination.",
+            "description": "When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -7978,7 +7978,7 @@
           {
             "name": "suspicious_only",
             "in": "query",
-            "description": "When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination.",
+            "description": "When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -8608,7 +8608,7 @@
           {
             "name": "suspicious_only",
             "in": "query",
-            "description": "When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination.",
+            "description": "When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -25409,7 +25409,7 @@
           {
             "name": "min_suspicion",
             "in": "query",
-            "description": "Minimum suspicion score (0-100). The live flag floor of 60 also applies.",
+            "description": "Minimum suspicion score (0-100). Every listed trade already meets the flag floor, so a lower value changes nothing.",
             "schema": {
               "type": "number",
               "default": 0
@@ -26147,7 +26147,7 @@
       "get": {
         "operationId": "listGames",
         "summary": "List covered games",
-        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. A finished status (ended, cancelled, postponed) also lists the games the board has dropped, from their stored records (freshness.source stored, as GET /api/v1/games/{event_slug} serves them), for kickoffs from starts_after (default 7 days before starts_before) to starts_before (default and cap: now); such a page can hold fewer than limit games, or none, while has_more is true, so follow next_cursor until has_more is false. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. For what is on now, pass window=now: without it the list starts at the oldest game still open, which can be weeks old. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport outside the published vocabulary returns an empty page rather than a 400, and the response names sport in X-Query-Unmatched; a status outside its enum answers 400 invalid_query with error.param=status. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. Each game also carries its traded volume (volume: value, unit, basis, source, observed_at) and each market its provider liquidity, so games can be ranked by activity without a Gamma call; a figure the board does not hold is omitted, never 0. A tennis game also carries its tournament (tier, city and country, venue time zone, official dates) from the reviewed registry its page reads, omitted when the registry holds no single edition for it. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. The event-level sharp-money split is opt-in through expand=sharp_money (Pro and Max); holder identities remain on their own gated routes.",
+        "description": "One coherent game view per row: both sides with their provider ids and live scores, the UTC kickoff, the provider's own status, the esports series format, and the game's winner markets (the moneyline, or a soccer game's three 1X2 legs) with their condition ids and outcome token ids. Spreads, totals, team totals, period lines and player props are on GET /api/v1/games/{event_slug}/markets. Built from the same provider-first live and upcoming projections the site's sports boards use, so a request pays no provider fan-out of its own. A finished status (ended, cancelled, postponed) also lists the games the board has dropped, from their stored records (freshness.source stored, as GET /api/v1/games/{event_slug} serves them), for kickoffs from starts_after (default 7 days before starts_before) to starts_before (default and cap: now); such a page can hold fewer than limit games, or none, while has_more is true, so follow next_cursor until has_more is false. Ordered by kickoff, then by event_slug; games whose kickoff the provider has not published sort last. For what is on now, pass window=now: without it the list starts at the oldest game still open, which can be weeks old. coverage names the sports and leagues this deployment serves and any scope whose source was unavailable for the read, so an empty page is never ambiguous. A sport outside the published vocabulary returns an empty page rather than a 400, and the response names sport in X-Query-Unmatched; a status outside its enum answers 400 invalid_query with error.param=status. Carries the board's existing competitor-bound provider moneyline price state by default, with an observation clock and explicit incomplete or invalid state. Each game also carries its traded volume (volume: value, unit, basis, source, observed_at) and each market its provider liquidity and its YES outcome's top of book (yes_quote: best_bid, best_ask, source, observed_at; the only price an untraded market carries), so games can be ranked by activity and priced without a Gamma call; a figure the board does not hold is omitted, never 0. A tennis game also carries its tournament (tier, city and country, venue time zone, official dates) from the reviewed registry its page reads, omitted when the registry holds no single edition for it. It does not fetch another provider endpoint. Soccer 1X2 moneylines retain independent YES legs classified as home, draw and away; draw_offered is true when a classified draw leg is included. The event-level sharp-money split is opt-in through expand=sharp_money (Pro and Max); holder identities remain on their own gated routes.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -26439,6 +26439,12 @@
                             "value": 688004.1279,
                             "source": "gamma",
                             "observed_at": "2026-09-23T01:12:04Z"
+                          },
+                          "yes_quote": {
+                            "best_bid": 0.73,
+                            "best_ask": 0.74,
+                            "source": "gamma",
+                            "observed_at": "2026-09-23T01:12:04Z"
                           }
                         }
                       ],
@@ -26705,7 +26711,7 @@
       "get": {
         "operationId": "getGame",
         "summary": "Get one game",
-        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices, title, volume, liquidity or tournament. A game the board dropped while it was still in play returns 404. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
+        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices, title, volume, liquidity, yes_quote or tournament. A game the board dropped while it was still in play returns 404. While any board source is unavailable (GET /api/v1/games names it on coverage.sources_unavailable), a slug the board does not carry and storage holds no finished record for returns 503 with error.reason read_model_warming and Retry-After, not 404: the game may exist on that source. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -26869,6 +26875,12 @@
                           "value": 688004.1279,
                           "source": "gamma",
                           "observed_at": "2026-09-23T01:12:04Z"
+                        },
+                        "yes_quote": {
+                          "best_bid": 0.73,
+                          "best_ask": 0.74,
+                          "source": "gamma",
+                          "observed_at": "2026-09-23T01:12:04Z"
                         }
                       }
                     ],
@@ -26983,7 +26995,7 @@
             }
           },
           "404": {
-            "description": "No covered game has that event_slug. GET /api/v1/games lists what is covered; the coverage.sports and coverage.leagues of its response say which sports and leagues this deployment serves.",
+            "description": "No covered game has that event_slug, read while every board source answered. GET /api/v1/games lists what is covered; the coverage.sports and coverage.leagues of its response say which sports and leagues this deployment serves.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27070,7 +27082,7 @@
             }
           },
           "503": {
-            "description": "Temporarily unavailable. error.reason=read_model_warming means the sports board supply did not answer this read; Retry-After is 5 seconds. The authenticated rate limiter being unavailable answers the same status with its own per-process cooldown.",
+            "description": "Temporarily unavailable. error.reason=read_model_warming means the sports board supply did not answer this read, or the slug is not on the board while one of its sources is unavailable, so whether the game exists cannot be told yet; Retry-After is 5 seconds. The authenticated rate limiter being unavailable answers the same status with its own per-process cooldown.",
             "content": {
               "application/json": {
                 "schema": {
@@ -29118,7 +29130,7 @@
           {
             "name": "min_suspicion",
             "in": "query",
-            "description": "Minimum suspicion score (0-100). The live flag floor of 60 also applies.",
+            "description": "Minimum suspicion score (0-100). Every listed trade already meets the flag floor, so a lower value changes nothing.",
             "schema": {
               "type": "number",
               "default": 0
@@ -51148,7 +51160,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": ["live", "settled", "indeterminate"]
+                "enum": ["live", "settled", "indeterminate", "ended", "in_play"]
               },
               {
                 "type": "null"
@@ -51938,6 +51950,39 @@
                 "format": "date-time"
               }
             }
+          },
+          "yes_quote": {
+            "$ref": "#/components/schemas/GameMarketQuote",
+            "description": "Polymarket's top of book for this market's YES outcome (outcome_yes), on traded and untraded markets alike; on a market nobody has traded, where prices reads incomplete, it is the only price the game carries. Omitted when the provider read carried neither a bid nor an ask, and on a finished game read from its stored record."
+          }
+        }
+      },
+      "GameMarketQuote": {
+        "type": "object",
+        "description": "The YES outcome's best bid and best ask as Polymarket reports them (Gamma bestBid and bestAsk), verbatim; no midpoint is computed from them. In a binary market the NO outcome's book mirrors this one (its bid is 1 minus this ask). Per-outcome CLOB books with depth are on GET /api/v1/games/{event_slug}/markets?expand=quotes.",
+        "required": ["best_bid", "best_ask", "source"],
+        "properties": {
+          "best_bid": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "The highest resting bid for the YES outcome, 0 to 1. null when Polymarket reports no bid."
+          },
+          "best_ask": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "The lowest resting ask for the YES outcome, 0 to 1. null when Polymarket reports no ask."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["gamma"],
+            "description": "Always gamma: the Polymarket Gamma API."
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When 0xinsider read the sports board body this quote came from, never a provider-authored timestamp. Omitted when that read has no clock."
           }
         }
       },
@@ -54081,7 +54126,7 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "Optional measured forecast context. Missing values remain unavailable rather than being inferred."
+            "description": "Optional 0-1 share of forecast_score that the trader's own resolved-market record supports, to two decimal places. It rises toward 1 as more of the trader's markets resolve and never reaches it. Missing values remain unavailable rather than being inferred."
           },
           "rank": {
             "type": "integer"
@@ -57945,7 +57990,7 @@
           },
           "smart_label": {
             "type": ["string", "null"],
-            "description": "The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side diverges from that side's price-implied share by at least 10 points, with at least $500 on the leaning side and outside the crowded-side guard. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page."
+            "description": "The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side sits well past that side's price-implied share, enough graded money backs the leaning side that a few small positions cannot name it, and the side is not a long shot holding nearly all of the graded money. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page."
           },
           "sharp_money_as_of": {
             "type": ["string", "null"],
@@ -61552,7 +61597,7 @@
           "grade": {
             "type": "string",
             "enum": ["S", "A", "B", "C", "D", "F"],
-            "description": "All-time trader grade; a separate axis from streak_tier. Led by realized profit on sports and esports markets (the money actually banked, about 95 percent of the grade; since 2026-10-22, the sports and esports share of the wallet's realized P&L), with forecasting calibration, risk-adjusted returns, and consistency as the tie-breaker and proven-trader guardrails: any grade above C requires verified net-positive realized profit on those markets, and the top grades also require a real track record of resolved sports and esports markets plus a survivable drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 sports or esports markets, or too little verified record to cohort-rank)."
+            "description": "All-time trader grade; a separate axis from streak_tier. A grade ranks realized profit on settled sports and esports markets against other graded wallets (since 2026-10-22, the sports and esports share of the wallet's realized P&L). Win rate, forecasting edge, record length, drawdown and consistency count too, so a smaller earner with a stronger record can rank above a bigger one. S, A and B go only to wallets that have banked a profit on these markets, and the top grades also check record depth, money at stake, edge and the worst drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 sports or esports markets, or too little verified record to cohort-rank)."
           },
           "streak_tier": {
             "type": "string",

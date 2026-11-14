@@ -408,6 +408,7 @@ export type {
   GameMarketPricePaired,
   GameMarketPrices,
   GameMarketProviderPrices,
+  GameMarketQuote,
   GameSharpMoney,
   GameStatus,
   GameTournament,

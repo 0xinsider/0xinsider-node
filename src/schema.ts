@@ -1307,7 +1307,7 @@ export type ExploreMarket = {
   event_slug: string | null;
   smart_score: number | null;
   smart_count: number | null;
-  /** The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side diverges from that side's price-implied share by at least 10 points, with at least $500 on the leaning side and outside the crowded-side guard. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
+  /** The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side sits well past that side's price-implied share, enough graded money backs the leaning side that a few small positions cannot name it, and the side is not a long shot holding nearly all of the graded money. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
   smart_label: string | null;
   /** When the oldest stored smart-money wallet behind this split (smart_score, smart_count and smart_label) last finished syncing. Graded wallets sync on different schedules, so this is often hours or days ago. Some holdings in the split can come from a Polymarket holder read cached for up to 3 minutes, which this time does not describe. Null when there is no split or a wallet's sync time is unknown. */
   sharp_money_as_of: string | null;
@@ -1709,6 +1709,8 @@ export type GameMarket = {
     winning_outcome_index: number | null;
     oracle_updated_at: string | null;
   };
+  /** Polymarket's top of book for this market's YES outcome (outcome_yes), on traded and untraded markets alike; on a market nobody has traded, where prices reads incomplete, it is the only price the game carries. Omitted when the provider read carried neither a bid nor an ask, and on a finished game read from its stored record. */
+  yes_quote?: GameMarketQuote;
 };
 
 /** One market's liquidity as Polymarket reports it (Gamma liquidityNum), verbatim. Polymarket documents it only as reported market liquidity, with no unit. It describes the market's resting order book, not traded volume. */
@@ -1783,6 +1785,18 @@ export type GameMarketPrices = {
 
 export type GameMarketProviderPrices = GameMarketPricePaired | GameMarketPriceIncomplete | GameMarketPriceInvalid;
 
+/** The YES outcome's best bid and best ask as Polymarket reports them (Gamma bestBid and bestAsk), verbatim; no midpoint is computed from them. In a binary market the NO outcome's book mirrors this one (its bid is 1 minus this ask). Per-outcome CLOB books with depth are on GET /api/v1/games/{event_slug}/markets?expand=quotes. */
+export type GameMarketQuote = {
+  /** The highest resting bid for the YES outcome, 0 to 1. null when Polymarket reports no bid. */
+  best_bid: number | null;
+  /** The lowest resting ask for the YES outcome, 0 to 1. null when Polymarket reports no ask. */
+  best_ask: number | null;
+  /** Always gamma: the Polymarket Gamma API. */
+  source: "gamma";
+  /** When 0xinsider read the sports board body this quote came from, never a provider-authored timestamp. Omitted when that read has no clock. */
+  observed_at?: string;
+};
+
 /** What this deployment covers, published with every page so a client never has to guess whether an empty list means no games or no coverage. */
 export type GamesCoverage = {
   /** Canonical sport buckets served, sorted. */
@@ -1799,7 +1813,7 @@ export type GameSharpMoney = {
   computed_at: string | null;
   event_slug: string;
   holders_partial: boolean | null;
-  lifecycle: "live" | "settled" | "indeterminate" | null;
+  lifecycle: "live" | "settled" | "indeterminate" | "ended" | "in_play" | null;
   money_as_of: string | null;
   object: string;
   outcomes: ({
@@ -5710,7 +5724,7 @@ export type Trader = {
   score?: number;
   /** Optional forecast score on the documented display scale. Null when unavailable. */
   forecast_score?: number;
-  /** Optional measured forecast context. Missing values remain unavailable rather than being inferred. */
+  /** Optional 0-1 share of forecast_score that the trader's own resolved-market record supports, to two decimal places. It rises toward 1 as more of the trader's markets resolve and never reaches it. Missing values remain unavailable rather than being inferred. */
   forecast_evidence?: number;
   rank?: number;
   pnl: {
@@ -6557,7 +6571,7 @@ export type TrendingWallet = {
   window_markets_traded: number;
   /** Distinct in-window UTC trade days from our trades (0 if the winner is not in our DB). */
   window_trade_days: number;
-  /** All-time trader grade; a separate axis from streak_tier. Led by realized profit on sports and esports markets (the money actually banked, about 95 percent of the grade; since 2026-10-22, the sports and esports share of the wallet's realized P&L), with forecasting calibration, risk-adjusted returns, and consistency as the tie-breaker and proven-trader guardrails: any grade above C requires verified net-positive realized profit on those markets, and the top grades also require a real track record of resolved sports and esports markets plus a survivable drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 sports or esports markets, or too little verified record to cohort-rank). */
+  /** All-time trader grade; a separate axis from streak_tier. A grade ranks realized profit on settled sports and esports markets against other graded wallets (since 2026-10-22, the sports and esports share of the wallet's realized P&L). Win rate, forecasting edge, record length, drawdown and consistency count too, so a smaller earner with a stronger record can rank above a bigger one. S, A and B go only to wallets that have banked a profit on these markets, and the top grades also check record depth, money at stake, edge and the worst drawdown. Relative, so it drifts as the cohort moves. Omitted when the trader is Unranked (fewer than 5 sports or esports markets, or too little verified record to cohort-rank). */
   grade?: "S" | "A" | "B" | "C" | "D" | "F";
   /** Hot-streak tier (trailing-7d cross-sectional percentile). Omitted when there is no recent activity. */
   streak_tier?: "hot" | "rising" | "neutral" | "cooling" | "cold";
@@ -8146,7 +8160,7 @@ export interface OperationQuery {
     limit?: number;
     /** Pagination cursor from previous response. */
     cursor?: string;
-    /** Minimum suspicion score (0-100). The live flag floor of 60 also applies. */
+    /** Minimum suspicion score (0-100). Every listed trade already meets the flag floor, so a lower value changes nothing. */
     min_suspicion?: number;
     /** Compatible filter. flag selects live threshold crossings. watch returns no rows because no live watch policy exists. */
     severity?: "flag" | "watch";
@@ -8202,7 +8216,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/large-trades, GET /api/v1/stream and webhook trade_filters, so a history read and a stream with the same floor agree. Applies to both sorts and beside condition_id, event_slug, trader and from/to. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
     min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    /** When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Filter by whale_alerts.platform. all is equivalent to omitted. */
     platform?: "polymarket" | "all";
@@ -8230,7 +8244,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/stream and on webhook trade_filters, so a client that catches up here and then streams gets one answer. Applies to every path: recent, since, sort=market_volume_share, condition_id and event_slug. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
     min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    /** When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
     min_market_volume_share?: number;
@@ -8427,7 +8441,7 @@ export interface OperationQuery {
     limit?: number;
     /** Pagination cursor from previous response. */
     cursor?: string;
-    /** Minimum suspicion score (0-100). The live flag floor of 60 also applies. */
+    /** Minimum suspicion score (0-100). Every listed trade already meets the flag floor, so a lower value changes nothing. */
     min_suspicion?: number;
     /** Compatible filter. flag selects live threshold crossings. watch returns no rows because no live watch policy exists. */
     severity?: "flag" | "watch";
@@ -8485,7 +8499,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/large-trades, GET /api/v1/stream and webhook trade_filters, so a history read and a stream with the same floor agree. Applies to both sorts and beside condition_id, event_slug, trader and from/to. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
     min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    /** When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Filter by whale_alerts.platform. all is equivalent to omitted. */
     platform?: "polymarket" | "all";
@@ -8513,7 +8527,7 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Minimum grade the trader held when the trade filled (trader.grade_at_trade). Only rows whose trader.grade_at_trade_status is graded can match, so a trade before 2026-09-19T23:00Z, or one made while the wallet's grade was changing, never does. The same basis as min_grade_at_trade on GET /api/v1/stream and on webhook trade_filters, so a client that catches up here and then streams gets one answer. Applies to every path: recent, since, sort=market_volume_share, condition_id and event_slug. Sending it with min_grade is 400. A means S or A, B means S, A or B. */
     min_grade_at_trade?: "S" | "A" | "B" | "C" | "D" | "F";
-    /** When true, return only rows with persisted suspicion_score >= 60. The filter is applied before SQL-backed limit + 1 pagination. */
+    /** When true, return only the trades the unusual-activity check flagged. The filter is applied before SQL-backed limit + 1 pagination. */
     suspicious_only?: boolean;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
     min_market_volume_share?: number;
