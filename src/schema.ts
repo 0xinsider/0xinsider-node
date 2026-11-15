@@ -1646,7 +1646,7 @@ export type GameFreshness = {
   source_age_seconds?: number;
   /** Whether a reader should be told these rows are behind. This applies the half's own servable-age bar (15 s live, 120 s upcoming), which is not the same as source_freshness: a live board whose scores are seconds old reads stale for about half of every publish cycle and is not delayed. */
   delayed: boolean;
-  /** When this game's live-score frame was observed. Omitted when there is no frame. */
+  /** When this game's score was last observed. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame. */
   scores_observed_at?: string;
   /** The provider's own frame clock. Omitted when the frame carries none. */
   scores_source_at?: string;
@@ -1901,17 +1901,17 @@ export type GameSharpMoney = {
 
 /** Where the game is in its own life, as the provider reports it. A postponement, a cancellation and a suspension each keep their own state, so a client can tell a game that will be played later from one that never will be. */
 export type GameStatus = {
-  /** scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own. */
+  /** scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A game that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended in tennis, soccer, hockey, basketball, American football, cricket, CS2, Dota 2, League of Legends, Valorant, Mobile Legends: Bang Bang, Rainbow Six Siege, Overwatch and Call of Duty; any other sport keeps the provider's flag. Outside tennis those 3 hours start no sooner than 2 hours after kickoff (6 for esports), so a game reads suspended only after the longest game measured in its sport; for cricket they start once the match's scheduled days have passed (5 for a match with a draw market, 1 for a limited-overs match, one fewer when the score shows runs), so a multi-day match stays live overnight. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own. */
   state: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
-  /** The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet. */
+  /** The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet, and on an ended game whose last status is one the provider sends only before the end (scheduled, in_progress, halftime, penalty_shootout, delayed). */
   match_status?: "scheduled" | "in_progress" | "halftime" | "penalty_shootout" | "delayed" | "suspended" | "final" | "final_overtime" | "final_shootout" | "awarded" | "forfeit" | "not_necessary" | "postponed" | "cancelled" | "unknown";
-  /** The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game. */
+  /** The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game. Omitted with match_status on an ended game whose last status is from before the end. */
   provider_status?: string;
   /** The provider's period label, for example Q3, End Q2 or T5. Omitted when the provider sent none. */
   period?: string;
   /** The game clock as the provider spells it, never reformatted. Omitted when the provider sent none. */
   clock?: string;
-  /** Whether the game is in play. It is the provider's own in-play flag, except that three cases read false: a game the provider reports suspended (period SUS), a game rescheduled to a later kickoff, and a tennis match that the provider still lists in play with no live score feed and no change of period or score for 3 hours. Omitted when no live-score frame exists, which is not the same as false. */
+  /** Whether the game is in play. It is the provider's own in-play flag, except that three cases read false: a game the provider reports suspended (period SUS), a game rescheduled to a later kickoff, and a game that the provider still lists in play with no live score feed and no change of period or score for 3 hours (state names the sports and when those 3 hours start). Omitted when no live-score frame exists, which is not the same as false. */
   live?: boolean;
   /** Whether the game is over. Always present. */
   ended: boolean;
@@ -2947,6 +2947,14 @@ export type MarketTopHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (the wallet is on file and under the floor of 5 decided markets in the category), `untracked` (0xinsider has no record of the wallet, so nothing was measured; `grade`, `in_scope_realized_pnl` and `in_scope_volume` are null too), or `unavailable` (a read failed; retry later). Absent when the market has no canonical category. */
   category_win_rate_status?: "measured" | "not_enough_data" | "unavailable" | "untracked";
+  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row. */
+  category_price_edge?: PickHolderPriceEdge;
+  /** The same edge over the markets of the game or league `category_win_rate_game` names alone: the edge the page prints beside a game or league win rate (for example `+1.7 pp` in CS2). Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. Absent on every other row. */
+  category_scope_price_edge?: PickHolderPriceEdge;
+  /** Why there is no `category_price_edge` for a wallet with a measured rate, with the rule's figures when it has them: the reason the page prints in place of the edge (for example `too few markets`). Present only with `category_win_rate_status` = `measured`, and never beside `category_price_edge`. */
+  category_price_edge_hold?: PickHolderPriceEdgeHold;
+  /** Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`. */
+  category_scope_price_edge_hold?: PickHolderPriceEdgeHold;
   /** Whole UTC calendar days since this wallet's first trade, as an integer (271, not 271.0): the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
   wallet_age_days?: number | null;
   /** True when the wallet's first trade was under 30 days ago. */
@@ -2957,7 +2965,7 @@ export type MarketTopHolder = {
   is_bot?: boolean;
   /** The wallet's X handle without the @, when linked. */
   x_username?: string | null;
-  /** When this wallet's category record was recounted, sent only when that is later than the `category_records_as_of` beside the rows: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's `category_win_rate`, `category_win_record` and `category_avg_price` are as of this time. Absent on every other row, which is as of the payload's `category_records_as_of`. */
+  /** When this wallet's category record was recounted, sent only when that is later than the `category_records_as_of` beside the rows: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's `category_win_rate`, `category_win_record`, `category_avg_price` and price edges (`category_price_edge`, `category_scope_price_edge` and their holds) are as of this time. Absent on every other row, which is as of the payload's `category_records_as_of`. */
   category_records_as_of?: string;
 };
 
@@ -2970,7 +2978,7 @@ export type MarketTopHolders = {
   totals: MarketTopHoldersTotals;
   /** `unavailable` when the wallet record read failed: `in_scope_realized_pnl`, `in_scope_volume` and `strategy_type` are then null for every row because they were not read, not because they are unknown. */
   profiles_status: "available" | "unavailable";
-  /** When the daily pass behind the rows' category win records began: the oldest any row's record can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when the market has no category or the read answered no row. */
+  /** When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when the market has no category or the read answered no row. */
   category_records_as_of?: string;
   /** When this holder sample was built. */
   computed_at?: string;
