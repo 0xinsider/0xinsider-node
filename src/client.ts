@@ -1871,6 +1871,13 @@ export interface McpOptions extends ConvenienceOptions {
    * `2025-03-26`; an unsupported revision is a `400`.
    */
   protocolVersion?: string;
+  /**
+   * Shorten a `tools/list` answer to these toolsets: `core`, `all` or a
+   * group such as `games` or `picks`. Sent as the `toolsets` query
+   * parameter; it changes no other method. An unknown name comes back as a
+   * JSON-RPC `-32602` error that lists the valid ones.
+   */
+  toolsets?: string | readonly string[];
 }
 
 /** What `mcp()` returns: the JSON-RPC response, or the accepted notification. */
@@ -2337,6 +2344,8 @@ export class OxinsiderApiClient {
    * @example
    * const listed = await client.mcp({ method: "tools/list", id: 1 });
    * listed.response?.result;
+   * // The 16 core tools only.
+   * const core = await client.mcp({ method: "tools/list", id: 2 }, { toolsets: "core" });
    */
   async mcp(
     request: McpJsonRpcRequest,
@@ -2351,7 +2360,11 @@ export class OxinsiderApiClient {
       "jsonrpc",
       !isKeylessMcpMethod(request.method),
     );
-    const { sessionId, protocolVersion, ...transportOptions } = options;
+    const { sessionId, protocolVersion, toolsets, ...transportOptions } = options;
+    const query =
+      toolsets === undefined
+        ? undefined
+        : { toolsets: typeof toolsets === "string" ? toolsets : toolsets.join(",") };
     const headers: Record<string, string> = { ...options.headers };
     if (sessionId !== undefined) {
       headers["mcp-session-id"] = sessionId;
@@ -2364,7 +2377,7 @@ export class OxinsiderApiClient {
     const body: McpJsonRpcRequest = { ...request, jsonrpc: "2.0" };
     return this.request(
       operation,
-      { ...transportOptions, headers, body, maxRetries: 0 },
+      { ...transportOptions, headers, body, maxRetries: 0, ...(query ? { query } : {}) },
       async (response) => {
         const sessionId = response.headers.get("mcp-session-id");
         const result: McpResult = {
