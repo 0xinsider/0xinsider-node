@@ -28203,7 +28203,8 @@
                     ],
                     "computed_at": "2026-11-01T22:14:05Z",
                     "money_as_of": "2026-11-01T22:12:31Z",
-                    "at_kickoff": null
+                    "at_kickoff": null,
+                    "since_start": null
                   },
                   "meta": {
                     "request_id": "req_01JBX7Q4S2W8M3N5P6R7T8V9W0",
@@ -41547,7 +41548,7 @@
       "get": {
         "operationId": "getPickOfTheDayWalletMarkets",
         "summary": "List the markets behind a pick wallet's record",
-        "description": "The decided markets behind one wallet row of a Pick of the Day: sample=edge lists the settled markets of $20 or more behind the row's edge (\"won 57% of 119 markets\"), sample=record every closed position behind its any-size record (\"58 of 121 markets in profit\"). The pick follows the tier rule of GET /api/v1/pick-of-the-day: a pick the key cannot open, a wallet the pick's display_holders do not list, and a within the row prints no figure for all return 404, the same as an unknown pick.\n\nNothing stores the markets a printed figure counted, so the list is derived. basis=at_release lists the markets settled at or before as_of, the instant the row's figures were counted (records_as_of on the pick); basis=current, on a pick saved before that instant was recorded, lists the markets as they stand now and as_of is the read's own clock. printed is the figure the row shows; listed is the list's own count by the same rules, with matches_printed false when they differ. listed.status=counting means the count is still running: read again in a few seconds. listed.status=unavailable means the count failed; the page itself is the list's either way. Pages run newest first; pass next_cursor as cursor.",
+        "description": "The decided markets behind one wallet row of a Pick of the Day: sample=edge lists the settled markets behind the row's edge, of every size (\"won 57% of 119 markets\"), sample=record every closed position behind its any-size record (\"58 of 121 markets in profit\"). The pick follows the tier rule of GET /api/v1/pick-of-the-day: a pick the key cannot open, a wallet the pick's display_holders do not list, and a within the row prints no figure for all return 404, the same as an unknown pick.\n\nNothing stores the markets a printed figure counted, so the list is derived. basis=at_release lists the markets settled at or before as_of, the instant the row's figures were counted (records_as_of on the pick); basis=current, on a pick saved before that instant was recorded, lists the markets as they stand now and as_of is the read's own clock. printed is the figure the row shows; listed is the list's own count by the same rules, with matches_printed false when they differ. listed.status=counting means the count is still running: read again in a few seconds. listed.status=unavailable means the count failed; the page itself is the list's either way. Pages run newest first; pass next_cursor as cursor.",
         "tags": [
           "Pick of the Day"
         ],
@@ -41588,7 +41589,7 @@
             "name": "sample",
             "in": "query",
             "required": true,
-            "description": "edge: the markets behind the row's edge (won X% of N markets, settled markets of $20 or more where the side and price are known). record: the markets behind its any-size record (X of N markets in profit). Any other value, or none, returns 400 bad_request with error.param=sample.",
+            "description": "edge: the markets behind the row's edge (won X% of N markets, settled markets of every size where the side and price are known). record: the markets behind its any-size record (X of N markets in profit). Any other value, or none, returns 400 bad_request with error.param=sample.",
             "schema": {
               "type": "string",
               "enum": [
@@ -49328,103 +49329,7 @@
           "verdict": {
             "anyOf": [
               {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "no_sharp_money"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "all_on"
-                      },
-                      "label": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "split"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label", "pct"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "leans"
-                      },
-                      "label": {
-                        "type": "string"
-                      },
-                      "pct": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "unavailable"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind", "label", "divergence_pts"],
-                    "properties": {
-                      "divergence_pts": {
-                        "type": "integer"
-                      },
-                      "kind": {
-                        "type": "string",
-                        "const": "leans_over_price"
-                      },
-                      "label": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "no_clear_lean"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "required": ["kind"],
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "withheld"
-                      }
-                    }
-                  }
-                ]
+                "$ref": "#/components/schemas/GameSharpMoneyVerdict"
               },
               {
                 "type": "null"
@@ -49481,103 +49386,85 @@
                     "type": "integer"
                   },
                   "verdict": {
-                    "oneOf": [
-                      {
-                        "type": "object",
-                        "required": ["kind"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "no_sharp_money"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind", "label"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "all_on"
-                          },
-                          "label": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "split"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind", "label", "pct"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "leans"
-                          },
-                          "label": {
-                            "type": "string"
-                          },
-                          "pct": {
-                            "type": "integer"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "unavailable"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind", "label", "divergence_pts"],
-                        "properties": {
-                          "divergence_pts": {
-                            "type": "integer"
-                          },
-                          "kind": {
-                            "type": "string",
-                            "const": "leans_over_price"
-                          },
-                          "label": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "no_clear_lean"
-                          }
-                        }
-                      },
-                      {
-                        "type": "object",
-                        "required": ["kind"],
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "const": "withheld"
-                          }
+                    "$ref": "#/components/schemas/GameSharpMoneyVerdict"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "since_start": {
+            "description": "What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. null otherwise, on a 1X2, and when none of them bought since the start.",
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "since",
+                  "as_of",
+                  "verdict",
+                  "bought_usd",
+                  "trader_count",
+                  "last_trade_at",
+                  "outcomes"
+                ],
+                "properties": {
+                  "as_of": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "bought_usd": {
+                    "type": "number"
+                  },
+                  "last_trade_at": {
+                    "type": ["string", "null"],
+                    "format": "date-time"
+                  },
+                  "outcomes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["side", "label", "bought_usd", "pct", "avg_buy_price", "is_leader"],
+                      "properties": {
+                        "avg_buy_price": {
+                          "type": ["number", "null"]
+                        },
+                        "bought_usd": {
+                          "type": "number"
+                        },
+                        "is_leader": {
+                          "type": "boolean"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "pct": {
+                          "type": "integer"
+                        },
+                        "side": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": ["home", "draw", "away"]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       }
-                    ]
+                    }
+                  },
+                  "since": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "trader_count": {
+                    "type": "integer"
+                  },
+                  "verdict": {
+                    "$ref": "#/components/schemas/GameSharpMoneyVerdict"
                   }
                 }
               },
@@ -49601,7 +49488,107 @@
           "outcomes",
           "computed_at",
           "money_as_of",
-          "at_kickoff"
+          "at_kickoff",
+          "since_start"
+        ]
+      },
+      "GameSharpMoneyVerdict": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "no_sharp_money"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind", "label"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "all_on"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "split"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind", "label", "pct"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "leans"
+              },
+              "label": {
+                "type": "string"
+              },
+              "pct": {
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "unavailable"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind", "label", "divergence_pts"],
+            "properties": {
+              "divergence_pts": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string",
+                "const": "leans_over_price"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "no_clear_lean"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "withheld"
+              }
+            }
+          }
         ]
       },
       "GameStatus": {
@@ -51895,7 +51882,7 @@
           "status": {
             "type": "string",
             "enum": ["fresh", "stale", "partial", "unknown", "untracked", "unavailable"],
-            "description": "fresh: served, as_of carries this group's real observation or computation clock, and that clock is no older than max_age_s when the group carries one. stale: served and clocked, but as_of is older than max_age_s, so the writer has missed a refresh its schedule promises. partial: some of the group's fields are served and some are missing. unknown: served, and this read has no clock for it, so no age may be inferred. untracked: 0xinsider does not track this group for this subject, by design. unavailable: the group could not be served. New values may be added; treat one you do not recognize as unknown. Neither fresh nor stale is a tolerance for your use: compare as_of against your own."
+            "description": "fresh: served, as_of carries this group's real observation or computation clock, and that clock is no older than max_age_s when the group carries one. stale: served and clocked, but as_of is older than max_age_s, so the writer has missed a refresh its schedule promises; or, on a group without max_age_s, the source changed after as_of and the group's values leave that change out, which reason names (since 2026-11-15, #35587). partial: some of the group's fields are served and some are missing. unknown: served, and this read has no clock for it, so no age may be inferred. untracked: 0xinsider does not track this group for this subject, by design. unavailable: the group could not be served. New values may be added; treat one you do not recognize as unknown. Neither fresh nor stale is a tolerance for your use: compare as_of against your own."
           },
           "as_of": {
             "type": "string",
@@ -51909,7 +51896,7 @@
           "max_age_s": {
             "type": "integer",
             "minimum": 0,
-            "description": "The longest gap in seconds this group's writer leaves between refreshes on its schedule: the age past which the group reads stale instead of fresh. Omitted when the writer keeps no schedule its clock could fall behind (a clock stamped once, only on a change, or when a reader asks), and such a group is never stale. It is the writer's promise, not a tolerance for your use."
+            "description": "The longest gap in seconds this group's writer leaves between refreshes on its schedule: the age past which the group reads stale instead of fresh. Omitted when the writer keeps no schedule its clock could fall behind (a clock stamped once, only on a change, or when a reader asks), and no age makes such a group stale; it is stale only when the read sees a change at the source after as_of, which reason names (since 2026-11-15, #35587). It is the writer's promise, not a tolerance for your use."
           }
         }
       },
@@ -52565,7 +52552,7 @@
           },
           "data_quality": {
             "$ref": "#/components/schemas/DataQuality",
-            "description": "Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering synced_at and sync_status; it covered last_active until 2026-11-02, #32324, and no group covers last_active now, since the value is itself a trade time), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers."
+            "description": "Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering synced_at and sync_status; it covered last_active until 2026-11-02, #32324, and no group covers last_active now, since the value is itself a trade time), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; stale with owner traders.last_synced and as_of the last completed sync when the wallet traded after that sync (last_active later than synced_at), because the record's figures come from the per-market values that sync read and leave out every trade and settlement since, since 2026-11-15, #35587; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers."
           },
           "trust": {
             "$ref": "#/components/schemas/TraderTrust",
@@ -53930,7 +53917,7 @@
           },
           "category_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
-            "description": "The wallet's edge over the price it paid in the pick's canonical category (`category`): how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. The rule the site's sport leaderboards use for their Edge column, and the figure the pick card prints on the sport's line. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. Present only with `category_win_rate_status` = `measured`, when the edge ranks (30 or more such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate) and the wallet's realized P&L over them is above zero; otherwise `category_price_edge_hold` says why. Beside `category_win_rate_game` it is still the whole category's edge; the game's or league's is `category_scope_price_edge`. Frozen when the pick is published on picks from mid-November 2026 on, and recomputed at serve time from the daily record rebuild on earlier picks. Absent otherwise and on payloads predating the field."
+            "description": "The wallet's edge over the price it paid in the pick's canonical category (`category`): how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). The rule the site's sport leaderboards use for their Edge column, over every size, and the figure the pick card prints on the sport's line. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. Present only with `category_win_rate_status` = `measured`, when the edge ranks (30 or more such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate) and the wallet's realized P&L over them is above zero; otherwise `category_price_edge_hold` says why. Beside `category_win_rate_game` it is still the whole category's edge; the game's or league's is `category_scope_price_edge`. Frozen when the pick is published on picks from mid-November 2026 on, and recomputed at serve time from the daily record rebuild on earlier picks. Absent otherwise and on payloads predating the field."
           },
           "category_scope_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
@@ -56659,7 +56646,7 @@
           },
           "category_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
-            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why."
+            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why."
           },
           "category_scope_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
@@ -57004,7 +56991,7 @@
           },
           "category_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
-            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row."
+            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row."
           },
           "category_scope_price_edge": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
@@ -62225,12 +62212,12 @@
       },
       "PickHolderPriceEdge": {
         "type": "object",
-        "description": "Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild.",
-        "required": ["markets", "hit_rate", "avg_price", "edge"],
+        "description": "Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild.",
+        "required": ["markets", "hit_rate", "avg_price", "edge", "every_size"],
         "properties": {
           "markets": {
             "type": "integer",
-            "description": "Settled markets of $20 or more at a known entry price that the edge is measured over."
+            "description": "Settled markets at a known entry price that the edge is measured over (`every_size`)."
           },
           "hit_rate": {
             "type": "number",
@@ -62243,6 +62230,10 @@
           "edge": {
             "type": "number",
             "description": "hit_rate minus avg_price, full precision."
+          },
+          "every_size": {
+            "type": "boolean",
+            "description": "True when the figures count every settled market of every size; false or absent when they count markets of $20 or more (older or not yet recounted)."
           }
         }
       },
@@ -62254,7 +62245,7 @@
           "hold": {
             "type": "string",
             "enum": ["category_loss", "too_few_markets", "sample_mismatch", "no_markets"],
-            "description": "category_loss: the edge ranks, and the wallet's realized P&L over the same markets is zero or below. too_few_markets: fewer than 30 counted markets. sample_mismatch: the share of the decided markets that made money at settlement is more than 10 points from the win rate over the same markets, so these markets do not describe the wallet's record. no_markets: no settled market of $20 or more at a known entry price."
+            "description": "category_loss: the edge ranks, and the wallet's realized P&L over the same markets is zero or below. too_few_markets: fewer than 30 counted markets. sample_mismatch: the share of the decided markets that made money at settlement is more than 10 points from the win rate over the same markets, so these markets do not describe the wallet's record. no_markets: no settled market at a known entry price."
           },
           "record": {
             "$ref": "#/components/schemas/PickHolderPriceEdge",
@@ -63658,7 +63649,7 @@
           },
           "directional_confidence": {
             "type": ["number", "null"],
-            "description": "One-way fraction of the piled graded dollars, in [0, 1] -- the metric orthogonal to sharp_pct. Stale, unknown, hedged, and two-sided dollars dilute it toward zero (conservative). Null when the directional read was not computed or classified nobody."
+            "description": "One-way fraction, in [0, 1], of the piled graded dollars the directional read classified: hedged and two-sided dollars count against it, unclassified ones are left out. Null when the read was not computed or over 10% of the pile is unclassified."
           },
           "directional_rank_score": {
             "type": "number",
