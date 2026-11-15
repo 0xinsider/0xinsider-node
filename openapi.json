@@ -49099,7 +49099,7 @@
           },
           "volume": {
             "$ref": "#/components/schemas/GameVolume",
-            "description": "The game's traded volume, the figure the sports board carries for it, with its source, basis, unit and observation clock. A client can rank or filter games by volume.value. Omitted when the board carries no volume for the game, and on a finished game read from its stored record (freshness.source stored); never 0 in place of a missing figure."
+            "description": "The game's traded volume, with its source, basis, unit and observation clock. A client can rank or filter games by volume.value. A live or upcoming game carries the figure the sports board holds for it. A game read from its stored record (freshness.source stored) carries the game volume summed from the stored volumes of its markets, the same game-lines rule, with no observed_at; it can trail the provider's final figure slightly. Omitted when neither holds a volume for the game, as for a match nobody traded; never 0 in place of a missing figure."
           },
           "tournament": {
             "$ref": "#/components/schemas/GameTournament",
@@ -49194,7 +49194,7 @@
       },
       "GameVolume": {
         "type": "object",
-        "description": "A game's traded volume as Polymarket reports it, read by the sports board with no request-time provider call. A one-side taker share count, the number Polymarket's own pages print behind a dollar sign, not the cash that changed hands.",
+        "description": "A game's traded volume as Polymarket reports it, read by the sports board or, for a game read from its stored record, summed from its markets' stored volumes, with no request-time provider call. A one-side taker share count, the number Polymarket's own pages print behind a dollar sign, not the cash that changed hands.",
         "required": ["value", "source", "fresh_for_seconds"],
         "properties": {
           "value": {

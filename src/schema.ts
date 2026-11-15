@@ -1602,7 +1602,7 @@ export type Game = {
   /** The game's page on 0xinsider. */
   url: string;
   sharp_money?: GameSharpMoney;
-  /** The game's traded volume, the figure the sports board carries for it, with its source, basis, unit and observation clock. A client can rank or filter games by volume.value. Omitted when the board carries no volume for the game, and on a finished game read from its stored record (freshness.source stored); never 0 in place of a missing figure. */
+  /** The game's traded volume, with its source, basis, unit and observation clock. A client can rank or filter games by volume.value. A live or upcoming game carries the figure the sports board holds for it. A game read from its stored record (freshness.source stored) carries the game volume summed from the stored volumes of its markets, the same game-lines rule, with no observed_at; it can trail the provider's final figure slightly. Omitted when neither holds a volume for the game, as for a match nobody traded; never 0 in place of a missing figure. */
   volume?: GameVolume;
   /** A tennis game's tournament edition: its tier, city and country, venue time zone and official dates, from 0xinsider's reviewed registry, the same facts the game's page states. Omitted outside tennis, on a finished game read from its stored record (freshness.source stored), and when the registry holds no single edition for the game's competition label, players' tour and kickoff; never a guessed value. */
   tournament?: GameTournament;
@@ -1999,7 +1999,7 @@ export type GameTrade = {
   };
 };
 
-/** A game's traded volume as Polymarket reports it, read by the sports board with no request-time provider call. A one-side taker share count, the number Polymarket's own pages print behind a dollar sign, not the cash that changed hands. */
+/** A game's traded volume as Polymarket reports it, read by the sports board or, for a game read from its stored record, summed from its markets' stored volumes, with no request-time provider call. A one-side taker share count, the number Polymarket's own pages print behind a dollar sign, not the cash that changed hands. */
 export type GameVolume = {
   /** The volume at full precision, in unit. */
   value: number;
