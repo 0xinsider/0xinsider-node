@@ -157,7 +157,7 @@ export type BatchMarketFlowItem = {
 
 export type BatchRateLimitMeta = {
   basis: "batch_items_per_minute";
-  /** The batch item budget per minute for the caller's plan: 2500 item units on Pro, 5000 on Max. The same number X-Batch-RateLimit-Limit reports. */
+  /** The batch item budget per minute for the caller's plan: 2500 item units on Pro, 10000 on Max. The same number X-Batch-RateLimit-Limit reports. */
   limit: number;
   remaining: number;
   /** Unix timestamp when the batch item window resets. */
@@ -6195,7 +6195,7 @@ export type Usage = {
   data: {
     rate_limit: {
       used: number;
-      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 400 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
@@ -6928,7 +6928,7 @@ export interface OperationData {
   getUsage: {
     rate_limit: {
       used: number;
-      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 200 on Max. The same number RateLimit-Limit reports on a counted request. */
+      /** The per-minute window's limit for the caller's plan: 100 requests on Pro, 400 on Max. The same number RateLimit-Limit reports on a counted request. */
       limit: number;
       remaining: number;
       reset_at: number;
