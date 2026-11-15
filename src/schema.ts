@@ -8186,6 +8186,10 @@ export interface OperationQuery {
     mode?: "live" | "stable";
     /** List order. suspicion_score (default) lists the highest score first; recent lists the newest flagged trade (greatest created_at) first. Each sort, in each mode, issues its own cursor, and a cursor from another sort returns 400 bad_request. An unknown value returns 400 bad_request with param sort. */
     sort?: "suspicion_score" | "recent";
+    /** Inclusive RFC3339 lower bound on traded_at, when the trade filled (created_at is the same instant). Applies in either sort and mode; a stable cursor is bound to it, so a changed window returns cursor_expired. A value that is not RFC3339 returns 400 bad_request with param from. */
+    from?: string;
+    /** Exclusive RFC3339 upper bound on traded_at. Must be after from when both are present; otherwise 400 bad_request with param to. */
+    to?: string;
   };
   listLargePositions: {
     /** Maximum number of large positions to return. Out-of-range values are clamped to 1..100. */
@@ -8467,6 +8471,10 @@ export interface OperationQuery {
     mode?: "live" | "stable";
     /** List order. suspicion_score (default) lists the highest score first; recent lists the newest flagged trade (greatest created_at) first. Each sort, in each mode, issues its own cursor, and a cursor from another sort returns 400 bad_request. An unknown value returns 400 bad_request with param sort. */
     sort?: "suspicion_score" | "recent";
+    /** Inclusive RFC3339 lower bound on traded_at, when the trade filled (created_at is the same instant). Applies in either sort and mode; a stable cursor is bound to it, so a changed window returns cursor_expired. A value that is not RFC3339 returns 400 bad_request with param from. */
+    from?: string;
+    /** Exclusive RFC3339 upper bound on traded_at. Must be after from when both are present; otherwise 400 bad_request with param to. */
+    to?: string;
   };
   listTrendingWallets: {
     /** Polymarket's weekly leaderboard caps the ranked set at 50 wallets; requests above 50 still return at most 50. Out-of-range values are clamped to 1..50. */
