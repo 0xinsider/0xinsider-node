@@ -11767,6 +11767,10 @@
                                   "sharp_positioned_usd": {
                                     "type": "number",
                                     "description": "The full pick's sharp_positioned_usd: the Sharp positioned value the pick's page shows, the dollars the pick's counted graded wallets held on the backed side, in USD, recorded for the pick and not updated after."
+                                  },
+                                  "sports_market_type": {
+                                    "type": "string",
+                                    "description": "The full pick's sports_market_type."
                                   }
                                 }
                               }
@@ -54593,6 +54597,10 @@
             "type": "string",
             "format": "date-time",
             "description": "When the commitment was sealed (RFC3339 UTC), the sealed_at its ledger entry carries; always before committed_kickoff. Sent with commitment_hash. Additive and optional."
+          },
+          "sports_market_type": {
+            "type": "string",
+            "description": "The backed market's Polymarket sports market type as recorded with the pick: moneyline, spreads, totals, map_handicap and others, the value the archive row returns for the pick. Omitted when the market states none. Additive and optional."
           }
         }
       },
