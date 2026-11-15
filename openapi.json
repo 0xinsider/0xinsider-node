@@ -25828,7 +25828,8 @@
                         "market": {
                           "id": "mkt_0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
                           "condition_id": "0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
-                          "title": "Will the Sacramento Kings win the 2025 NBA Finals?"
+                          "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
+                          "slug": "will-the-sacramento-kings-win-the-2025-nba-finals"
                         },
                         "scores": {
                           "timing": null,
@@ -25842,6 +25843,11 @@
                           "position_usd": 18250
                         },
                         "created_at": "2026-09-21T18:09:40Z",
+                        "traded_at": "2026-09-21T18:09:40Z",
+                        "side": "BUY",
+                        "outcome": "Yes",
+                        "price": 0.29,
+                        "size_usd": 16959.08,
                         "result": {
                           "status": "won",
                           "resolved_at": "2026-09-22T03:12:00Z",
@@ -27098,7 +27104,7 @@
       "get": {
         "operationId": "listGameMarkets",
         "summary": "List a game's markets",
-        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, active or closed status, and settlement. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. settlement is how Polymarket's oracle settled or is settling the market, read from Polymarket's /v2/resolutions and stored per game: status observed (the provider's row is below), not_posed (no oracle request yet; settled false) or unavailable (no read in hand and no recorded settlement; every other field null, and a read a moment later may answer); oracle_status, the provider lifecycle state verbatim (posed, proposed, challenged, reproposed, disputed, arbitration, resolved); settled; payouts, the provider's payout per share per outcome index in micro-USDC (1000000 is $1), only on a resolved row that carries them; result, outcome or split (Polymarket's 50-50), and winning_outcome_index, both read off payouts, or on a resolved UMA question row, which carries no payouts (payouts stays null), off the payout Polymarket's ConditionalTokens contract reported on chain, which 0xinsider reads once per such market (null until it has paid); was_disputed; resolved_at, null on a resolved UMA question row, which carries none; oracle_updated_at, Polymarket's last_update_timestamp, its latest lifecycle change and never a resolution time: on a resolved UMA question row, when UMA's answer settled the question; expected_settlement_time and settlement_time_basis, the provider's earliest-settlement estimate for a pending market, never a deadline; proposed_answer (outcome_0, outcome_1, split, too_early), the newest proposal of a pending round; observed_at, our clock: on a settled market when 0xinsider first saw the settlement, recorded once (usually about 12 seconds after resolved_at and within about 25 seconds for 95 in 100; a game market the resolution scan misses can take up to about 5 minutes) and the same on every later read, otherwise when the provider answered the read behind the block. Every key is present; a null is unknown. A settled read is refreshed every 10 minutes, any other every minute. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a player prop, a line beyond the seven around its family's main line, a closed or settled line), unavailable when the read failed or held no observation of the line within 120 ms. While the frame is being built, a line the game's stored split holds is computed and dated by money_as_of. Each read starts the game's split refilling: read again after a minute or two for the lines it could not answer. expand=quotes adds each outcome's quote, the cached figures GET /api/v1/market/{condition_id}/snapshot serves, for the whole page in one cache read, on every plan, for 1 more unit of cost: status observed (the cache holds the outcome's price, its book or both; a null beside it is a figure the cache does not hold, but a null best_bid or best_ask beside a book_observed_at is a side with no orders, so a book with one side or none is observed), no_orderbook (the provider confirmed the outcome has no book and no price is cached) or unavailable (nothing cached; every figure null); price, 0 to 1, the price Polymarket shows, with price_basis midpoint (the best bid and ask are at most $0.10 apart) or last_trade, and price_observed_at, when its quote and trade state became observable; best_bid and best_ask with book_observed_at, when their CLOB frame was observed, and book_source, clob_stream (the market websocket) or clob_rest (a CLOB books read); book_depth_within_2c, the USD resting on each side within 2 cents of the midpoint (bid_usd: bids at or above the midpoint minus 0.02; ask_usd: asks at or below the midpoint plus 0.02; price times size, from the whole book, recomputed with the book), null when no depth is cached for the book; book_unavailable_reason, null when book_observed_at is set, else cache_miss, cache_unavailable, stream_capacity, no_orderbook or missing_provider_token_id. Each read keeps the page's open markets covered, so an outcome that reads cache_miss usually answers a few seconds later, as does cache_unavailable (we could not read the book from the cache this time); stream_capacity means the market is not streamed and API reads already hold every live book they may open, so it answers only once fewer markets are read. With expand=quotes the ETag moves whenever a quote does. expand=trading_terms adds each row's trading_terms, the market's terms from its Gamma record passed through unchanged, on every plan, for 1 more unit of cost: status observed (Gamma's record was read at observed_at; a null figure is one the record does not carry), not_listed (Gamma's market list returned no record for the market) or unavailable (no read in hand; every figure null); fees_enabled; fee_schedule with rate, exponent, taker_only and rebate_rate, the fraction of taker fees rebated to the resting maker; rewards_min_size, in shares, and rewards_max_spread, in cents from the midpoint; reward_allocations, the dated allocations with rewards_amount, rewards_daily_rate, start_date and end_date; seconds_delay, the delay before a newly placed marketable order can match; tick_size, the minimum price increment for limit orders; and min_order_size_shares, the smallest order the CLOB accepts, in shares (Polymarket's market reference calls this figure USDC, and the CLOB enforces it on an order's share count). Each market's read serves for a minute and then refreshes off the request path, so a market that reads unavailable usually answers a few seconds later and the ETag moves about once a minute. Without expand=quotes no price, and never a holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
+        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, active or closed status, and settlement. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. settlement is how Polymarket's oracle settled or is settling the market, read from Polymarket's /v2/resolutions and stored per game: status observed (the provider's row is below), not_posed (no oracle request yet; settled false) or unavailable (no read in hand and no recorded settlement; every other field null, and a read a moment later may answer); oracle_status, the provider lifecycle state verbatim (posed, proposed, challenged, reproposed, disputed, arbitration, resolved); settled; payouts, the provider's payout per share per outcome index in micro-USDC (1000000 is $1), only on a resolved row that carries them; result, outcome or split (Polymarket's 50-50), and winning_outcome_index, both read off payouts, or on a resolved UMA question row, which carries no payouts (payouts stays null), off the payout Polymarket's ConditionalTokens contract reported on chain, which 0xinsider reads once per such market (null until it has paid); was_disputed; resolved_at, null on a resolved UMA question row, which carries none; oracle_updated_at, Polymarket's last_update_timestamp, its latest lifecycle change and never a resolution time: on a resolved UMA question row, when UMA's answer settled the question; expected_settlement_time and settlement_time_basis, the provider's earliest-settlement estimate for a pending market, never a deadline; proposed_answer (outcome_0, outcome_1, split, too_early), the newest proposal of a pending round; observed_at, our clock: on a settled market when 0xinsider first saw the settlement, recorded once (usually about 12 seconds after resolved_at and within about 25 seconds for 95 in 100; a game market the resolution scan misses can take up to about 5 minutes) and the same on every later read, otherwise when the provider answered the read behind the block. Every key is present; a null is unknown. A settled read is refreshed every 10 minutes, any other every minute. expand=sharp_money adds each row's sharp-money split (side USD and S, A and B wallet counts per outcome) from the game page's per-line owner: computed for a line in the game's prop frame, not_computed for a line outside it (a player prop, a line beyond the seven around its family's main line, a closed or settled line), unavailable when the read failed or held no observation of the line within 120 ms. While the frame is being built, a line the game's stored split holds is computed and dated by money_as_of. Each read keeps the game's lines being read for 2 minutes, and a line answers once it has been read. A game read alone answers about 35 lines in about a minute; a game with 100 or more lines, or any game at a busy hour when many games are read at once, can take several minutes (on November 14, 2026, at the evening college football peak, one game had 49 of its first 100 lines computed 4 minutes after the first read). Read again about once a minute until the lines you need are computed. expand=quotes adds each outcome's quote, the cached figures GET /api/v1/market/{condition_id}/snapshot serves, for the whole page in one cache read, on every plan, for 1 more unit of cost: status observed (the cache holds the outcome's price, its book or both; a null beside it is a figure the cache does not hold, but a null best_bid or best_ask beside a book_observed_at is a side with no orders, so a book with one side or none is observed), no_orderbook (the provider confirmed the outcome has no book and no price is cached) or unavailable (nothing cached; every figure null); price, 0 to 1, the price Polymarket shows, with price_basis midpoint (the best bid and ask are at most $0.10 apart) or last_trade, and price_observed_at, when its quote and trade state became observable; best_bid and best_ask with book_observed_at, when their CLOB frame was observed, and book_source, clob_stream (the market websocket) or clob_rest (a CLOB books read); book_depth_within_2c, the USD resting on each side within 2 cents of the midpoint (bid_usd: bids at or above the midpoint minus 0.02; ask_usd: asks at or below the midpoint plus 0.02; price times size, from the whole book, recomputed with the book), null when no depth is cached for the book; book_unavailable_reason, null when book_observed_at is set, else cache_miss, cache_unavailable, stream_capacity, no_orderbook or missing_provider_token_id. Each read keeps the page's open markets covered, so an outcome that reads cache_miss usually answers a few seconds later, as does cache_unavailable (we could not read the book from the cache this time); stream_capacity means the market is not streamed and API reads already hold every live book they may open, so it answers only once fewer markets are read. With expand=quotes the ETag moves whenever a quote does. expand=trading_terms adds each row's trading_terms, the market's terms from its Gamma record passed through unchanged, on every plan, for 1 more unit of cost: status observed (Gamma's record was read at observed_at; a null figure is one the record does not carry), not_listed (Gamma's market list returned no record for the market) or unavailable (no read in hand; every figure null); fees_enabled; fee_schedule with rate, exponent, taker_only and rebate_rate, the fraction of taker fees rebated to the resting maker; rewards_min_size, in shares, and rewards_max_spread, in cents from the midpoint; reward_allocations, the dated allocations with rewards_amount, rewards_daily_rate, start_date and end_date; seconds_delay, the delay before a newly placed marketable order can match; tick_size, the minimum price increment for limit orders; and min_order_size_shares, the smallest order the CLOB accepts, in shares (Polymarket's market reference calls this figure USDC, and the CLOB enforces it on an order's share count). Each market's read serves for a minute and then refreshes off the request path, so a market that reads unavailable usually answers a few seconds later and the ETag moves about once a minute. Without expand=quotes no price, and never a holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -29566,7 +29572,8 @@
                         "market": {
                           "id": "mkt_0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
                           "condition_id": "0xdef4560000000000000000000000000000000def2e8ec47636c7803c1033cfab",
-                          "title": "Will the Sacramento Kings win the 2025 NBA Finals?"
+                          "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
+                          "slug": "will-the-sacramento-kings-win-the-2025-nba-finals"
                         },
                         "scores": {
                           "timing": null,
@@ -29580,6 +29587,11 @@
                           "position_usd": 18250
                         },
                         "created_at": "2026-09-21T18:09:40Z",
+                        "traded_at": "2026-09-21T18:09:40Z",
+                        "side": "BUY",
+                        "outcome": "Yes",
+                        "price": 0.29,
+                        "size_usd": 16959.08,
                         "result": {
                           "status": "won",
                           "resolved_at": "2026-09-22T03:12:00Z",
@@ -59490,7 +59502,12 @@
           "created_at",
           "result",
           "clv",
-          "hedge"
+          "hedge",
+          "traded_at",
+          "side",
+          "outcome",
+          "price",
+          "size_usd"
         ],
         "properties": {
           "id": {
@@ -59536,6 +59553,10 @@
               "title": {
                 "type": ["string", "null"],
                 "description": "Canonical market question when available."
+              },
+              "slug": {
+                "type": "string",
+                "description": "The market's slug, the field a large trade carries. Omitted when the market has none."
               }
             }
           },
@@ -59745,6 +59766,27 @@
               }
             ],
             "description": "What else the wallet holds that pays if the flagged outcome loses: the hedge the Suspicious trades page shows. Only outcomes that cannot win together with the flagged one count: the other outcome of the same market, and for a Yes buy on a negative-risk market, Yes on the event's other negative-risk markets of the same type. Null when the trade is older than 90 days, the window the page measures."
+          },
+          "outcome": {
+            "type": ["string", "null"],
+            "description": "The traded outcome's label (for example \"Yes\", \"No\" or a team name), from the trade's trusted outcome index against the market. Null when the index is not trusted or the market has no label for it."
+          },
+          "price": {
+            "type": "number",
+            "description": "Fill price of the traded outcome, from 0 to 1."
+          },
+          "side": {
+            "type": "string",
+            "description": "Trade direction: BUY or SELL, or UNKNOWN when the stored side is neither."
+          },
+          "size_usd": {
+            "type": ["number", "null"],
+            "description": "USD notional of the fill. Null when the trade stored none."
+          },
+          "traded_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the trade filled. The same instant as created_at; a flag scored after the fill still carries the fill time."
           }
         }
       },
@@ -64009,7 +64051,9 @@
           "pick_price_daily",
           "pick_price_as_of",
           "pick_price_age_days",
-          "provider_leg_status"
+          "provider_leg_status",
+          "game_start_time",
+          "kickoff_date_passed"
         ],
         "properties": {
           "source": {
@@ -64074,6 +64118,15 @@
           "provider_leg_status": {
             "type": ["string", "null"],
             "description": "Unmodified provider leg status when available."
+          },
+          "game_start_time": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Kickoff stored on the local market, in UTC. Null when the leg has no local market or the market has no kickoff."
+          },
+          "kickoff_date_passed": {
+            "type": "boolean",
+            "description": "True only when that kickoff's calendar date is before today in UTC. False on the kickoff's own date, including while the game is in play, and false when there is no kickoff."
           }
         }
       },

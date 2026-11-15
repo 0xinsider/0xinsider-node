@@ -452,6 +452,10 @@ export type ComboLegMarket = {
   pick_price_age_days: number | null;
   /** Unmodified provider leg status when available. */
   provider_leg_status: string | null;
+  /** Kickoff stored on the local market, in UTC. Null when the leg has no local market or the market has no kickoff. */
+  game_start_time: string | null;
+  /** True only when that kickoff's calendar date is before today in UTC. False on the kickoff's own date, including while the game is in play, and false when there is no kickoff. */
+  kickoff_date_passed: boolean;
 };
 
 export type ComboLifecycleStats = {
@@ -5571,6 +5575,8 @@ export type SuspiciousTrade = {
     condition_id: string;
     /** Canonical market question when available. */
     title: string | null;
+    /** The market's slug, the field a large trade carries. Omitted when the market has none. */
+    slug?: string;
   };
   scores: {
     /**
@@ -5650,6 +5656,16 @@ export type SuspiciousTrade = {
     /** Set exactly when `state` is `unknown`. `not_loaded`: no position listing for the wallet. `stale`: the last listing is older than the freshness bound. `market_decided`: the flagged market resolved or closed. `read_failed`: the positions read failed. `not_recorded`: the trade was flagged before hedges were recorded. */
     unknown_reason: "not_loaded" | "stale" | "market_decided" | "read_failed" | "not_recorded" | null;
   } | null;
+  /** The traded outcome's label (for example "Yes", "No" or a team name), from the trade's trusted outcome index against the market. Null when the index is not trusted or the market has no label for it. */
+  outcome: string | null;
+  /** Fill price of the traded outcome, from 0 to 1. */
+  price: number;
+  /** Trade direction: BUY or SELL, or UNKNOWN when the stored side is neither. */
+  side: string;
+  /** USD notional of the fill. Null when the trade stored none. */
+  size_usd: number | null;
+  /** When the trade filled. The same instant as created_at; a flag scored after the fill still carries the fill time. */
+  traded_at: string;
 };
 
 /** `suspicious_trade_flagged` data (Pro and Max): a trade's suspicion score crossed the flag threshold for the first time. The deprecated spelling `insider_radar_flag_raised` delivers the same object until its sunset on 2027-02-01 (#29352). */
