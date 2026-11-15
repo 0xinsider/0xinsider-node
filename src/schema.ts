@@ -454,8 +454,10 @@ export type ComboLegMarket = {
   provider_leg_status: string | null;
   /** Kickoff stored on the local market, in UTC. Null when the leg has no local market or the market has no kickoff. */
   game_start_time: string | null;
-  /** True only when that kickoff's calendar date is before today in UTC. False on the kickoff's own date, including while the game is in play, and false when there is no kickoff. */
+  /** True only when that kickoff's calendar date is before today in UTC. False on the kickoff's own date and false when there is no kickoff. True does not mean the game is over: a game that kicks off late in the UTC day is still in play after midnight UTC. Read game_ended for that. */
   kickoff_date_passed: boolean;
+  /** Whether the game this market belongs to has ended, from the same stored game state GET /api/v1/games/{event_slug} reads. A market in a child event, such as a soccer game's more-markets event, reads its parent game. False while the game is scheduled, in play or postponed. Null when no state is stored for the game, when the leg has no local market, or when the market has no event. Some games have no live feed, so null means unknown, not in play. A pending leg with game_ended or market_closed true is waiting on its result. */
+  game_ended: boolean | null;
 };
 
 export type ComboLifecycleStats = {
