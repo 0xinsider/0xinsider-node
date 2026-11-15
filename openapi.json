@@ -24273,7 +24273,7 @@
             "name": "since",
             "in": "query",
             "required": false,
-            "description": "Inclusive RFC 3339 lower bound on episode_started_at. Earlier than 90 days ago, or omitted: 90 days ago, the retention.",
+            "description": "Inclusive RFC 3339 lower bound on episode_started_at. Earlier than the retention, or omitted: the retention, 90 days ago for pre-game moves and 14 days ago for in-play and phase-unknown moves.",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -24595,7 +24595,7 @@
       "get": {
         "operationId": "listPriceMoves",
         "summary": "List stored price moves with held flags",
-        "description": "Stored market_price_moved detections: every move of 2 cents or more in a sports or esports market's outcome-0 midpoint over 60, 120, 300 or 900 seconds that 0xinsider's detector published, kept 90 days. The record starts when storing began (November 2026); moves before it were pushed only. One item per market, window and episode: an episode is the detector's ladder of whole-cent levels in one direction, and the item holds its largest step, the market_price_moved payload as the webhook and GET /api/v1/stream deliver it, plus move_id, episode_started_at and outcome_after. outcome_after is outcome 0's midpoint 15 minutes and 60 minutes after detected_at and at the scheduled kickoff of a pre-game move, read from the live order book (two-sided, spread 10 cents or less). A move held at a checkpoint when the midpoint there kept at least half of it: (mid - from_price) / (to_price - from_price) >= 0.5. A null held flag means not measured: status pending until every checkpoint is due and read, otherwise the checkpoint's unavailable_reason says why. Newest episode first; since and until bound episode_started_at, which never changes, so a walk neither skips nor repeats a move. A page reads a fixed share of the history, so with narrow filters it can hold fewer than limit moves, even none, while has_more is true: follow next_cursor until has_more is false. This is the replay for a missed market_price_moved push: GET /api/v1/events/feed/since replays large trades only. Every plan with an API key. Cost is 1.",
+        "description": "Stored market_price_moved detections: every move of 2 cents or more in a sports or esports market's outcome-0 midpoint over 60, 120, 300 or 900 seconds that 0xinsider's detector published, pre-game moves kept 90 days and in-play and phase-unknown moves 14 days. The record starts when storing began (November 2026); moves before it were pushed only. One item per market, window and episode: an episode is the detector's ladder of whole-cent levels in one direction, and the item holds its largest step, the market_price_moved payload as the webhook and GET /api/v1/stream deliver it, plus move_id, episode_started_at and outcome_after. outcome_after is outcome 0's midpoint 15 minutes and 60 minutes after detected_at and at the scheduled kickoff of a pre-game move, read from the live order book (two-sided, spread 10 cents or less). A move held at a checkpoint when the midpoint there kept at least half of it: (mid - from_price) / (to_price - from_price) >= 0.5. A null held flag means not measured: status pending until every checkpoint is due and read, otherwise the checkpoint's unavailable_reason says why. Newest episode first; since and until bound episode_started_at, which never changes, so a walk neither skips nor repeats a move. A page reads a fixed share of the history, so with narrow filters it can hold fewer than limit moves, even none, while has_more is true: follow next_cursor until has_more is false. This is the replay for a missed market_price_moved push: GET /api/v1/events/feed/since replays large trades only. Every plan with an API key. Cost is 1.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -24692,7 +24692,7 @@
             "name": "since",
             "in": "query",
             "required": false,
-            "description": "Inclusive RFC 3339 lower bound on episode_started_at. Earlier than 90 days ago, or omitted: 90 days ago, the retention.",
+            "description": "Inclusive RFC 3339 lower bound on episode_started_at. Earlier than the retention, or omitted: the retention, 90 days ago for pre-game moves and 14 days ago for in-play and phase-unknown moves.",
             "schema": {
               "type": "string",
               "format": "date-time"
