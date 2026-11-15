@@ -1823,7 +1823,7 @@ export type GameSharpMoney = {
   computed_at: string | null;
   event_slug: string;
   holders_partial: boolean | null;
-  /** live: before the game's scheduled start, the only lifecycle whose outcomes carry pct and a leader. in_play: past its scheduled start, or reported live, and not over, a suspended, postponed or cancelled game included; whether the game is being played is status on GET /api/v1/games/{event_slug}. ended: over, markets not settled. settled: the settled recap. indeterminate: outcome facts are void, partial or contradictory. */
+  /** live: before the game's scheduled start, the only lifecycle whose outcomes carry pct and a leader. in_play: past its scheduled start, or reported live, and not over, a suspended, postponed or cancelled game included; whether the game is being played is status on GET /api/v1/games/{event_slug}. ended: over, markets not settled. settled: resolved; outcomes count the winning side's wallets that redeemed in profit, the losing side reads 0, so no pct, no leader and a withheld verdict, with the split before the start in at_kickoff. indeterminate: outcome facts are void, partial or contradictory. */
   lifecycle: "live" | "settled" | "indeterminate" | "ended" | "in_play" | null;
   money_as_of: string | null;
   object: string;
@@ -1866,7 +1866,7 @@ export type GameSharpMoney = {
   } | {
     kind: "withheld";
   } | null;
-  /** The split as the site last recorded it before the game's scheduled start, valued at the prices of that moment, while lifecycle is in_play or ended, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. null on every other lifecycle and when no state with graded money was recorded before the start. */
+  /** The split as the site last recorded it before the game's scheduled start, valued at the prices of that moment, while lifecycle is in_play, ended or settled, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. null on every other lifecycle and when no state with graded money was recorded before the start. */
   at_kickoff: {
     as_of: string;
     outcomes: ({
