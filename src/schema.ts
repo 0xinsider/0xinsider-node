@@ -8351,7 +8351,7 @@ export interface OperationQuery {
     held?: "15m" | "60m" | "kickoff";
     /** Only moves whose book_depth_within_2c was measured and held at least this many USD within 2 cents of the midpoint on each side; a move with no measured depth is left out. The webhook filter of the same name applies the same rule. */
     min_book_usd_within_2c?: number;
-    /** Inclusive RFC 3339 lower bound on episode_started_at. Earlier than 90 days ago, or omitted: 90 days ago, the retention. */
+    /** Inclusive RFC 3339 lower bound on episode_started_at. Earlier than the retention, or omitted: the retention, 90 days ago for pre-game moves and 14 days ago for in-play and phase-unknown moves. */
     since?: string;
     /** Exclusive RFC 3339 upper bound on episode_started_at. Omitted: now. */
     until?: string;
@@ -8409,7 +8409,7 @@ export interface OperationQuery {
     held?: "15m" | "60m" | "kickoff";
     /** Only moves whose book_depth_within_2c was measured and held at least this many USD within 2 cents of the midpoint on each side; a move with no measured depth is left out. The webhook filter of the same name applies the same rule. */
     min_book_usd_within_2c?: number;
-    /** Inclusive RFC 3339 lower bound on episode_started_at. Earlier than 90 days ago, or omitted: 90 days ago, the retention. */
+    /** Inclusive RFC 3339 lower bound on episode_started_at. Earlier than the retention, or omitted: the retention, 90 days ago for pre-game moves and 14 days ago for in-play and phase-unknown moves. */
     since?: string;
     /** Exclusive RFC 3339 upper bound on episode_started_at. Omitted: now. */
     until?: string;

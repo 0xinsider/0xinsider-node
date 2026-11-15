@@ -3404,7 +3404,8 @@ export class OxinsiderApiClient {
   /**
    * List stored price moves, newest episode first: every move of 2 cents or
    * more in a sports or esports market's outcome-0 midpoint that the
-   * detector published as `market_price_moved`, kept 90 days, each with
+   * detector published as `market_price_moved` (pre-game moves kept 90
+   * days, in-play and phase-unknown moves 14), each with
    * `outcome_after`, the midpoint 15 and 60 minutes later and at a pre-game
    * move's kickoff and whether the move held there (kept at least half of
    * it). A `null` held flag means not measured, never false. Narrow with at
