@@ -3609,6 +3609,22 @@ export type PickOfTheDayArchiveEntry = {
    * @deprecated
    */
   supersedes_pick_id: string | null;
+  /** The single-pick read's backed_side_share for the same pick: the Sharp side share the pick's page shows, the part of the graded wallets' dollars in the market that sat on the backed side when the pick was selected, as a fraction from 0 to 1 (0.887 is the page's 88.7%). Absent where the single-pick read omits it and on a row with backed_side_locked. Additive and optional. */
+  backed_side_share?: number;
+  /** The backed market's Polymarket condition_id, the one the single-pick read serves as entry_authorization.condition_id. Present on every row whose backed side this key opens. Additive and optional. */
+  condition_id?: string;
+  /** When the backed game starts (RFC3339 UTC): the start recorded with the pick. The single-pick read (GET /api/v1/pick-of-the-day?pick_id=) serves the same instant unless the provider moved the game after publication, where that read states the new start. Present on every row whose backed side this key opens; omitted on a row with backed_side_locked. Additive and optional. */
+  kickoff?: string;
+  /** The single-pick read's sharp_positioned_usd for the same pick: the Sharp positioned value the pick's page shows, the dollars the pick's counted graded wallets held on the backed side, in USD, recorded for the pick and not updated after. Absent where the single-pick read omits it and on a row with backed_side_locked. Additive and optional. */
+  sharp_positioned_usd?: number;
+  /** The single-pick read's sharp_wallet_count for the same pick: S/A wallet count of the wallets the pick lists on the backed side, in the public V1 compatibility projection. Absent where the single-pick read omits it and on a row with backed_side_locked. Additive and optional. */
+  sharp_wallet_count?: number;
+  /** The single-pick read's side_graded_usd for the same pick: those wallets' gross USD on the backed side when the pick was selected, sent only beside side_graded_wallet_count and only when above zero. Not a live balance or entry cost. Additive and optional. */
+  side_graded_usd?: number;
+  /** The single-pick read's side_graded_wallet_count for the same pick: every graded wallet (S, A or B) holding the backed side when the pick was selected, listed or not. Sent on picks recorded under the current S, A and B wallet policy that stored the count; absent otherwise and on a row with backed_side_locked. Additive and optional. */
+  side_graded_wallet_count?: number;
+  /** The backed market's Polymarket sports market type as recorded with the pick: moneyline, spreads, totals, map_handicap, both_teams_to_score and others. Present when the row's backed side is open and the market states a type. Additive and optional. */
+  sports_market_type?: string;
 };
 
 /** The archive with `view=summary`: `hit_rate` without its daily `series`, one short row per pick, and `page`. Page with `limit` and `cursor`; `view=full` returns every field of a row. */
