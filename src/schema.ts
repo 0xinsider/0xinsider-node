@@ -3504,6 +3504,8 @@ export type PickOfTheDay = {
   records_as_of?: string;
   /** When the commitment was sealed (RFC3339 UTC), the sealed_at its ledger entry carries; always before committed_kickoff. Sent with commitment_hash. Additive and optional. */
   sealed_at?: string;
+  /** The backed market's Polymarket sports market type as recorded with the pick: moneyline, spreads, totals, map_handicap and others, the value the archive row returns for the pick. Omitted when the market states none. Additive and optional. */
+  sports_market_type?: string;
 };
 
 export type PickOfTheDayArchive = {
@@ -6766,6 +6768,8 @@ export interface OperationData {
       backed_side_share?: number;
       /** The full pick's sharp_positioned_usd: the Sharp positioned value the pick's page shows, the dollars the pick's counted graded wallets held on the backed side, in USD, recorded for the pick and not updated after. */
       sharp_positioned_usd?: number;
+      /** The full pick's sports_market_type. */
+      sports_market_type?: string;
     }[];
     proof_pending_picks?: ({
       is_free_selection: boolean;
