@@ -2497,7 +2497,7 @@ export type MarketClose = {
   price_source: string | null;
   /** measured: outcomes carries the close. pending: no close is stored yet and the capture will still read the market. unavailable: no close will be served; see unavailable_reason. */
   status: "measured" | "pending" | "unavailable";
-  /** Set exactly when status is unavailable. no_observation_in_lookback, provider_empty_window, provider_invalid_contract and capture_window_closed are the capture's own stored refusals; no_game_start_time: the market has no kickoff time; not_one_sided_resolution: it resolved to neither side; not_captured: the capture does not read it (no tracked buy before resolution, or kickoff over 30 days ago); close_token_mismatch: the close was read on a different YES token than the market carries now. */
+  /** Set exactly when status is unavailable. no_observation_in_lookback, provider_empty_window, provider_invalid_contract and capture_window_closed are the capture's own stored refusals; no_game_start_time: the market has no kickoff time; not_one_sided_resolution: it resolved to neither side; not_captured: the capture does not read it (kickoff over 30 days ago; a market that is not a moneyline and had no tracked buy before resolution; or a moneyline whose game started before the capture began reading every moneyline); close_token_mismatch: the close was read on a different YES token than the market carries now. */
   unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
 };
 
