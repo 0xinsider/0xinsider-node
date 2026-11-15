@@ -374,10 +374,9 @@ const checked = await client.listLeaderboard(
 );
 console.log(checked.meta?.effectiveQuery, checked.meta?.queryIgnored);
 
-// OHLC candles for a market (open or resolved):
-const candles = await client.getMarketCandles("0xabc...", {
-  query: { resolution: "1d" },
-});
+// OHLC candles for a market (open or resolved). SDK 0.87.0 types "5m" and "1h",
+// Polymarket's five-minute and hourly buckets, beside "1d" and "1w":
+const candles = await client.getMarketCandles("0xabc...", { resolution: "5m" });
 
 // Webhook event catalog (self-describing) and one endpoint's delivery log:
 const events = await client.listWebhookEvents();

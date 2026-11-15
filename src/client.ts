@@ -3336,10 +3336,10 @@ export class OxinsiderApiClient {
 
   /**
    * Fetch bucketed OHLC candles for a market's outcome tokens.
-   * Resolution defaults to the server default; pass `params.resolution` as
-   * `"1d"` or `"1w"` to override. `params.from` is exclusive and `params.to`
-   * is inclusive; when both are present, `from` must be less than or equal to
-   * `to`.
+   * Resolution defaults to the server default (`"1d"`); pass `params.resolution`
+   * as `"5m"` or `"1h"` for Polymarket's intraday buckets, or `"1w"`.
+   * `params.from` is exclusive and `params.to` is inclusive; when both are
+   * present, `from` must be less than or equal to `to`.
    */
   getMarketCandles(
     conditionId: OperationPath["getMarketCandles"]["condition_id"],
