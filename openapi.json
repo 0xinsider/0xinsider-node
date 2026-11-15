@@ -19808,7 +19808,7 @@
       "get": {
         "operationId": "getMarketTopHolders",
         "summary": "List a market's top holders, every grade",
-        "description": "The largest holders of one market on each outcome, every grade from S to F and ungraded wallets included: the table the market's event page shows under Top holders. Each outcome lists up to 100 wallets, largest `shares` first, from Polymarket's holder board, with the provider's current value, average entry price and position P&L for the leg, the wallet's grade, its sports and esports realized P&L and volume, its win record in the market's category, and its badges. A wallet holding both outcomes appears on each side it holds, with `other_outcome_shares` set. This is a bounded sample, not a census: `totals.yes_count` equal to `totals.sample_cap` means that many or more. For the complete S, A and B roster from a full holder scan, with exact counts and USD per grade, use GET /api/v1/market/{condition_id}/holders. The sample is the same one the event page reads and is shared by every caller. On an open market it is rebuilt at most every 30 s from Polymarket's holder board, which is itself re-read at most every 120 s, so positions are usually up to about 150 s old: `data.positions_as_of` says when that board was fetched, `data.computed_at` when the sample was built and `meta.cache_age_s` the response's age. Past the 30 s window a read gets the last sample with `data.source_stale` true while a new one builds, as long as its board is at most 300 s old; read again a few seconds later for the new sample. A resolved market's sample is at most 300 s old and has no `positions_as_of`. Busy or unavailable holder data is a 503 with Retry-After, never an empty list. Current state only; there is no as-of parameter.",
+        "description": "The largest holders of one market on each outcome, every grade from S to F and ungraded wallets included: the table the market's event page shows under Top holders. Each outcome lists up to 100 wallets, largest `shares` first, from Polymarket's holder board, with the provider's current value, average entry price and position P&L for the leg, the wallet's grade, its sports and esports realized P&L and volume, its win record in the market's category with the price edge the page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none), and its badges. A wallet holding both outcomes appears on each side it holds, with `other_outcome_shares` set. This is a bounded sample, not a census: `totals.yes_count` equal to `totals.sample_cap` means that many or more. For the complete S, A and B roster from a full holder scan, with exact counts and USD per grade, use GET /api/v1/market/{condition_id}/holders. The sample is the same one the event page reads and is shared by every caller. On an open market it is rebuilt at most every 30 s from Polymarket's holder board, which is itself re-read at most every 120 s, so positions are usually up to about 150 s old: `data.positions_as_of` says when that board was fetched, `data.computed_at` when the sample was built and `meta.cache_age_s` the response's age. Past the 30 s window a read gets the last sample with `data.source_stale` true while a new one builds, as long as its board is at most 300 s old; read again a few seconds later for the new sample. A resolved market's sample is at most 300 s old and has no `positions_as_of`. Busy or unavailable holder data is a 503 with Retry-After, never an empty list. Current state only; there is no as-of parameter.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -51575,7 +51575,7 @@
               "delayed",
               "unknown"
             ],
-            "description": "scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A tennis match that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own."
+            "description": "scheduled: kickoff is ahead, or the provider still lists the game open and neither in play nor ended. With no live-score frame a game stays scheduled past its kickoff until the provider says otherwise. live: the provider reports it in play. paused: halftime or a provider-reported break. ended: the provider reported a final, an award or a forfeit. postponed, cancelled, suspended, delayed: the provider's own verdict, kept distinct. A game that the provider still lists in play, with no live score feed and no change of period or score for 3 hours, also reads suspended in tennis, soccer, hockey, basketball, American football, cricket, CS2, Dota 2, League of Legends, Valorant, Mobile Legends: Bang Bang, Rainbow Six Siege, Overwatch and Call of Duty; any other sport keeps the provider's flag. Outside tennis those 3 hours start no sooner than 2 hours after kickoff (6 for esports), so a game reads suspended only after the longest game measured in its sport; for cricket they start once the match's scheduled days have passed (5 for a match with a draw market, 1 for a limited-overs match, one fewer when the score shows runs), so a multi-day match stays live overnight. unknown: no provider state reached this read. A kickoff in the past is never read as live on its own."
           },
           "match_status": {
             "type": "string",
@@ -51596,11 +51596,11 @@
               "cancelled",
               "unknown"
             ],
-            "description": "The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet."
+            "description": "The provider status folded onto one vocabulary across leagues. unknown means the provider sent a value this API has no meaning for; provider_status keeps that value verbatim. Omitted when no live-score frame carries a status, as for a listed game no live-score feed has reported yet, and on an ended game whose last status is one the provider sends only before the end (scheduled, in_progress, halftime, penalty_shootout, delayed)."
           },
           "provider_status": {
             "type": "string",
-            "description": "The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game."
+            "description": "The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game. Omitted with match_status on an ended game whose last status is from before the end."
           },
           "period": {
             "type": "string",
@@ -51612,7 +51612,7 @@
           },
           "live": {
             "type": "boolean",
-            "description": "Whether the game is in play. It is the provider's own in-play flag, except that three cases read false: a game the provider reports suspended (period SUS), a game rescheduled to a later kickoff, and a tennis match that the provider still lists in play with no live score feed and no change of period or score for 3 hours. Omitted when no live-score frame exists, which is not the same as false."
+            "description": "Whether the game is in play. It is the provider's own in-play flag, except that three cases read false: a game the provider reports suspended (period SUS), a game rescheduled to a later kickoff, and a game that the provider still lists in play with no live score feed and no change of period or score for 3 hours (state names the sports and when those 3 hours start). Omitted when no live-score frame exists, which is not the same as false."
           },
           "ended": {
             "type": "boolean",
@@ -52261,7 +52261,7 @@
           "scores_observed_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this game's live-score frame was observed. Omitted when there is no frame."
+            "description": "When this game's score was last observed. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame."
           },
           "scores_source_at": {
             "type": "string",
@@ -58876,6 +58876,22 @@
             "enum": ["measured", "not_enough_data", "unavailable", "untracked"],
             "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (the wallet is on file and under the floor of 5 decided markets in the category), `untracked` (0xinsider has no record of the wallet, so nothing was measured; `grade`, `in_scope_realized_pnl` and `in_scope_volume` are null too), or `unavailable` (a read failed; retry later). Absent when the market has no canonical category."
           },
+          "category_price_edge": {
+            "$ref": "#/components/schemas/PickHolderPriceEdge",
+            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row."
+          },
+          "category_scope_price_edge": {
+            "$ref": "#/components/schemas/PickHolderPriceEdge",
+            "description": "The same edge over the markets of the game or league `category_win_rate_game` names alone: the edge the page prints beside a game or league win rate (for example `+1.7 pp` in CS2). Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. Absent on every other row."
+          },
+          "category_price_edge_hold": {
+            "$ref": "#/components/schemas/PickHolderPriceEdgeHold",
+            "description": "Why there is no `category_price_edge` for a wallet with a measured rate, with the rule's figures when it has them: the reason the page prints in place of the edge (for example `too few markets`). Present only with `category_win_rate_status` = `measured`, and never beside `category_price_edge`."
+          },
+          "category_scope_price_edge_hold": {
+            "$ref": "#/components/schemas/PickHolderPriceEdgeHold",
+            "description": "Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`."
+          },
           "wallet_age_days": {
             "type": ["integer", "null"],
             "description": "Whole UTC calendar days since this wallet's first trade, as an integer (271, not 271.0): the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge."
@@ -58899,7 +58915,7 @@
           "category_records_as_of": {
             "type": "string",
             "format": "date-time",
-            "description": "When this wallet's category record was recounted, sent only when that is later than the `category_records_as_of` beside the rows: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's `category_win_rate`, `category_win_record` and `category_avg_price` are as of this time. Absent on every other row, which is as of the payload's `category_records_as_of`."
+            "description": "When this wallet's category record was recounted, sent only when that is later than the `category_records_as_of` beside the rows: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's `category_win_rate`, `category_win_record`, `category_avg_price` and price edges (`category_price_edge`, `category_scope_price_edge` and their holds) are as of this time. Absent on every other row, which is as of the payload's `category_records_as_of`."
           }
         }
       },
@@ -58935,7 +58951,7 @@
           "category_records_as_of": {
             "type": "string",
             "format": "date-time",
-            "description": "When the daily pass behind the rows' category win records began: the oldest any row's record can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when the market has no category or the read answered no row."
+            "description": "When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when the market has no category or the read answered no row."
           },
           "computed_at": {
             "type": "string",
