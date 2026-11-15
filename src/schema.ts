@@ -1813,12 +1813,13 @@ export type GamesCoverage = {
   sources_unavailable: string[];
 };
 
-/** Event-level sharp money for one game. Every aggregate field is null unless status is computed; null means unknown, never zero. */
+/** Event-level sharp money for one game. Every aggregate field is null unless status is computed, except lifecycle and at_kickoff, which describe the game; null means unknown, never zero. */
 export type GameSharpMoney = {
   allocation: "exact" | "degraded" | null;
   computed_at: string | null;
   event_slug: string;
   holders_partial: boolean | null;
+  /** live: before the game's scheduled start, the only lifecycle whose outcomes carry pct and a leader. in_play: past its scheduled start, or reported live, and not over, a suspended, postponed or cancelled game included; whether the game is being played is status on GET /api/v1/games/{event_slug}. ended: over, markets not settled. settled: the settled recap. indeterminate: outcome facts are void, partial or contradictory. */
   lifecycle: "live" | "settled" | "indeterminate" | "ended" | "in_play" | null;
   money_as_of: string | null;
   object: string;
@@ -1860,6 +1861,41 @@ export type GameSharpMoney = {
     kind: "no_clear_lean";
   } | {
     kind: "withheld";
+  } | null;
+  /** The split as the site last recorded it before the game's scheduled start, valued at the prices of that moment, while lifecycle is in_play or ended, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. null on every other lifecycle and when no state with graded money was recorded before the start. */
+  at_kickoff: {
+    as_of: string;
+    outcomes: ({
+      is_leader: boolean;
+      label: string;
+      pct: number;
+      side: "home" | "draw" | "away" | null;
+      usd: number;
+    })[];
+    total_usd: number;
+    trader_count: number;
+    verdict: {
+      kind: "no_sharp_money";
+    } | {
+      kind: "all_on";
+      label: string;
+    } | {
+      kind: "split";
+    } | {
+      kind: "leans";
+      label: string;
+      pct: number;
+    } | {
+      kind: "unavailable";
+    } | {
+      divergence_pts: number;
+      kind: "leans_over_price";
+      label: string;
+    } | {
+      kind: "no_clear_lean";
+    } | {
+      kind: "withheld";
+    };
   } | null;
 };
 
