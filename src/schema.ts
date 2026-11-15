@@ -5359,7 +5359,7 @@ export type Trader = {
     /** Cross-sectional percentile rank of edge consistency versus all traders, 0-100. null when insufficient history. */
     consistency_percentile: number | null;
   };
-  /** When the wallet last traded: its most recent recorded trade, the same value the leaderboard entry's last_active carries (which re-reads it hourly). A cached body (meta.cached true) can lag a new trade by up to 60 seconds. No data_quality group dates it: the value is itself a trade time. Since 2026-11-02 (#32324); before, it carried the time 0xinsider last synced the wallet, the same value as synced_at. Omitted when the wallet has no recorded trade. */
+  /** When the wallet last traded: the later of its most recent recorded trade and its most recent trade seen on Polymarket's live trade stream, which carries the taking side of each match and is written every 30 seconds for a wallet whose small fills are not recorded as they happen (since 2026-11-15, #35652). A trade later than synced_at marks the sports_record group stale. The leaderboard entry's last_active reads the recorded trade alone and re-reads it hourly, so this can be later. A cached body (meta.cached true) can lag a new trade by up to 60 seconds. No data_quality group dates it: the value is itself a trade time. Since 2026-11-02 (#32324); before, it carried the time 0xinsider last synced the wallet, the same value as synced_at. Omitted when neither trade time is known. */
   last_active?: string;
   /** When 0xinsider last completed a sync of the wallet (traders.last_synced), dated by the sync data_quality group. Not when the wallet traded: read last_active for that. */
   synced_at?: string;
