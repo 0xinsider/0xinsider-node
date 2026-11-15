@@ -641,13 +641,13 @@ export type DataQualityGroup = {
   group: string;
   /** The table and column that write this group, named so the verdict can be audited (for example trader_rankings.computed_at). */
   owner: string;
-  /** fresh: served, as_of carries this group's real observation or computation clock, and that clock is no older than max_age_s when the group carries one. stale: served and clocked, but as_of is older than max_age_s, so the writer has missed a refresh its schedule promises. partial: some of the group's fields are served and some are missing. unknown: served, and this read has no clock for it, so no age may be inferred. untracked: 0xinsider does not track this group for this subject, by design. unavailable: the group could not be served. New values may be added; treat one you do not recognize as unknown. Neither fresh nor stale is a tolerance for your use: compare as_of against your own. */
+  /** fresh: served, as_of carries this group's real observation or computation clock, and that clock is no older than max_age_s when the group carries one. stale: served and clocked, but as_of is older than max_age_s, so the writer has missed a refresh its schedule promises; or, on a group without max_age_s, the source changed after as_of and the group's values leave that change out, which reason names (since 2026-11-15, #35587). partial: some of the group's fields are served and some are missing. unknown: served, and this read has no clock for it, so no age may be inferred. untracked: 0xinsider does not track this group for this subject, by design. unavailable: the group could not be served. New values may be added; treat one you do not recognize as unknown. Neither fresh nor stale is a tolerance for your use: compare as_of against your own. */
   status: "fresh" | "stale" | "partial" | "unknown" | "untracked" | "unavailable";
   /** When this group's values were observed or computed. Omitted whenever the read cannot measure it, and never filled with the serialization time, the cache time, or another group's clock. */
   as_of?: string;
   /** Why the status is not fresh. Omitted when it is. */
   reason?: string;
-  /** The longest gap in seconds this group's writer leaves between refreshes on its schedule: the age past which the group reads stale instead of fresh. Omitted when the writer keeps no schedule its clock could fall behind (a clock stamped once, only on a change, or when a reader asks), and such a group is never stale. It is the writer's promise, not a tolerance for your use. */
+  /** The longest gap in seconds this group's writer leaves between refreshes on its schedule: the age past which the group reads stale instead of fresh. Omitted when the writer keeps no schedule its clock could fall behind (a clock stamped once, only on a change, or when a reader asks), and no age makes such a group stale; it is stale only when the read sees a change at the source after as_of, which reason names (since 2026-11-15, #35587). It is the writer's promise, not a tolerance for your use. */
   max_age_s?: number;
 };
 
@@ -1009,7 +1009,7 @@ export type EdgeHunterRankedSignal = {
   hedged_holder_count: number | null;
   /** Piled-side graded USD held by one-way wallets (share-weighted allocation of backed_sharp_usd). Null when the directional read was not computed or classified nobody. */
   one_way_graded_usd: number | null;
-  /** One-way fraction of the piled graded dollars, in [0, 1] -- the metric orthogonal to sharp_pct. Stale, unknown, hedged, and two-sided dollars dilute it toward zero (conservative). Null when the directional read was not computed or classified nobody. */
+  /** One-way fraction, in [0, 1], of the piled graded dollars the directional read classified: hedged and two-sided dollars count against it, unclassified ones are left out. Null when the read was not computed or over 10% of the pile is unclassified. */
   directional_confidence: number | null;
   /** Recorded side ordering score; higher values sort first. */
   directional_rank_score: number;
@@ -1844,28 +1844,7 @@ export type GameSharpMoney = {
   total_usd: number | null;
   trader_count: number | null;
   unallocated_usd: number | null;
-  verdict: {
-    kind: "no_sharp_money";
-  } | {
-    kind: "all_on";
-    label: string;
-  } | {
-    kind: "split";
-  } | {
-    kind: "leans";
-    label: string;
-    pct: number;
-  } | {
-    kind: "unavailable";
-  } | {
-    divergence_pts: number;
-    kind: "leans_over_price";
-    label: string;
-  } | {
-    kind: "no_clear_lean";
-  } | {
-    kind: "withheld";
-  } | null;
+  verdict: GameSharpMoneyVerdict | null;
   /** The split as the site last recorded it before the game's scheduled start, valued at the prices of that moment, while lifecycle is in_play, ended or settled, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. null on every other lifecycle and when no state with graded money was recorded before the start. */
   at_kickoff: {
     as_of: string;
@@ -1878,29 +1857,48 @@ export type GameSharpMoney = {
     })[];
     total_usd: number;
     trader_count: number;
-    verdict: {
-      kind: "no_sharp_money";
-    } | {
-      kind: "all_on";
-      label: string;
-    } | {
-      kind: "split";
-    } | {
-      kind: "leans";
+    verdict: GameSharpMoneyVerdict;
+  } | null;
+  /** What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. null otherwise, on a 1X2, and when none of them bought since the start. */
+  since_start: {
+    as_of: string;
+    bought_usd: number;
+    last_trade_at: string | null;
+    outcomes: ({
+      avg_buy_price: number | null;
+      bought_usd: number;
+      is_leader: boolean;
       label: string;
       pct: number;
-    } | {
-      kind: "unavailable";
-    } | {
-      divergence_pts: number;
-      kind: "leans_over_price";
-      label: string;
-    } | {
-      kind: "no_clear_lean";
-    } | {
-      kind: "withheld";
-    };
+      side: "home" | "draw" | "away" | null;
+    })[];
+    since: string;
+    trader_count: number;
+    verdict: GameSharpMoneyVerdict;
   } | null;
+};
+
+export type GameSharpMoneyVerdict = {
+  kind: "no_sharp_money";
+} | {
+  kind: "all_on";
+  label: string;
+} | {
+  kind: "split";
+} | {
+  kind: "leans";
+  label: string;
+  pct: number;
+} | {
+  kind: "unavailable";
+} | {
+  divergence_pts: number;
+  kind: "leans_over_price";
+  label: string;
+} | {
+  kind: "no_clear_lean";
+} | {
+  kind: "withheld";
 };
 
 /** Where the game is in its own life, as the provider reports it. A postponement, a cancellation and a suspension each keep their own state, so a client can tell a game that will be played later from one that never will be. */
@@ -2613,7 +2611,7 @@ export type MarketHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Never `untracked`: this route lists S, A and B wallets only, all on file. Always present on this route. */
   category_win_rate_status: "measured" | "not_enough_data" | "unavailable" | "untracked";
-  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. */
+  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. */
   category_price_edge?: PickHolderPriceEdge;
   /** The same edge over the markets of the game or league `category_win_rate_game` names alone. Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. */
   category_scope_price_edge?: PickHolderPriceEdge;
@@ -2973,7 +2971,7 @@ export type MarketTopHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (the wallet is on file and under the floor of 5 decided markets in the category), `untracked` (0xinsider has no record of the wallet, so nothing was measured; `grade`, `in_scope_realized_pnl` and `in_scope_volume` are null too), or `unavailable` (a read failed; retry later). Absent when the market has no canonical category. */
   category_win_rate_status?: "measured" | "not_enough_data" | "unavailable" | "untracked";
-  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row. */
+  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row prints for this wallet, from the same computation: how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities, not percentages: `edge` 0.022 is the page's +2.2 pp, and `hit_rate` 0.515 over `markets` 98 is its `won 51.5% of 98 markets`. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge` (0.099, the page's ± 9.9 pp, at 0.5 over 98 markets), and the page names an edge only when that range is all on one side of zero, printing `no clear edge` otherwise. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. Absent on every other row. */
   category_price_edge?: PickHolderPriceEdge;
   /** The same edge over the markets of the game or league `category_win_rate_game` names alone: the edge the page prints beside a game or league win rate (for example `+1.7 pp` in CS2). Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. Absent on every other row. */
   category_scope_price_edge?: PickHolderPriceEdge;
@@ -3167,7 +3165,7 @@ export type PickHolder = {
   is_bot?: boolean;
   /** The wallet's X handle from its Polymarket profile, normalized to 1-15 characters of [A-Za-z0-9_] with no `@`. Link it as `https://x.com/<handle>`. Stamped at serve time from the wallet's current trader record, never frozen with the pick. The five badge fields are present together, and only for a wallet that carries at least one badge; all absent means no badge, or a body cached before the fields shipped. */
   x_username?: string | null;
-  /** The wallet's edge over the price it paid in the pick's canonical category (`category`): how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. The rule the site's sport leaderboards use for their Edge column, and the figure the pick card prints on the sport's line. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. Present only with `category_win_rate_status` = `measured`, when the edge ranks (30 or more such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate) and the wallet's realized P&L over them is above zero; otherwise `category_price_edge_hold` says why. Beside `category_win_rate_game` it is still the whole category's edge; the game's or league's is `category_scope_price_edge`. Frozen when the pick is published on picks from mid-November 2026 on, and recomputed at serve time from the daily record rebuild on earlier picks. Absent otherwise and on payloads predating the field. */
+  /** The wallet's edge over the price it paid in the pick's canonical category (`category`): how often the side it bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). The rule the site's sport leaderboards use for their Edge column, over every size, and the figure the pick card prints on the sport's line. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. Present only with `category_win_rate_status` = `measured`, when the edge ranks (30 or more such markets, and the share of the decided ones that made money at settlement within 10 points of the win rate) and the wallet's realized P&L over them is above zero; otherwise `category_price_edge_hold` says why. Beside `category_win_rate_game` it is still the whole category's edge; the game's or league's is `category_scope_price_edge`. Frozen when the pick is published on picks from mid-November 2026 on, and recomputed at serve time from the daily record rebuild on earlier picks. Absent otherwise and on payloads predating the field. */
   category_price_edge?: PickHolderPriceEdge;
   /** The same edge over the markets of the game or league `category_win_rate_game` names alone: the edge the pick card prints beside a game or league win rate (for example `-17.1 pp` in the Premier League). Present only beside `category_win_rate_game`, under the same rule over that game's or league's markets and the wallet's realized P&L there; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. Frozen or recomputed as `category_price_edge` is. Absent otherwise and on payloads predating the field. */
   category_scope_price_edge?: PickHolderPriceEdge;
@@ -3204,9 +3202,9 @@ export type PickHolder = {
   };
 };
 
-/** Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild. */
+/** Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild. */
 export type PickHolderPriceEdge = {
-  /** Settled markets of $20 or more at a known entry price that the edge is measured over. */
+  /** Settled markets at a known entry price that the edge is measured over (`every_size`). */
   markets: number;
   /** Share of those markets whose bought side won, 0-1. */
   hit_rate: number;
@@ -3214,11 +3212,13 @@ export type PickHolderPriceEdge = {
   avg_price: number;
   /** hit_rate minus avg_price, full precision. */
   edge: number;
+  /** True when the figures count every settled market of every size; false or absent when they count markets of $20 or more (older or not yet recounted). */
+  every_size: boolean;
 };
 
 /** An edge the holder row does not show, and why. */
 export type PickHolderPriceEdgeHold = {
-  /** category_loss: the edge ranks, and the wallet's realized P&L over the same markets is zero or below. too_few_markets: fewer than 30 counted markets. sample_mismatch: the share of the decided markets that made money at settlement is more than 10 points from the win rate over the same markets, so these markets do not describe the wallet's record. no_markets: no settled market of $20 or more at a known entry price. */
+  /** category_loss: the edge ranks, and the wallet's realized P&L over the same markets is zero or below. too_few_markets: fewer than 30 counted markets. sample_mismatch: the share of the decided markets that made money at settlement is more than 10 points from the win rate over the same markets, so these markets do not describe the wallet's record. no_markets: no settled market at a known entry price. */
   hold: "category_loss" | "too_few_markets" | "sample_mismatch" | "no_markets";
   /** The rule's figures, as a shown edge carries them. Omitted for no_markets, and for too_few_markets when the wallet has fewer than 5 such markets. */
   record?: PickHolderPriceEdge;
@@ -5365,7 +5365,7 @@ export type Trader = {
   synced_at?: string;
   /** synced, unknown, or pending. */
   sync_status?: string;
-  /** Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering synced_at and sync_status; it covered last_active until 2026-11-02, #32324, and no group covers last_active now, since the value is itself a trade time), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
+  /** Data age and coverage for this trader body. Always present. Its six groups are sync (traders.last_synced, covering synced_at and sync_status; it covered last_active until 2026-11-02, #32324, and no group covers last_active now, since the value is itself a trade time), sports_record (trader_product_scope_records.computed_at, covering pnl.in_scope, stats.markets_traded and stats.win_rate: unavailable until the wallet's sports and esports record is computed, partial while it has no decided sports or esports market; stale with owner traders.last_synced and as_of the last completed sync when the wallet traded after that sync (last_active later than synced_at), because the record's figures come from the per-market values that sync read and leave out every trade and settlement since, since 2026-11-15, #35587; for a wallet that traded no sports or esports market, which never gets a record, partial with owner traders.last_synced, as of the completed sync that found none, stats.markets_traded 0 and pnl.in_scope and stats.win_rate omitted, since 2026-10-29, #30589, #30657; for a wallet that trades only combos and holds no single sports or esports market, partial with owner traders.last_synced and all three omitted, since 2026-10-29, #30637), ranking (trader_rankings.computed_at, covering grade, score, streak_tier, forecast_score and forecast_evidence), leaderboard_rank (leaderboard_rank_refresh_state.completed_at, the completion time of the latest fully completed global rank refresh, covering rank), volume (traders.last_synced, covering stats.total_volume, the sum of the trade days the sync stores: unavailable before the first completed sync and while a stored day's sports and esports volume is not computed) and positions (trader_position_snapshots.last_refreshed_at with traders.last_synced as fallback, covering pnl.unrealized, the open-position aggregate). Since 2026-10-27 (#29830) there is no leaderboard_pnl group, and volume is dated by the sync clock instead of trader_usd_volume.observed_at. The positions clock is the latest successful /positions snapshot when one exists, otherwise the last completed trader sync. A rank or position value remains unknown or unavailable when its clock or value is absent. For an unknown wallet every group is unavailable. If the open-position read itself fails, positions is unavailable with a reason that says so, pnl.unrealized is absent, and the body is answered fresh (meta.cached false) and is not kept for later callers. */
   data_quality: DataQuality;
   /** Field-level trust metadata. Present only when expand=trust or expand[]=trust is requested. */
   trust?: TraderTrust;
@@ -7505,7 +7505,7 @@ export interface OperationQuery {
     "sections[]"?: ("hit_rate" | "series" | "market_expectations" | "outcome_stats" | "ask_comparison" | "days" | "categories" | "sports" | "tiers" | "months" | "price_bands" | "market_types" | "total_sides" | "streaks" | "records" | "voids")[];
   };
   getPickOfTheDayWalletMarkets: {
-    /** edge: the markets behind the row's edge (won X% of N markets, settled markets of $20 or more where the side and price are known). record: the markets behind its any-size record (X of N markets in profit). Any other value, or none, returns 400 bad_request with error.param=sample. */
+    /** edge: the markets behind the row's edge (won X% of N markets, settled markets of every size where the side and price are known). record: the markets behind its any-size record (X of N markets in profit). Any other value, or none, returns 400 bad_request with error.param=sample. */
     sample: "edge" | "record";
     /** scope: the league or esports title the row names; the default when it names one. category: the whole sport, the default otherwise. scope on a row that names none returns 404. Any other value returns 400 bad_request with error.param=within. */
     within?: "scope" | "category";
