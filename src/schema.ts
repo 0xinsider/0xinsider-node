@@ -1667,6 +1667,8 @@ export type GameHoldersItem = {
   market: MarketHoldersMarket;
   scan: MarketHoldersScan;
   totals: MarketHoldersTotals;
+  /** When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row recounted since carries its own. Absent when no row of the roster carries a price edge or a hold. */
+  category_records_as_of?: string;
   /** When this roster was computed. A fresh cached roster is at most 60 seconds old; a stale one at most 15 minutes. */
   computed_at: string;
   /** true when the roster came from the cache. */
@@ -2598,6 +2600,16 @@ export type MarketHolder = {
   category_win_rate_game?: string;
   /** Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Never `untracked`: this route lists S, A and B wallets only, all on file. Always present on this route. */
   category_win_rate_status: "measured" | "not_enough_data" | "unavailable" | "untracked";
+  /** The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why. */
+  category_price_edge?: PickHolderPriceEdge;
+  /** The same edge over the markets of the game or league `category_win_rate_game` names alone. Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place. */
+  category_scope_price_edge?: PickHolderPriceEdge;
+  /** Why there is no `category_price_edge` for a wallet with a measured rate, with the rule's figures when it has them: the reason the page prints in place of the edge. Present only with `category_win_rate_status` = `measured`, and never beside `category_price_edge`. */
+  category_price_edge_hold?: PickHolderPriceEdgeHold;
+  /** Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`. */
+  category_scope_price_edge_hold?: PickHolderPriceEdgeHold;
+  /** When this wallet's category record was recounted, sent only when that is later than the payload's `category_records_as_of`: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's category win record, average price and price edges are as of this time. Absent on every other row. */
+  category_records_as_of?: string;
   category_evidence?: HolderCategoryEvidence;
   /** Whole UTC calendar days since this wallet's first trade, as an integer (271, not 271.0): the number of UTC dates from the first trade's date to today, so a first trade at 23:00 UTC reads 1 an hour later. Every wallet's age changes at 00:00 UTC, once a day, not on every request. The five badge fields are present together, only for a wallet that draws at least one badge. */
   wallet_age_days?: number | null;
@@ -9264,6 +9276,8 @@ export interface OperationResponse {
     market: MarketHoldersMarket;
     scan: MarketHoldersScan;
     totals: MarketHoldersTotals;
+    /** When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when no row carries a price edge or a hold. */
+    category_records_as_of?: string;
     meta: ResponseMeta;
   };
   getMarketIntel: {

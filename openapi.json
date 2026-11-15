@@ -19377,7 +19377,7 @@
       "get": {
         "operationId": "getMarketHolders",
         "summary": "List a market's graded holders",
-        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category, and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. This is current state and takes no as-of parameter: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), and `scan.fetched_at` is the only timestamp on it. For a point-in-time roster, snapshot this route yourself on your own schedule; the one frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
+        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. This is current state and takes no as-of parameter: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), and `scan.fetched_at` is the only timestamp on it. For a point-in-time roster, snapshot this route yourself on your own schedule; the one frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -19605,6 +19605,11 @@
                     },
                     "totals": {
                       "$ref": "#/components/schemas/MarketHoldersTotals"
+                    },
+                    "category_records_as_of": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row whose wallet was recounted since carries its own, later `category_records_as_of`; every other row is as of this time. Absent when no row carries a price edge or a hold."
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ResponseMeta"
@@ -35401,7 +35406,7 @@
                               "readOnlyHint": true,
                               "title": "Get Trader Leaderboard"
                             },
-                            "description": "Get the top-ranked prediction market traders (grades S, A, B only). Sorted by composite score descending. Supports cursor pagination and optional filters.\n\nArgs:\n  - limit (number, 1-100, default 20): Max results per page\n  - cursor (string, optional): Pagination cursor from previous response\n  - category (string, optional): Filter by category slug\n  - strategy (string, optional): Filter by strategy type\n\nReturns: Ranked list of traders with grade, score, P&L, volume, win rate, and strategy.",
+                            "description": "Get the top-ranked prediction market traders (grades S, A, B only). Sorted by composite score descending. Supports cursor pagination and optional filters.\n\nReturns: Ranked list of traders with grade, score, P&L, volume, win rate, and strategy.",
                             "inputSchema": {
                               "additionalProperties": false,
                               "properties": {
@@ -35441,7 +35446,7 @@
                               "readOnlyHint": true,
                               "title": "Get trader"
                             },
-                            "description": "Look up a prediction market trader by wallet address or username. Returns grade (S through F), P&L breakdown, win rate, and volume.\n\nOptional expand fields for heavier data:\n- strategy: Trading strategy classification\n- categories: Per-category performance breakdown\n- quant_metrics: retired since 2026-10-27; accepted and never returned, because its metrics covered every market of the wallet. Read pnl.in_scope or get_trader_pnl for the sports and esports record\n- trust: Per-field provenance (source, freshness, reconciliation, completeness) for grade, P&L, and stats\n\nA wallet address with no trader yet returns sync_status \"unknown\" (not an error). A username or trader id that matches no trader is a not_found error.\n\nArgs:\n  - address (string, required): Ethereum wallet address (0x...) or trader username\n  - expand (string[], optional): Heavy fields to include: \"strategy\", \"categories\", \"trust\" (\"quant_metrics\" is accepted and returns nothing)\n\nReturns: Trader profile with grade, P&L, stats, and optional expanded fields.",
+                            "description": "Look up a prediction market trader by wallet address or username. Returns grade (S through F), P&L breakdown, win rate, and volume.\n\nOptional expand fields for heavier data:\n- strategy: Trading strategy classification\n- categories: Per-category performance breakdown\n- quant_metrics: retired since 2026-10-27; accepted and never returned, because its metrics covered every market of the wallet. Read pnl.in_scope or get_trader_pnl for the sports and esports record\n- trust: Per-field provenance (source, freshness, reconciliation, completeness) for grade, P&L, and stats\n\nA wallet address with no trader yet returns sync_status \"unknown\" (not an error). A username or trader id that matches no trader is a not_found error.\n\nReturns: Trader profile with grade, P&L, stats, and optional expanded fields.",
                             "inputSchema": {
                               "additionalProperties": false,
                               "properties": {
@@ -58552,6 +58557,27 @@
             "enum": ["measured", "not_enough_data", "unavailable", "untracked"],
             "description": "Why `category_win_rate` is present or absent: `measured` (rate present), `not_enough_data` (under the floor of 5 decided markets in the category), or `unavailable` (the market has no canonical category, or the read failed; retry later). Never `untracked`: this route lists S, A and B wallets only, all on file. Always present on this route."
           },
+          "category_price_edge": {
+            "$ref": "#/components/schemas/PickHolderPriceEdge",
+            "description": "The wallet's edge over the price it paid in the market's canonical category (`market.category`), the figure the event page's Top holders row and GET /api/v1/market/{condition_id}/top-holders print for this wallet, from the same read and rule: how often the side it bought won, minus the average price it paid, over its settled markets there of $20 or more at a known entry price. Probabilities, not percentages: `edge` 0.022 is +2.2 pp. The page's 95% range is 1.96 * sqrt(avg_price * (1 - avg_price) / markets) either side of `edge`, and the page names an edge only when that range is all on one side of zero. Not `category_win_rate` minus `category_avg_price`: the edge counts its own sample. As of the row's `category_records_as_of`, or the payload's when the row has none. Present only with `category_win_rate_status` = `measured` when the page shows the edge; otherwise, beside a measured rate, `category_price_edge_hold` says why."
+          },
+          "category_scope_price_edge": {
+            "$ref": "#/components/schemas/PickHolderPriceEdge",
+            "description": "The same edge over the markets of the game or league `category_win_rate_game` names alone. Present only beside `category_win_rate_game`; otherwise, beside a game or league rate, `category_scope_price_edge_hold` says why. Never the whole category's edge in its place."
+          },
+          "category_price_edge_hold": {
+            "$ref": "#/components/schemas/PickHolderPriceEdgeHold",
+            "description": "Why there is no `category_price_edge` for a wallet with a measured rate, with the rule's figures when it has them: the reason the page prints in place of the edge. Present only with `category_win_rate_status` = `measured`, and never beside `category_price_edge`."
+          },
+          "category_scope_price_edge_hold": {
+            "$ref": "#/components/schemas/PickHolderPriceEdgeHold",
+            "description": "Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`."
+          },
+          "category_records_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this wallet's category record was recounted, sent only when that is later than the payload's `category_records_as_of`: a wallet's record is also recounted about an hour after its markets settle, between daily rebuilds. This row's category win record, average price and price edges are as of this time. Absent on every other row."
+          },
           "category_evidence": {
             "$ref": "#/components/schemas/HolderCategoryEvidence"
           },
@@ -60300,6 +60326,11 @@
           },
           "totals": {
             "$ref": "#/components/schemas/MarketHoldersTotals"
+          },
+          "category_records_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the daily pass behind the rows' category win records and price edges began: the oldest any row's record or edge can be. A row recounted since carries its own. Absent when no row of the roster carries a price edge or a hold."
           },
           "computed_at": {
             "type": "string",
