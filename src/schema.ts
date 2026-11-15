@@ -7280,7 +7280,10 @@ export interface OperationQuery {
     job_id: number;
   };
   cancelWhaleDataset: Record<string, never>;
-  createMcpJsonRpcResponse: Record<string, never>;
+  createMcpJsonRpcResponse: {
+    /** Shorten the tools/list answer to the named toolsets, separated by commas: core (16 tools: account, leaderboard, one trader, games, market search, the day's picks, large and flagged trades), all (every current tool), or a group: account, combos, content, games, large_trades, markets, picks, platforms, reports, suspicious_trades, traders, webhooks. Leave it out for the full list. A shortened list leaves out the deprecated alias tools. It changes tools/list only: tools/call runs every tool whatever was listed. An unknown name answers JSON-RPC error -32602 naming the valid ones. */
+    toolsets?: string;
+  };
   createWebhook: Record<string, never>;
   createWebhookVerificationAttempt: Record<string, never>;
   deleteWebhook: Record<string, never>;

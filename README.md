@@ -565,6 +565,8 @@ const context = await client.getTraderContextMarkdown("0x9d84...1344");
 // an unknown tool is an answer, a revoked credential is not.
 const listed = await client.mcp({ method: "tools/list", id: 1 });
 listed.response?.result;          // 200
+// SDK 0.84.0: a shorter list. `core`, `all`, or groups such as ["games", "picks"].
+const core = await client.mcp({ method: "tools/list", id: 2 }, { toolsets: "core" });
 const ack = await client.mcp({ method: "notifications/initialized" });
 ack.status;                        // 202, ack.response is null
 
