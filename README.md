@@ -228,6 +228,8 @@ const fresh = await client.listLargeTradeHistory({ new_wallets: true, min_size: 
 for (const t of fresh.data) console.log(t.trader.username ?? t.trader.address, t.trader.first_trade_at);
 ```
 
+SDK 0.83.0 types the same `trader.first_trade_at` on every `listPositions` row (#35479). Since 2026-11-15 a position's `trader.wallet_age_days` and `trader.is_new_wallet` count from that first trade, so a wallet gets the same answer on a position and on its large trades; before, they counted from when 0xinsider first recorded the wallet. `is_new_wallet` stays a boolean there, `false` when `first_trade_at` is `null`.
+
 SDK 0.82.0 exports the row shapes of `PickOfTheDayStats` and `PickOfTheDayStatsSections` as types of their own: `PickOfTheDayStatsBucket` (the rows of `categories`, `sports`, `tiers`, `months`, `price_bands`, `market_types` and `total_sides`), `PickOfTheDayStatsDay`, `PickOfTheDayStatsVoid`, `PickOfTheDayMarketExpectations`, `PickOfTheDayOutcomeStats`, `PickOfTheDayStatsRecords`, `PickOfTheDayStatsStreaks` and `PickOfTheDayAskComparison`. No field or type changed.
 
 ## Price moves

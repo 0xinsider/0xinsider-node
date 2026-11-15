@@ -4472,9 +4472,11 @@ export type Position = {
     in_scope_realized_pnl?: number;
     /** Sports and esports markets on the wallet's record, pnl.in_scope.markets on GET /api/v1/trader/{address}. Since 2026-10-27 it no longer counts other markets (#29953). Absent when the wallet has no record. */
     markets?: number;
-    /** Days since the wallet's first-seen time. For a wallet 0xinsider first recorded on or after March 21, 2026, that is when 0xinsider recorded it. For a wallet recorded earlier, it is usually the wallet's first Polymarket activity, so the age can run to years. It is not the wallet's on-chain age or the time of its first trade. Absent when the first-seen time is unknown. */
+    /** Additive (since 2026-11-15, #35479): the wallet's first trade 0xinsider recorded, the same value as trader.first_trade_at on large-trade rows. Null until the wallet has one. */
+    first_trade_at: string | null;
+    /** Days since first_trade_at, to two decimals. Absent when first_trade_at is null. Until 2026-11-15 (#35479) it counted from when 0xinsider first recorded the wallet, which could be years after or before its first trade. */
     wallet_age_days?: number;
-    /** True when wallet_age_days is under the new-wallet threshold (30 days), which means 0xinsider first recorded the wallet in the last 30 days. False when wallet_age_days is absent. This public V1 field is first-seen recency, not the wallet's on-chain age. */
+    /** True when first_trade_at is under 30 days old: the rule large-trade rows use and the wallets the site's New wallets view shows, so one wallet gets one answer. False when first_trade_at is null. Until 2026-11-15 (#35479) it meant 0xinsider first recorded the wallet in the last 30 days. */
     is_new_wallet: boolean;
     /** Additive (since 2026-11-11, #34333): sports and esports markets the wallet closed with a profit or a loss, the divisor of win_rate; pnl.in_scope.markets_decided on GET /api/v1/trader/{address}. Absent when the wallet has no record. */
     markets_decided?: number;

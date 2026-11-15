@@ -53262,7 +53262,7 @@
           },
           "trader": {
             "type": "object",
-            "required": ["id", "address", "is_new_wallet"],
+            "required": ["id", "address", "first_trade_at", "is_new_wallet"],
             "properties": {
               "id": {
                 "type": "string",
@@ -53296,13 +53296,18 @@
                 "type": "integer",
                 "description": "Sports and esports markets on the wallet's record, pnl.in_scope.markets on GET /api/v1/trader/{address}. Since 2026-10-27 it no longer counts other markets (#29953). Absent when the wallet has no record."
               },
+              "first_trade_at": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "Additive (since 2026-11-15, #35479): the wallet's first trade 0xinsider recorded, the same value as trader.first_trade_at on large-trade rows. Null until the wallet has one."
+              },
               "wallet_age_days": {
                 "type": "number",
-                "description": "Days since the wallet's first-seen time. For a wallet 0xinsider first recorded on or after March 21, 2026, that is when 0xinsider recorded it. For a wallet recorded earlier, it is usually the wallet's first Polymarket activity, so the age can run to years. It is not the wallet's on-chain age or the time of its first trade. Absent when the first-seen time is unknown."
+                "description": "Days since first_trade_at, to two decimals. Absent when first_trade_at is null. Until 2026-11-15 (#35479) it counted from when 0xinsider first recorded the wallet, which could be years after or before its first trade."
               },
               "is_new_wallet": {
                 "type": "boolean",
-                "description": "True when wallet_age_days is under the new-wallet threshold (30 days), which means 0xinsider first recorded the wallet in the last 30 days. False when wallet_age_days is absent. This public V1 field is first-seen recency, not the wallet's on-chain age."
+                "description": "True when first_trade_at is under 30 days old: the rule large-trade rows use and the wallets the site's New wallets view shows, so one wallet gets one answer. False when first_trade_at is null. Until 2026-11-15 (#35479) it meant 0xinsider first recorded the wallet in the last 30 days."
               },
               "markets_decided": {
                 "type": "integer",
