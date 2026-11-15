@@ -12523,7 +12523,12 @@
                           "clv_unavailable": 0,
                           "clv_state": "measured",
                           "clv_beats_close": 1,
-                          "clv_ties": 0
+                          "clv_ties": 0,
+                          "priced_decided": 1,
+                          "priced_in_pct": 50.0,
+                          "priced_in_display": "50.0%",
+                          "edge_pp": 50.0,
+                          "edge_display": "+50.0 pp"
                         },
                         "days": [
                           {
@@ -12975,7 +12980,12 @@
                           "clv_avg_pp": -0.10438596491228073,
                           "clv_avg_pp_display": "-0.1 pp",
                           "clv_beats_close": 286,
-                          "clv_ties": 260
+                          "clv_ties": 260,
+                          "priced_decided": 860,
+                          "priced_in_pct": 57.807005813953474,
+                          "priced_in_display": "57.8%",
+                          "edge_pp": 1.2627616279069898,
+                          "edge_display": "+1.3 pp"
                         },
                         "market_expectations": {
                           "as_of_date": "2026-11-01",
@@ -46353,7 +46363,8 @@
               "clv_unavailable",
               "clv_state",
               "clv_beats_close",
-              "clv_ties"
+              "clv_ties",
+              "priced_decided"
             ],
             "properties": {
               "clv_applicable": {
@@ -46451,6 +46462,21 @@
               },
               "wins": {
                 "type": "integer"
+              },
+              "edge_display": {
+                "type": "string"
+              },
+              "edge_pp": {
+                "type": "number"
+              },
+              "priced_decided": {
+                "type": "integer"
+              },
+              "priced_in_display": {
+                "type": "string"
+              },
+              "priced_in_pct": {
+                "type": "number"
               }
             }
           },
@@ -49396,7 +49422,7 @@
             ]
           },
           "since_start": {
-            "description": "What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available.",
+            "description": "What S, A and B grade wallets bought on a binary game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available.",
             "anyOf": [
               {
                 "type": "object",
@@ -49638,7 +49664,7 @@
           },
           "period": {
             "type": "string",
-            "description": "The provider's period label, for example Q3, End Q2 or T5. Omitted when the provider sent none."
+            "description": "The period as readers read it, for example Q3, End Q2 or T5: the provider's period label, except in women's college basketball (league cwbb), whose feed names its four quarters with the men's halves vocabulary; there H1, H2 and OT read Q1, Q2 and Q3, and each End frame likewise (End OT reads End Q3, after which the feed sends no frame until the final, so the game is in its 4th quarter at the 3rd quarter's score). provider_period keeps the provider's value. Omitted when the provider sent none."
           },
           "clock": {
             "type": "string",
@@ -49668,6 +49694,10 @@
               }
             ],
             "description": "Who observed ended_at. Always present, and null exactly when ended_at is null. sports_ws: the first Polymarket Sports WebSocket frame that reported the game final, at the time it was received. gamma_finished: for a game no such frame ended, Polymarket's own event finish time, served only when it is earlier than the market's resolution and never for a fight card (MMA, boxing)."
+          },
+          "provider_period": {
+            "type": "string",
+            "description": "The live-score feed's period string, verbatim. Omitted when the provider sent none."
           }
         }
       },
@@ -54870,7 +54900,8 @@
               "clv_unavailable",
               "clv_state",
               "clv_beats_close",
-              "clv_ties"
+              "clv_ties",
+              "priced_decided"
             ],
             "properties": {
               "clv_applicable": {
@@ -54968,6 +54999,21 @@
               },
               "wins": {
                 "type": "integer"
+              },
+              "edge_display": {
+                "type": "string"
+              },
+              "edge_pp": {
+                "type": "number"
+              },
+              "priced_decided": {
+                "type": "integer"
+              },
+              "priced_in_display": {
+                "type": "string"
+              },
+              "priced_in_pct": {
+                "type": "number"
               }
             }
           },
@@ -55324,7 +55370,8 @@
           "clv_not_applicable",
           "clv_beats_close",
           "clv_ties",
-          "series"
+          "series",
+          "priced_decided"
         ],
         "properties": {
           "wins": {
@@ -55478,6 +55525,21 @@
                 }
               }
             }
+          },
+          "edge_display": {
+            "type": "string"
+          },
+          "edge_pp": {
+            "type": "number"
+          },
+          "priced_decided": {
+            "type": "integer"
+          },
+          "priced_in_display": {
+            "type": "string"
+          },
+          "priced_in_pct": {
+            "type": "number"
           }
         }
       },

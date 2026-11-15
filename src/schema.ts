@@ -1859,7 +1859,7 @@ export type GameSharpMoney = {
     trader_count: number;
     verdict: GameSharpMoneyVerdict;
   } | null;
-  /** What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available. */
+  /** What S, A and B grade wallets bought on a binary game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available. */
   since_start: {
     as_of: string;
     bought_usd: number;
@@ -1909,7 +1909,7 @@ export type GameStatus = {
   match_status?: "scheduled" | "in_progress" | "halftime" | "penalty_shootout" | "delayed" | "suspended" | "final" | "final_overtime" | "final_shootout" | "awarded" | "forfeit" | "not_necessary" | "postponed" | "cancelled" | "unknown";
   /** The live-score feed's status string, verbatim. Omitted when no live-score frame carries one. This API never puts a label of its own here, such as Scheduled for a listed game. Omitted with match_status on an ended game whose last status is from before the end. */
   provider_status?: string;
-  /** The provider's period label, for example Q3, End Q2 or T5. Omitted when the provider sent none. */
+  /** The period as readers read it, for example Q3, End Q2 or T5: the provider's period label, except in women's college basketball (league cwbb), whose feed names its four quarters with the men's halves vocabulary; there H1, H2 and OT read Q1, Q2 and Q3, and each End frame likewise (End OT reads End Q3, after which the feed sends no frame until the final, so the game is in its 4th quarter at the 3rd quarter's score). provider_period keeps the provider's value. Omitted when the provider sent none. */
   period?: string;
   /** The game clock as the provider spells it, never reformatted. Omitted when the provider sent none. */
   clock?: string;
@@ -1921,6 +1921,8 @@ export type GameStatus = {
   ended_at: string | null;
   /** Who observed ended_at. Always present, and null exactly when ended_at is null. sports_ws: the first Polymarket Sports WebSocket frame that reported the game final, at the time it was received. gamma_finished: for a game no such frame ended, Polymarket's own event finish time, served only when it is earlier than the market's resolution and never for a fight card (MMA, boxing). */
   ended_at_source: "sports_ws" | "gamma_finished" | null;
+  /** The live-score feed's period string, verbatim. Omitted when the provider sent none. */
+  provider_period?: string;
 };
 
 /** The tennis tournament edition a game belongs to, curated from official ATP, WTA and ITF pages (source_urls), never from Polymarket, which supplies the competition label and tour only. Selected by the game's provider competition label, the one tour both players carry, and the kickoff's day at the venue. A fact no official page states is omitted. */
@@ -3678,6 +3680,11 @@ export type PickOfTheDayArchiveSummary = {
     void: number;
     win_rate_display: string;
     wins: number;
+    edge_display?: string;
+    edge_pp?: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
   };
   page: {
     has_more: boolean;
@@ -3842,6 +3849,11 @@ export type PickOfTheDayHitRate = {
     /** Running rolling hit rate (wins / decided * 100, to 1 decimal) through this pick. */
     hit_rate_pct: number;
   }[];
+  edge_display?: string;
+  edge_pp?: number;
+  priced_decided: number;
+  priced_in_display?: string;
+  priced_in_pct?: number;
 };
 
 /** The commitment ledger: every published pick, ascending, in the state its commitment is actually in. The counts are derived from entries in the same pass that builds it. */
@@ -4266,6 +4278,11 @@ export type PickOfTheDayStatsSections = {
     void: number;
     win_rate_display: string;
     wins: number;
+    edge_display?: string;
+    edge_pp?: number;
+    priced_decided: number;
+    priced_in_display?: string;
+    priced_in_pct?: number;
   };
   market_expectations?: PickOfTheDayMarketExpectations;
   market_types?: PickOfTheDayStatsBucket[];
