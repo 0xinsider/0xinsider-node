@@ -1859,7 +1859,7 @@ export type GameSharpMoney = {
     trader_count: number;
     verdict: GameSharpMoneyVerdict;
   } | null;
-  /** What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. null otherwise, on a 1X2, and when none of them bought since the start. */
+  /** What S, A and B grade wallets bought on a binary game's moneyline since its scheduled start, by side, in dollars, while lifecycle is in_play. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available. */
   since_start: {
     as_of: string;
     bought_usd: number;
