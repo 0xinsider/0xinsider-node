@@ -22737,7 +22737,7 @@
       "get": {
         "operationId": "getMarketCandles",
         "summary": "Get market OHLC price candles",
-        "description": "Provider-first bucketed OHLC price candles for a market's outcome tokens, open or resolved. resolution=5m and 1h read Polymarket's Data API /v2/prices-history at that bucket width: Polymarket returns one price per bucket, so each candle's open/high/low/close are equal and a bucket it did not price has no candle; data.window_start and data.window_end bound the read, data.observed_at says when Polymarket was read, and a window reaching the present is re-read after at most 60 seconds. Polymarket publishes these buckets in batches, so the newest candle trails the clock: on 2026-11-15 the newest 5m candle started 16 to 31 minutes before the read and the newest 1h candle was the last completed hour. For the current price, read GET /api/v1/market/{condition_id}/snapshot. Without from, 5m covers the last day and 1h the last 7 days, ending now or at the market's resolution; a window spans at most 15 days, and 5m reaches back 60 days, 1h 90 (Polymarket's documented retention), else 400. A 5m or 1h read that is not cached spends the account's cold-read share (6 a minute, in bursts of up to 30); over it the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, while a cached window still answers. If Polymarket does not answer, 503 read_model_warming with Retry-After. resolution=1d and 1w come from our stored copy of the Polymarket price history (the series the market-detail chart renders): the stored data is daily, so a 1d bucket typically carries one point whose open/high/low/close equal that day's close; 1w aggregates real OHLC across the daily closes. No price is fabricated at any resolution. Query field names and recognized values are URL-decoded; duplicate recognized fields use the last value and unknown fields are ignored. When both bounds are present, from must be less than or equal to to; malformed or inverted bounds answer 400.",
+        "description": "Provider-first bucketed OHLC price candles for a market's outcome tokens, open or resolved. resolution=5m and 1h read Polymarket's Data API /v2/prices-history at that bucket width: Polymarket returns one price per bucket, so each such candle (basis provider_bucket) has equal open/high/low/close, and a bucket it did not price has no candle; data.window_start and data.window_end bound the read, data.observed_at says when Polymarket was read. Polymarket publishes those buckets in batches (on 2026-11-15 the newest 5m bucket started 16 to 31 minutes before the read; at 13:06Z the newest 1h bucket was 11:00Z), so in a window that ended under 3 hours ago every bucket after Polymarket's newest one is built from its 60-second prices, which trail the clock by 4 to 11 minutes: open the first minute's price, high the highest, low the lowest, close the last (basis provisional_minutes). A provisional candle is replaced by Polymarket's own bucket on a later read once published; a minute Polymarket skipped adds nothing. A window reaching the present, or holding a provisional candle, is re-read after at most 60 seconds. For the current price, read GET /api/v1/market/{condition_id}/snapshot. Without from, 5m covers the last day and 1h the last 7 days, ending now or at the market's resolution; a window spans at most 15 days, and 5m reaches back 60 days, 1h 90 (Polymarket's documented retention), else 400. A 5m or 1h read that is not cached spends the account's cold-read share (6 a minute, in bursts of up to 30; a read of a window that ended under 3 hours ago spends 2); over it the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, while a cached window still answers. If Polymarket does not answer, 503 read_model_warming with Retry-After. resolution=1d and 1w come from our stored copy of the Polymarket price history (the series the market-detail chart renders): the stored data is daily, so a 1d bucket typically carries one point whose open/high/low/close equal that day's close; 1w aggregates real OHLC across the daily closes. No price is fabricated at any resolution. Query field names and recognized values are URL-decoded; duplicate recognized fields use the last value and unknown fields are ignored. When both bounds are present, from must be less than or equal to to; malformed or inverted bounds answer 400.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -48109,7 +48109,7 @@
       },
       "Candle": {
         "type": "object",
-        "description": "One bucketed OHLC price candle. Prices are in provider [0, 1] units: truncated to 4 decimals at 1d and 1w, Polymarket's own bucket price unrounded at 5m and 1h, where open, high, low and close are equal.",
+        "description": "One bucketed OHLC price candle. Prices are in provider [0, 1] units: truncated to 4 decimals at 1d and 1w, unrounded at 5m and 1h. At 5m and 1h, basis says which Polymarket series the candle comes from: provider_bucket is Polymarket's own bucket price, so open, high, low and close are equal; provisional_minutes is built from Polymarket's 60-second prices in a bucket it has not published yet.",
         "required": ["t", "o", "h", "l", "c"],
         "properties": {
           "t": {
@@ -48132,6 +48132,11 @@
           "c": {
             "type": "number",
             "description": "Close price in provider [0, 1] units (last observed point in the bucket)."
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["provider_bucket", "provisional_minutes"],
+            "description": "5m and 1h only; absent at 1d and 1w. provider_bucket: Polymarket's own five-minute or hourly bucket, one price, so o=h=l=c. provisional_minutes: a bucket after Polymarket's newest published one, in a window that ended under 3 hours ago, built from Polymarket's 60-second prices inside it: o the first minute's price, h the highest, l the lowest, c the last. Provisional: a later read replaces it with Polymarket's bucket once published (its price has equalled the first minute's price, so o carries over and h, l and c collapse to it), and the bucket in progress gains minutes until it closes. A bucket with no 60-second price has no candle."
           }
         }
       },
@@ -48185,7 +48190,7 @@
           "observed_at": {
             "type": "string",
             "format": "date-time",
-            "description": "5m and 1h only: when Polymarket's series was read. A window that reaches the present is re-read after at most 60 seconds."
+            "description": "5m and 1h only: when Polymarket's series was read. A window that reaches the present, or holds a provisional_minutes candle, is re-read after at most 60 seconds."
           },
           "outcomes": {
             "type": "array",

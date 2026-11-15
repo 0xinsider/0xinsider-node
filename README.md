@@ -375,8 +375,13 @@ const checked = await client.listLeaderboard(
 console.log(checked.meta?.effectiveQuery, checked.meta?.queryIgnored);
 
 // OHLC candles for a market (open or resolved). SDK 0.87.0 types "5m" and "1h",
-// Polymarket's five-minute and hourly buckets, beside "1d" and "1w":
+// Polymarket's five-minute and hourly buckets, beside "1d" and "1w". From 0.88.0
+// each 5m or 1h candle types its basis: "provisional_minutes" marks a recent
+// bucket built from Polymarket's 60-second prices, replaced on a later read:
 const candles = await client.getMarketCandles("0xabc...", { resolution: "5m" });
+const provisional = candles.data?.outcomes[0]?.candles.filter(
+  (candle) => candle.basis === "provisional_minutes",
+);
 
 // Webhook event catalog (self-describing) and one endpoint's delivery log:
 const events = await client.listWebhookEvents();
