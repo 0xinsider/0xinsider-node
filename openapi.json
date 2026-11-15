@@ -22284,7 +22284,7 @@
       "get": {
         "operationId": "getMarketSnapshot",
         "summary": "Get market live snapshot",
-        "description": "Provider-first market card snapshot with canonical identity, outcome labels, cached top-of-book when available, liquidity, live sports context, and explicit freshness/unavailable states.",
+        "description": "Provider-first market card snapshot with canonical identity, outcome labels, cached top-of-book when available, liquidity, live sports context, and explicit freshness/unavailable states. The first read of an open market no reader holds answers top_of_book reason cache_miss and starts its live book: read again after 1 second.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -57482,6 +57482,7 @@
             "type": "number"
           },
           "reason": {
+            "description": "Set when status is unavailable. cache_miss: we hold no book for the outcome yet. On an open market this read starts its live book, and a read 1 second later usually has it; on a closed market no book is started. cache_unavailable: we could not read the book from the cache; read again. stream_capacity: API reads already hold every live book they may open; reading again does not help until fewer markets are read. one_sided_book: the book holds bids or asks, not both, and the side it holds is served. empty_book: the book holds no orders. missing_provider_token_id: the outcome has no provider token id.",
             "type": "string"
           }
         }

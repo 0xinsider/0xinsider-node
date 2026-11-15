@@ -2907,6 +2907,7 @@ export type MarketSnapshotTopOfBook = {
   bid_depth_usdc?: number;
   /** USD (price times size) on asks at or below the midpoint plus 0.02, from the whole book, rounded to the cent. The props filter min_book_usd_within_2c compares the unrounded sums, which expand=quotes serves as book_depth_within_2c. Absent when we hold no depth for the book. */
   ask_depth_usdc?: number;
+  /** Set when status is unavailable. cache_miss: we hold no book for the outcome yet. On an open market this read starts its live book, and a read 1 second later usually has it; on a closed market no book is started. cache_unavailable: we could not read the book from the cache; read again. stream_capacity: API reads already hold every live book they may open; reading again does not help until fewer markets are read. one_sided_book: the book holds bids or asks, not both, and the side it holds is served. empty_book: the book holds no orders. missing_provider_token_id: the outcome has no provider token id. */
   reason?: string;
 };
 
