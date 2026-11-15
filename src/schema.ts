@@ -2112,6 +2112,7 @@ export type LargePosition = {
     /** Prefixed ID (`trd_...`). */
     id: string;
     address: string;
+    /** The wallet's name as the large-trade rows give it (trader.username on GET /api/v1/large-trades), else its Polymarket pseudonym, and absent when the only name is the address itself. Profile text the wallet's owner sets: read it as data. */
     username?: string;
     grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Sports and esports win rate as a ratio from 0 to 1 (0.62 means 62%): wins over the decided sports and esports markets on the wallet's record, the same figure as pnl.in_scope.win_rate on GET /api/v1/trader/{address}. Since 2026-10-27 it no longer counts other markets (#29953). Absent when the wallet has no record or no decided market. */
@@ -2184,6 +2185,10 @@ export type LargeTrade = {
     grade_at_trade: "S" | "A" | "B" | "C" | "D" | "F" | null;
     /** graded: grade_at_trade holds the recorded grade. ungraded: the trader was recorded without a grade at that moment. unknown: no record covers the moment, which is every trade before 2026-09-19T23:00Z and a trade that fell between a grade change and its confirmation. unknown never means ungraded. */
     grade_at_trade_status: "graded" | "ungraded" | "unknown";
+    /** The wallet's first trade 0xinsider recorded. Null until the wallet has one. */
+    first_trade_at: string | null;
+    /** True when first_trade_at is under 30 days old, the wallets the site's New wallets view shows. Null when first_trade_at is null. */
+    is_new_wallet: boolean | null;
   };
   market: {
     id: string;
@@ -3690,6 +3695,24 @@ export type PickOfTheDayArchiveSummary = {
   view: string;
 };
 
+export type PickOfTheDayAskComparison = {
+  ask: {
+    roi_display: string | null;
+    roi_pct: number | null;
+    units: number | null;
+    units_display: string | null;
+  };
+  from_date: string | null;
+  from_date_display: string | null;
+  midpoint: {
+    roi_display: string | null;
+    roi_pct: number | null;
+    units: number | null;
+    units_display: string | null;
+  };
+  valued_decided: number;
+};
+
 /** Select using the entry commitment_version, never implicit payload shape. All historic v1 hashes remain unchanged. */
 export type PickOfTheDayCommitmentPayload = PickOfTheDayCommitmentPayloadV1 | PickOfTheDayCommitmentPayloadV2;
 
@@ -3951,6 +3974,36 @@ export type PickOfTheDayLedgerUncommittedEntry = {
   supersedes_pick_id: string | null;
 };
 
+export type PickOfTheDayMarketExpectations = {
+  as_of_date: string;
+  price_basis: string;
+  timezone: string;
+  windows: ({
+    clv_avg_display: string | null;
+    clv_avg_pct: number | null;
+    clv_avg_pp: number | null;
+    clv_avg_pp_display: string | null;
+    clv_measured: number;
+    clv_missing: number;
+    expected_wins: number | null;
+    expected_wins_display: string | null;
+    from_date: string | null;
+    key: string;
+    label: string;
+    numeric_unavailable: boolean;
+    priced_decided: number;
+    through_date: string;
+    units: number | null;
+    units_display: string | null;
+    units_z: number | null;
+    units_z_display: string | null;
+    unpriced_decided: number;
+    wins: number;
+    wins_z: number | null;
+    wins_z_display: string | null;
+  })[];
+};
+
 /** A successful current-day entitlement response when only unauthorized ranks have published. It carries an empty pick set, identity-free locked ranks and an upgrade message. Selection IDs, game identity, prices and unauthorized clocks are absent. Any scheduled or proof-pending rows are entitled rows. */
 export type PickOfTheDayNoEntitledPicks = {
   /** Only locked ranks are published for this account. */
@@ -3979,469 +4032,196 @@ export type PickOfTheDayNoEntitledPicks = {
   more_picks_until?: string;
 };
 
-export type PickOfTheDayStats = {
-  categories: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
+export type PickOfTheDayOutcomeStats = {
+  concentration: {
+    positive_wins: number;
+    remaining_valued_decided: number;
+    removed_wins: number;
+    roi_without_top_wins_display: string | null;
+    roi_without_top_wins_pct: number | null;
+    target_wins: number;
+    top_wins_share_display: string | null;
+    top_wins_share_pct: number | null;
+    valued_decided: number;
+  };
+  drawdown: {
+    completed_days: number;
+    current_days_below_peak: number | null;
+    current_drawdown_display: string | null;
+    current_drawdown_units: number | null;
+    days_below_peak: number | null;
+    excluded_days: number;
+    from_date: string | null;
+    longest_days_below_peak: number | null;
+    longest_recovery_days: number | null;
+    max_drawdown_display: string | null;
+    max_drawdown_units: number | null;
+    peak_date: string | null;
+    peak_net_profit_usd: number | null;
+    through_date: string | null;
+  };
+  profit_factor: {
+    display: string | null;
+    gross_loss_usd: number | null;
+    gross_profit_usd: number | null;
+    state: "empty" | "measured" | "no_losses" | "numeric_unavailable";
+    value: number | null;
+    valued_decided: number;
+  };
+  rolling: ({
+    from_date: string | null;
     losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  days: ({
-    date: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    sweep?: "win" | "loss";
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
+    roi_display: string | null;
+    roi_pct: number | null;
+    through_date: string | null;
+    units: number | null;
+    units_display: string | null;
+    valued_decided: number;
+    win_rate_display: string | null;
+    win_rate_pct: number | null;
+    window_size: number;
     wins: number;
   })[];
+};
+
+export type PickOfTheDayStats = {
+  categories: PickOfTheDayStatsBucket[];
+  days: PickOfTheDayStatsDay[];
   hit_rate: PickOfTheDayHitRate;
-  market_expectations: {
-    as_of_date: string;
-    price_basis: string;
-    timezone: string;
-    windows: ({
-      clv_avg_display: string | null;
-      clv_avg_pct: number | null;
-      clv_avg_pp: number | null;
-      clv_avg_pp_display: string | null;
-      clv_measured: number;
-      clv_missing: number;
-      expected_wins: number | null;
-      expected_wins_display: string | null;
-      from_date: string | null;
-      key: string;
-      label: string;
-      numeric_unavailable: boolean;
-      priced_decided: number;
-      through_date: string;
-      units: number | null;
-      units_display: string | null;
-      units_z: number | null;
-      units_z_display: string | null;
-      unpriced_decided: number;
-      wins: number;
-      wins_z: number | null;
-      wins_z_display: string | null;
-    })[];
+  market_expectations: PickOfTheDayMarketExpectations;
+  market_types: PickOfTheDayStatsBucket[];
+  months: PickOfTheDayStatsBucket[];
+  outcome_stats: PickOfTheDayOutcomeStats;
+  price_bands: PickOfTheDayStatsBucket[];
+  records: PickOfTheDayStatsRecords;
+  sports: PickOfTheDayStatsBucket[];
+  streaks: PickOfTheDayStatsStreaks;
+  tiers: PickOfTheDayStatsBucket[];
+  total_sides: PickOfTheDayStatsBucket[];
+  voids: PickOfTheDayStatsVoid[];
+  ask_comparison: PickOfTheDayAskComparison;
+};
+
+export type PickOfTheDayStatsBucket = {
+  canonical_category?: string;
+  clv_avg_display?: string;
+  clv_avg_pct?: number;
+  clv_avg_pp?: number;
+  clv_avg_pp_display?: string;
+  clv_measured: number;
+  edge_display?: string;
+  edge_pp?: number;
+  key: string;
+  label: string;
+  losses: number;
+  net_profit_display?: string;
+  net_profit_usd?: number;
+  pending: number;
+  picks: number;
+  priced_decided: number;
+  priced_in_display?: string;
+  priced_in_pct?: number;
+  roi_display?: string;
+  roi_pct?: number;
+  settled: number;
+  small_sample: boolean;
+  staked_usd: number;
+  unit_score?: number;
+  unit_score_display?: string;
+  void: number;
+  win_rate_display?: string;
+  win_rate_pct?: number;
+  wins: number;
+};
+
+export type PickOfTheDayStatsDay = {
+  date: string;
+  losses: number;
+  net_profit_display?: string;
+  net_profit_usd?: number;
+  pending: number;
+  picks: number;
+  sweep?: "win" | "loss";
+  unit_score?: number;
+  unit_score_display?: string;
+  void: number;
+  wins: number;
+};
+
+export type PickOfTheDayStatsRecords = {
+  best_day?: {
+    date: string;
+    date_display: string;
+    losses: number;
+    net_profit_display: string;
+    net_profit_usd: number;
+    picks: number;
+    wins: number;
   };
-  market_types: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  months: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  outcome_stats: {
-    concentration: {
-      positive_wins: number;
-      remaining_valued_decided: number;
-      removed_wins: number;
-      roi_without_top_wins_display: string | null;
-      roi_without_top_wins_pct: number | null;
-      target_wins: number;
-      top_wins_share_display: string | null;
-      top_wins_share_pct: number | null;
-      valued_decided: number;
-    };
-    drawdown: {
-      completed_days: number;
-      current_days_below_peak: number | null;
-      current_drawdown_display: string | null;
-      current_drawdown_units: number | null;
-      days_below_peak: number | null;
-      excluded_days: number;
-      from_date: string | null;
-      longest_days_below_peak: number | null;
-      longest_recovery_days: number | null;
-      max_drawdown_display: string | null;
-      max_drawdown_units: number | null;
-      peak_date: string | null;
-      peak_net_profit_usd: number | null;
-      through_date: string | null;
-    };
-    profit_factor: {
-      display: string | null;
-      gross_loss_usd: number | null;
-      gross_profit_usd: number | null;
-      state: "empty" | "measured" | "no_losses" | "numeric_unavailable";
-      value: number | null;
-      valued_decided: number;
-    };
-    rolling: ({
-      from_date: string | null;
-      losses: number;
-      roi_display: string | null;
-      roi_pct: number | null;
-      through_date: string | null;
-      units: number | null;
-      units_display: string | null;
-      valued_decided: number;
-      win_rate_display: string | null;
-      win_rate_pct: number | null;
-      window_size: number;
-      wins: number;
-    })[];
+  biggest_win?: {
+    category: string;
+    date: string;
+    date_display: string;
+    matchup: string;
+    net_profit_display: string;
+    net_profit_usd: number;
   };
-  price_bands: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  records: {
-    best_day?: {
+  longest_losing_day_streak?: {
+    days: number;
+    end_date: string;
+    net_profit_display: string;
+    net_profit_usd: number;
+    range_display: string;
+    start_date: string;
+  };
+  longest_winning_day_streak?: {
+    days: number;
+    end_date: string;
+    net_profit_display: string;
+    net_profit_usd: number;
+    range_display: string;
+    start_date: string;
+  };
+  sweeps: {
+    clean_sweeps: number;
+    latest_clean_sweep?: {
       date: string;
       date_display: string;
       losses: number;
-      net_profit_display: string;
-      net_profit_usd: number;
-      picks: number;
       wins: number;
     };
-    biggest_win?: {
-      category: string;
-      date: string;
-      date_display: string;
-      matchup: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-    };
-    longest_losing_day_streak?: {
-      days: number;
-      end_date: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-      range_display: string;
-      start_date: string;
-    };
-    longest_winning_day_streak?: {
-      days: number;
-      end_date: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-      range_display: string;
-      start_date: string;
-    };
-    sweeps: {
-      clean_sweeps: number;
-      latest_clean_sweep?: {
-        date: string;
-        date_display: string;
-        losses: number;
-        wins: number;
-      };
-      latest_wipeout?: {
-        date: string;
-        date_display: string;
-        losses: number;
-        wins: number;
-      };
-      min_decided: number;
-      wipeouts: number;
-    };
-    winning_days?: {
-      flat: number;
-      losing: number;
-      settled: number;
-      winning: number;
-      winning_pct: number;
-      winning_pct_display: string;
-    };
-    worst_day?: {
+    latest_wipeout?: {
       date: string;
       date_display: string;
       losses: number;
-      net_profit_display: string;
-      net_profit_usd: number;
-      picks: number;
       wins: number;
     };
+    min_decided: number;
+    wipeouts: number;
   };
-  sports: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
+  winning_days?: {
+    flat: number;
+    losing: number;
     settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  streaks: {
-    current?: number;
-    current_day?: number;
-    current_day_display?: string;
-    current_display?: string;
-    longest_loss: number;
-    longest_win: number;
+    winning: number;
+    winning_pct: number;
+    winning_pct_display: string;
   };
-  tiers: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
+  worst_day?: {
+    date: string;
+    date_display: string;
     losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
+    net_profit_display: string;
+    net_profit_usd: number;
     picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
     wins: number;
-  }[];
-  total_sides: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  voids: {
-    backed_price?: number;
-    backed_side?: string;
-    category?: string;
-    matchup?: string;
-    pick_date: string;
-    pick_id: string;
-    pick_rank: number;
-  }[];
-  ask_comparison: {
-    ask: {
-      roi_display: string | null;
-      roi_pct: number | null;
-      units: number | null;
-      units_display: string | null;
-    };
-    from_date: string | null;
-    from_date_display: string | null;
-    midpoint: {
-      roi_display: string | null;
-      roi_pct: number | null;
-      units: number | null;
-      units_display: string | null;
-    };
-    valued_decided: number;
   };
 };
 
 /** The stats with `view=summary` or `sections`: only the named sections, listed in `sections`. `view=summary` names every section except `series`, `days`, `categories`, `months` and `voids`. */
 export type PickOfTheDayStatsSections = {
-  categories?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  days?: ({
-    date: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    sweep?: "win" | "loss";
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    wins: number;
-  })[];
+  categories?: PickOfTheDayStatsBucket[];
+  days?: PickOfTheDayStatsDay[];
   hit_rate?: {
     clv_applicable: number;
     clv_avg_display?: string;
@@ -4476,382 +4256,44 @@ export type PickOfTheDayStatsSections = {
     win_rate_display: string;
     wins: number;
   };
-  market_expectations?: {
-    as_of_date: string;
-    price_basis: string;
-    timezone: string;
-    windows: ({
-      clv_avg_display: string | null;
-      clv_avg_pct: number | null;
-      clv_avg_pp: number | null;
-      clv_avg_pp_display: string | null;
-      clv_measured: number;
-      clv_missing: number;
-      expected_wins: number | null;
-      expected_wins_display: string | null;
-      from_date: string | null;
-      key: string;
-      label: string;
-      numeric_unavailable: boolean;
-      priced_decided: number;
-      through_date: string;
-      units: number | null;
-      units_display: string | null;
-      units_z: number | null;
-      units_z_display: string | null;
-      unpriced_decided: number;
-      wins: number;
-      wins_z: number | null;
-      wins_z_display: string | null;
-    })[];
-  };
-  market_types?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  months?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  outcome_stats?: {
-    concentration: {
-      positive_wins: number;
-      remaining_valued_decided: number;
-      removed_wins: number;
-      roi_without_top_wins_display: string | null;
-      roi_without_top_wins_pct: number | null;
-      target_wins: number;
-      top_wins_share_display: string | null;
-      top_wins_share_pct: number | null;
-      valued_decided: number;
-    };
-    drawdown: {
-      completed_days: number;
-      current_days_below_peak: number | null;
-      current_drawdown_display: string | null;
-      current_drawdown_units: number | null;
-      days_below_peak: number | null;
-      excluded_days: number;
-      from_date: string | null;
-      longest_days_below_peak: number | null;
-      longest_recovery_days: number | null;
-      max_drawdown_display: string | null;
-      max_drawdown_units: number | null;
-      peak_date: string | null;
-      peak_net_profit_usd: number | null;
-      through_date: string | null;
-    };
-    profit_factor: {
-      display: string | null;
-      gross_loss_usd: number | null;
-      gross_profit_usd: number | null;
-      state: "empty" | "measured" | "no_losses" | "numeric_unavailable";
-      value: number | null;
-      valued_decided: number;
-    };
-    rolling: ({
-      from_date: string | null;
-      losses: number;
-      roi_display: string | null;
-      roi_pct: number | null;
-      through_date: string | null;
-      units: number | null;
-      units_display: string | null;
-      valued_decided: number;
-      win_rate_display: string | null;
-      win_rate_pct: number | null;
-      window_size: number;
-      wins: number;
-    })[];
-  };
-  price_bands?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  records?: {
-    best_day?: {
-      date: string;
-      date_display: string;
-      losses: number;
-      net_profit_display: string;
-      net_profit_usd: number;
-      picks: number;
-      wins: number;
-    };
-    biggest_win?: {
-      category: string;
-      date: string;
-      date_display: string;
-      matchup: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-    };
-    longest_losing_day_streak?: {
-      days: number;
-      end_date: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-      range_display: string;
-      start_date: string;
-    };
-    longest_winning_day_streak?: {
-      days: number;
-      end_date: string;
-      net_profit_display: string;
-      net_profit_usd: number;
-      range_display: string;
-      start_date: string;
-    };
-    sweeps: {
-      clean_sweeps: number;
-      latest_clean_sweep?: {
-        date: string;
-        date_display: string;
-        losses: number;
-        wins: number;
-      };
-      latest_wipeout?: {
-        date: string;
-        date_display: string;
-        losses: number;
-        wins: number;
-      };
-      min_decided: number;
-      wipeouts: number;
-    };
-    winning_days?: {
-      flat: number;
-      losing: number;
-      settled: number;
-      winning: number;
-      winning_pct: number;
-      winning_pct_display: string;
-    };
-    worst_day?: {
-      date: string;
-      date_display: string;
-      losses: number;
-      net_profit_display: string;
-      net_profit_usd: number;
-      picks: number;
-      wins: number;
-    };
-  };
+  market_expectations?: PickOfTheDayMarketExpectations;
+  market_types?: PickOfTheDayStatsBucket[];
+  months?: PickOfTheDayStatsBucket[];
+  outcome_stats?: PickOfTheDayOutcomeStats;
+  price_bands?: PickOfTheDayStatsBucket[];
+  records?: PickOfTheDayStatsRecords;
   sections: string[];
   series?: {
     date: string;
     hit_rate_pct: number;
     net_profit_usd: number;
   }[];
-  sports?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  streaks?: {
-    current?: number;
-    current_day?: number;
-    current_day_display?: string;
-    current_display?: string;
-    longest_loss: number;
-    longest_win: number;
-  };
-  tiers?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
-  total_sides?: {
-    canonical_category?: string;
-    clv_avg_display?: string;
-    clv_avg_pct?: number;
-    clv_avg_pp?: number;
-    clv_avg_pp_display?: string;
-    clv_measured: number;
-    edge_display?: string;
-    edge_pp?: number;
-    key: string;
-    label: string;
-    losses: number;
-    net_profit_display?: string;
-    net_profit_usd?: number;
-    pending: number;
-    picks: number;
-    priced_decided: number;
-    priced_in_display?: string;
-    priced_in_pct?: number;
-    roi_display?: string;
-    roi_pct?: number;
-    settled: number;
-    small_sample: boolean;
-    staked_usd: number;
-    unit_score?: number;
-    unit_score_display?: string;
-    void: number;
-    win_rate_display?: string;
-    win_rate_pct?: number;
-    wins: number;
-  }[];
+  sports?: PickOfTheDayStatsBucket[];
+  streaks?: PickOfTheDayStatsStreaks;
+  tiers?: PickOfTheDayStatsBucket[];
+  total_sides?: PickOfTheDayStatsBucket[];
   view: string;
-  voids?: {
-    backed_price?: number;
-    backed_side?: string;
-    category?: string;
-    matchup?: string;
-    pick_date: string;
-    pick_id: string;
-    pick_rank: number;
-  }[];
-  ask_comparison?: {
-    ask: {
-      roi_display: string | null;
-      roi_pct: number | null;
-      units: number | null;
-      units_display: string | null;
-    };
-    from_date: string | null;
-    from_date_display: string | null;
-    midpoint: {
-      roi_display: string | null;
-      roi_pct: number | null;
-      units: number | null;
-      units_display: string | null;
-    };
-    valued_decided: number;
-  };
+  voids?: PickOfTheDayStatsVoid[];
+  ask_comparison?: PickOfTheDayAskComparison;
+};
+
+export type PickOfTheDayStatsStreaks = {
+  current?: number;
+  current_day?: number;
+  current_day_display?: string;
+  current_display?: string;
+  longest_loss: number;
+  longest_win: number;
+};
+
+export type PickOfTheDayStatsVoid = {
+  backed_price?: number;
+  backed_side?: string;
+  category?: string;
+  matchup?: string;
+  pick_date: string;
+  pick_id: string;
+  pick_rank: number;
 };
 
 /** A settled uncommitted pick's market, side and price. The same eight fields as PickOfTheDayCommitmentPayload, in the same key order, so a settled pick's side and price sit under payload whatever the entry's state. It is NOT a commitment: no hash was taken over it before the game, and it proves nothing about when the pick was made. */
@@ -8320,6 +7762,8 @@ export interface OperationQuery {
     to?: string;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
     min_market_volume_share?: number;
+    /** When true, keep only trades by wallets whose first recorded trade (trader.first_trade_at) is under 30 days old, the wallets the site's New wallets view shows. No older trade can be a new wallet's, so the window starts 30 days back: a from earlier than that is moved up to it. */
+    new_wallets?: boolean;
     /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
     sort?: "recent" | "market_volume_share";
     /** Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), and cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug. */
@@ -8607,6 +8051,8 @@ export interface OperationQuery {
     to?: string;
     /** Keep only trades whose market_volume_share is known and at least this. A fraction, not a percent: 0.01 is one percent of the market's traded volume. A trade whose share is unavailable is never returned by a non-zero value, because an unavailable share cannot be said to clear a floor. */
     min_market_volume_share?: number;
+    /** When true, keep only trades by wallets whose first recorded trade (trader.first_trade_at) is under 30 days old, the wallets the site's New wallets view shows. No older trade can be a new wallet's, so the window starts 30 days back: a from earlier than that is moved up to it. */
+    new_wallets?: boolean;
     /** Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other. */
     sort?: "recent" | "market_volume_share";
     /** Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), and cannot be combined with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug. */

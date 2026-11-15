@@ -8022,6 +8022,15 @@
             }
           },
           {
+            "name": "new_wallets",
+            "in": "query",
+            "description": "When true, keep only trades by wallets whose first recorded trade (trader.first_trade_at) is under 30 days old, the wallets the site's New wallets view shows. No older trade can be a new wallet's, so the window starts 30 days back: a from earlier than that is moved up to it.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "description": "Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other.",
@@ -8125,7 +8134,9 @@
                             "username": "example_trader",
                             "grade": "F",
                             "grade_at_trade": "F",
-                            "grade_at_trade_status": "graded"
+                            "grade_at_trade_status": "graded",
+                            "first_trade_at": "2025-03-14T18:02:41Z",
+                            "is_new_wallet": false
                           },
                           "market": {
                             "id": "mkt_0xdef4560000000000000000000000000000000def613f54180a6d82f81c586f87",
@@ -8165,7 +8176,9 @@
                             "id": "trd_0xdef4560000000000000000000000000000000def",
                             "address": "0xdef4560000000000000000000000000000000def",
                             "grade_at_trade": null,
-                            "grade_at_trade_status": "unknown"
+                            "grade_at_trade_status": "unknown",
+                            "first_trade_at": null,
+                            "is_new_wallet": null
                           },
                           "market": {
                             "id": "mkt_0xdef4560000000000000000000000000000000def4c2638b15eda50ca1b7ce303",
@@ -8652,6 +8665,15 @@
             }
           },
           {
+            "name": "new_wallets",
+            "in": "query",
+            "description": "When true, keep only trades by wallets whose first recorded trade (trader.first_trade_at) is under 30 days old, the wallets the site's New wallets view shows. No older trade can be a new wallet's, so the window starts 30 days back: a from earlier than that is moved up to it.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "description": "Order of the returned page. recent is newest first and is the default. market_volume_share ranks by each trade's share of its market's traded volume, biggest first, with a trade whose share is unavailable last. That ranking reads from, or the last 30 days when from is omitted, for the same reason. A cursor is bound to the order it was minted in, so a continuation cannot cross from one order into the other.",
@@ -8755,7 +8777,9 @@
                             "username": "example_trader",
                             "grade": "F",
                             "grade_at_trade": "F",
-                            "grade_at_trade_status": "graded"
+                            "grade_at_trade_status": "graded",
+                            "first_trade_at": "2025-03-14T18:02:41Z",
+                            "is_new_wallet": false
                           },
                           "market": {
                             "id": "mkt_0xdef4560000000000000000000000000000000def613f54180a6d82f81c586f87",
@@ -8795,7 +8819,9 @@
                             "id": "trd_0xdef4560000000000000000000000000000000def",
                             "address": "0xdef4560000000000000000000000000000000def",
                             "grade_at_trade": null,
-                            "grade_at_trade_status": "unknown"
+                            "grade_at_trade_status": "unknown",
+                            "first_trade_at": null,
+                            "is_new_wallet": null
                           },
                           "market": {
                             "id": "mkt_0xdef4560000000000000000000000000000000def4c2638b15eda50ca1b7ce303",
@@ -9216,7 +9242,9 @@
                           "username": "example_trader",
                           "grade": "F",
                           "grade_at_trade": "F",
-                          "grade_at_trade_status": "graded"
+                          "grade_at_trade_status": "graded",
+                          "first_trade_at": "2025-03-14T18:02:41Z",
+                          "is_new_wallet": false
                         },
                         "market": {
                           "id": "mkt_0xdef4560000000000000000000000000000000def613f54180a6d82f81c586f87",
@@ -9585,7 +9613,9 @@
                           "username": "example_trader",
                           "grade": "F",
                           "grade_at_trade": "F",
-                          "grade_at_trade_status": "graded"
+                          "grade_at_trade_status": "graded",
+                          "first_trade_at": "2025-03-14T18:02:41Z",
+                          "is_new_wallet": false
                         },
                         "market": {
                           "id": "mkt_0xdef4560000000000000000000000000000000def613f54180a6d82f81c586f87",
@@ -46179,1502 +46209,74 @@
           "categories": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "days": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["date", "picks", "wins", "losses", "void", "pending"],
-              "properties": {
-                "date": {
-                  "type": "string",
-                  "format": "date"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "sweep": {
-                  "type": "string",
-                  "enum": ["win", "loss"]
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsDay"
             }
           },
           "hit_rate": {
             "$ref": "#/components/schemas/PickOfTheDayHitRate"
           },
           "market_expectations": {
-            "type": "object",
-            "required": ["as_of_date", "timezone", "price_basis", "windows"],
-            "properties": {
-              "as_of_date": {
-                "type": "string",
-                "format": "date"
-              },
-              "price_basis": {
-                "type": "string"
-              },
-              "timezone": {
-                "type": "string"
-              },
-              "windows": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "key",
-                    "label",
-                    "from_date",
-                    "through_date",
-                    "priced_decided",
-                    "unpriced_decided",
-                    "wins",
-                    "expected_wins",
-                    "expected_wins_display",
-                    "units",
-                    "units_display",
-                    "wins_z",
-                    "wins_z_display",
-                    "units_z",
-                    "units_z_display",
-                    "clv_measured",
-                    "clv_missing",
-                    "clv_avg_pct",
-                    "clv_avg_display",
-                    "clv_avg_pp",
-                    "clv_avg_pp_display",
-                    "numeric_unavailable"
-                  ],
-                  "properties": {
-                    "clv_avg_display": {
-                      "type": ["string", "null"]
-                    },
-                    "clv_avg_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "clv_avg_pp": {
-                      "type": ["number", "null"]
-                    },
-                    "clv_avg_pp_display": {
-                      "type": ["string", "null"]
-                    },
-                    "clv_measured": {
-                      "type": "integer"
-                    },
-                    "clv_missing": {
-                      "type": "integer"
-                    },
-                    "expected_wins": {
-                      "type": ["number", "null"]
-                    },
-                    "expected_wins_display": {
-                      "type": ["string", "null"]
-                    },
-                    "from_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "key": {
-                      "type": "string"
-                    },
-                    "label": {
-                      "type": "string"
-                    },
-                    "numeric_unavailable": {
-                      "type": "boolean"
-                    },
-                    "priced_decided": {
-                      "type": "integer"
-                    },
-                    "through_date": {
-                      "type": "string",
-                      "format": "date"
-                    },
-                    "units": {
-                      "type": ["number", "null"]
-                    },
-                    "units_display": {
-                      "type": ["string", "null"]
-                    },
-                    "units_z": {
-                      "type": ["number", "null"]
-                    },
-                    "units_z_display": {
-                      "type": ["string", "null"]
-                    },
-                    "unpriced_decided": {
-                      "type": "integer"
-                    },
-                    "wins": {
-                      "type": "integer"
-                    },
-                    "wins_z": {
-                      "type": ["number", "null"]
-                    },
-                    "wins_z_display": {
-                      "type": ["string", "null"]
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayMarketExpectations"
           },
           "market_types": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "months": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "outcome_stats": {
-            "type": "object",
-            "required": ["drawdown", "rolling", "profit_factor", "concentration"],
-            "properties": {
-              "concentration": {
-                "type": "object",
-                "required": [
-                  "valued_decided",
-                  "positive_wins",
-                  "removed_wins",
-                  "target_wins",
-                  "top_wins_share_pct",
-                  "top_wins_share_display",
-                  "remaining_valued_decided",
-                  "roi_without_top_wins_pct",
-                  "roi_without_top_wins_display"
-                ],
-                "properties": {
-                  "positive_wins": {
-                    "type": "integer"
-                  },
-                  "remaining_valued_decided": {
-                    "type": "integer"
-                  },
-                  "removed_wins": {
-                    "type": "integer"
-                  },
-                  "roi_without_top_wins_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_without_top_wins_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "target_wins": {
-                    "type": "integer"
-                  },
-                  "top_wins_share_display": {
-                    "type": ["string", "null"]
-                  },
-                  "top_wins_share_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "valued_decided": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "drawdown": {
-                "type": "object",
-                "required": [
-                  "completed_days",
-                  "excluded_days",
-                  "from_date",
-                  "through_date",
-                  "max_drawdown_units",
-                  "max_drawdown_display",
-                  "current_drawdown_units",
-                  "current_drawdown_display",
-                  "days_below_peak",
-                  "longest_days_below_peak",
-                  "current_days_below_peak",
-                  "longest_recovery_days",
-                  "peak_date",
-                  "peak_net_profit_usd"
-                ],
-                "properties": {
-                  "completed_days": {
-                    "type": "integer"
-                  },
-                  "current_days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "current_drawdown_display": {
-                    "type": ["string", "null"]
-                  },
-                  "current_drawdown_units": {
-                    "type": ["number", "null"]
-                  },
-                  "days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "excluded_days": {
-                    "type": "integer"
-                  },
-                  "from_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  },
-                  "longest_days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "longest_recovery_days": {
-                    "type": ["integer", "null"]
-                  },
-                  "max_drawdown_display": {
-                    "type": ["string", "null"]
-                  },
-                  "max_drawdown_units": {
-                    "type": ["number", "null"]
-                  },
-                  "peak_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  },
-                  "peak_net_profit_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "through_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  }
-                }
-              },
-              "profit_factor": {
-                "type": "object",
-                "required": [
-                  "valued_decided",
-                  "state",
-                  "gross_profit_usd",
-                  "gross_loss_usd",
-                  "value",
-                  "display"
-                ],
-                "properties": {
-                  "display": {
-                    "type": ["string", "null"]
-                  },
-                  "gross_loss_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "gross_profit_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "state": {
-                    "type": "string",
-                    "enum": ["empty", "measured", "no_losses", "numeric_unavailable"]
-                  },
-                  "value": {
-                    "type": ["number", "null"]
-                  },
-                  "valued_decided": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "rolling": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "window_size",
-                    "valued_decided",
-                    "wins",
-                    "losses",
-                    "from_date",
-                    "through_date",
-                    "units",
-                    "units_display",
-                    "roi_pct",
-                    "roi_display",
-                    "win_rate_pct",
-                    "win_rate_display"
-                  ],
-                  "properties": {
-                    "from_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "losses": {
-                      "type": "integer"
-                    },
-                    "roi_display": {
-                      "type": ["string", "null"]
-                    },
-                    "roi_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "through_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "units": {
-                      "type": ["number", "null"]
-                    },
-                    "units_display": {
-                      "type": ["string", "null"]
-                    },
-                    "valued_decided": {
-                      "type": "integer"
-                    },
-                    "win_rate_display": {
-                      "type": ["string", "null"]
-                    },
-                    "win_rate_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "window_size": {
-                      "type": "integer"
-                    },
-                    "wins": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayOutcomeStats"
           },
           "price_bands": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "records": {
-            "type": "object",
-            "required": ["sweeps"],
-            "properties": {
-              "best_day": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "picks",
-                  "wins",
-                  "losses",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "losses": {
-                    "type": "integer"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "picks": {
-                    "type": "integer"
-                  },
-                  "wins": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "biggest_win": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "matchup",
-                  "category",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "category": {
-                    "type": "string"
-                  },
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "matchup": {
-                    "type": "string"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  }
-                }
-              },
-              "longest_losing_day_streak": {
-                "type": "object",
-                "required": [
-                  "days",
-                  "start_date",
-                  "end_date",
-                  "range_display",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "days": {
-                    "type": "integer"
-                  },
-                  "end_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "range_display": {
-                    "type": "string"
-                  },
-                  "start_date": {
-                    "type": "string",
-                    "format": "date"
-                  }
-                }
-              },
-              "longest_winning_day_streak": {
-                "type": "object",
-                "required": [
-                  "days",
-                  "start_date",
-                  "end_date",
-                  "range_display",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "days": {
-                    "type": "integer"
-                  },
-                  "end_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "range_display": {
-                    "type": "string"
-                  },
-                  "start_date": {
-                    "type": "string",
-                    "format": "date"
-                  }
-                }
-              },
-              "sweeps": {
-                "type": "object",
-                "required": ["min_decided", "clean_sweeps", "wipeouts"],
-                "properties": {
-                  "clean_sweeps": {
-                    "type": "integer"
-                  },
-                  "latest_clean_sweep": {
-                    "type": "object",
-                    "required": ["date", "date_display", "wins", "losses"],
-                    "properties": {
-                      "date": {
-                        "type": "string",
-                        "format": "date"
-                      },
-                      "date_display": {
-                        "type": "string"
-                      },
-                      "losses": {
-                        "type": "integer"
-                      },
-                      "wins": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  "latest_wipeout": {
-                    "type": "object",
-                    "required": ["date", "date_display", "wins", "losses"],
-                    "properties": {
-                      "date": {
-                        "type": "string",
-                        "format": "date"
-                      },
-                      "date_display": {
-                        "type": "string"
-                      },
-                      "losses": {
-                        "type": "integer"
-                      },
-                      "wins": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  "min_decided": {
-                    "type": "integer"
-                  },
-                  "wipeouts": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "winning_days": {
-                "type": "object",
-                "required": [
-                  "winning",
-                  "losing",
-                  "flat",
-                  "settled",
-                  "winning_pct",
-                  "winning_pct_display"
-                ],
-                "properties": {
-                  "flat": {
-                    "type": "integer"
-                  },
-                  "losing": {
-                    "type": "integer"
-                  },
-                  "settled": {
-                    "type": "integer"
-                  },
-                  "winning": {
-                    "type": "integer"
-                  },
-                  "winning_pct": {
-                    "type": "number"
-                  },
-                  "winning_pct_display": {
-                    "type": "string"
-                  }
-                }
-              },
-              "worst_day": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "picks",
-                  "wins",
-                  "losses",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "losses": {
-                    "type": "integer"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "picks": {
-                    "type": "integer"
-                  },
-                  "wins": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayStatsRecords"
           },
           "sports": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "streaks": {
-            "type": "object",
-            "required": ["longest_win", "longest_loss"],
-            "properties": {
-              "current": {
-                "type": "integer"
-              },
-              "current_day": {
-                "type": "integer"
-              },
-              "current_day_display": {
-                "type": "string"
-              },
-              "current_display": {
-                "type": "string"
-              },
-              "longest_loss": {
-                "type": "integer"
-              },
-              "longest_win": {
-                "type": "integer"
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayStatsStreaks"
           },
           "tiers": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "total_sides": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "voids": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["pick_id", "pick_date", "pick_rank"],
-              "properties": {
-                "backed_price": {
-                  "type": "number"
-                },
-                "backed_side": {
-                  "type": "string"
-                },
-                "category": {
-                  "type": "string"
-                },
-                "matchup": {
-                  "type": "string"
-                },
-                "pick_date": {
-                  "type": "string",
-                  "format": "date"
-                },
-                "pick_id": {
-                  "type": "string"
-                },
-                "pick_rank": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsVoid"
             }
           },
           "ask_comparison": {
-            "type": "object",
-            "required": ["valued_decided", "from_date", "from_date_display", "midpoint", "ask"],
-            "properties": {
-              "ask": {
-                "type": "object",
-                "required": ["units", "units_display", "roi_pct", "roi_display"],
-                "properties": {
-                  "roi_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "units": {
-                    "type": ["number", "null"]
-                  },
-                  "units_display": {
-                    "type": ["string", "null"]
-                  }
-                }
-              },
-              "from_date": {
-                "type": ["string", "null"],
-                "format": "date"
-              },
-              "from_date_display": {
-                "type": ["string", "null"]
-              },
-              "midpoint": {
-                "type": "object",
-                "required": ["units", "units_display", "roi_pct", "roi_display"],
-                "properties": {
-                  "roi_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "units": {
-                    "type": ["number", "null"]
-                  },
-                  "units_display": {
-                    "type": ["string", "null"]
-                  }
-                }
-              },
-              "valued_decided": {
-                "type": "integer"
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayAskComparison"
           }
         },
         "required": [
@@ -47702,154 +46304,13 @@
           "categories": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "days": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["date", "picks", "wins", "losses", "void", "pending"],
-              "properties": {
-                "date": {
-                  "type": "string",
-                  "format": "date"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "sweep": {
-                  "type": "string",
-                  "enum": ["win", "loss"]
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsDay"
             }
           },
           "hit_rate": {
@@ -47979,914 +46440,31 @@
             }
           },
           "market_expectations": {
-            "type": "object",
-            "required": ["as_of_date", "timezone", "price_basis", "windows"],
-            "properties": {
-              "as_of_date": {
-                "type": "string",
-                "format": "date"
-              },
-              "price_basis": {
-                "type": "string"
-              },
-              "timezone": {
-                "type": "string"
-              },
-              "windows": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "key",
-                    "label",
-                    "from_date",
-                    "through_date",
-                    "priced_decided",
-                    "unpriced_decided",
-                    "wins",
-                    "expected_wins",
-                    "expected_wins_display",
-                    "units",
-                    "units_display",
-                    "wins_z",
-                    "wins_z_display",
-                    "units_z",
-                    "units_z_display",
-                    "clv_measured",
-                    "clv_missing",
-                    "clv_avg_pct",
-                    "clv_avg_display",
-                    "clv_avg_pp",
-                    "clv_avg_pp_display",
-                    "numeric_unavailable"
-                  ],
-                  "properties": {
-                    "clv_avg_display": {
-                      "type": ["string", "null"]
-                    },
-                    "clv_avg_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "clv_avg_pp": {
-                      "type": ["number", "null"]
-                    },
-                    "clv_avg_pp_display": {
-                      "type": ["string", "null"]
-                    },
-                    "clv_measured": {
-                      "type": "integer"
-                    },
-                    "clv_missing": {
-                      "type": "integer"
-                    },
-                    "expected_wins": {
-                      "type": ["number", "null"]
-                    },
-                    "expected_wins_display": {
-                      "type": ["string", "null"]
-                    },
-                    "from_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "key": {
-                      "type": "string"
-                    },
-                    "label": {
-                      "type": "string"
-                    },
-                    "numeric_unavailable": {
-                      "type": "boolean"
-                    },
-                    "priced_decided": {
-                      "type": "integer"
-                    },
-                    "through_date": {
-                      "type": "string",
-                      "format": "date"
-                    },
-                    "units": {
-                      "type": ["number", "null"]
-                    },
-                    "units_display": {
-                      "type": ["string", "null"]
-                    },
-                    "units_z": {
-                      "type": ["number", "null"]
-                    },
-                    "units_z_display": {
-                      "type": ["string", "null"]
-                    },
-                    "unpriced_decided": {
-                      "type": "integer"
-                    },
-                    "wins": {
-                      "type": "integer"
-                    },
-                    "wins_z": {
-                      "type": ["number", "null"]
-                    },
-                    "wins_z_display": {
-                      "type": ["string", "null"]
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayMarketExpectations"
           },
           "market_types": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "months": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "outcome_stats": {
-            "type": "object",
-            "required": ["drawdown", "rolling", "profit_factor", "concentration"],
-            "properties": {
-              "concentration": {
-                "type": "object",
-                "required": [
-                  "valued_decided",
-                  "positive_wins",
-                  "removed_wins",
-                  "target_wins",
-                  "top_wins_share_pct",
-                  "top_wins_share_display",
-                  "remaining_valued_decided",
-                  "roi_without_top_wins_pct",
-                  "roi_without_top_wins_display"
-                ],
-                "properties": {
-                  "positive_wins": {
-                    "type": "integer"
-                  },
-                  "remaining_valued_decided": {
-                    "type": "integer"
-                  },
-                  "removed_wins": {
-                    "type": "integer"
-                  },
-                  "roi_without_top_wins_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_without_top_wins_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "target_wins": {
-                    "type": "integer"
-                  },
-                  "top_wins_share_display": {
-                    "type": ["string", "null"]
-                  },
-                  "top_wins_share_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "valued_decided": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "drawdown": {
-                "type": "object",
-                "required": [
-                  "completed_days",
-                  "excluded_days",
-                  "from_date",
-                  "through_date",
-                  "max_drawdown_units",
-                  "max_drawdown_display",
-                  "current_drawdown_units",
-                  "current_drawdown_display",
-                  "days_below_peak",
-                  "longest_days_below_peak",
-                  "current_days_below_peak",
-                  "longest_recovery_days",
-                  "peak_date",
-                  "peak_net_profit_usd"
-                ],
-                "properties": {
-                  "completed_days": {
-                    "type": "integer"
-                  },
-                  "current_days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "current_drawdown_display": {
-                    "type": ["string", "null"]
-                  },
-                  "current_drawdown_units": {
-                    "type": ["number", "null"]
-                  },
-                  "days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "excluded_days": {
-                    "type": "integer"
-                  },
-                  "from_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  },
-                  "longest_days_below_peak": {
-                    "type": ["integer", "null"]
-                  },
-                  "longest_recovery_days": {
-                    "type": ["integer", "null"]
-                  },
-                  "max_drawdown_display": {
-                    "type": ["string", "null"]
-                  },
-                  "max_drawdown_units": {
-                    "type": ["number", "null"]
-                  },
-                  "peak_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  },
-                  "peak_net_profit_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "through_date": {
-                    "type": ["string", "null"],
-                    "format": "date"
-                  }
-                }
-              },
-              "profit_factor": {
-                "type": "object",
-                "required": [
-                  "valued_decided",
-                  "state",
-                  "gross_profit_usd",
-                  "gross_loss_usd",
-                  "value",
-                  "display"
-                ],
-                "properties": {
-                  "display": {
-                    "type": ["string", "null"]
-                  },
-                  "gross_loss_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "gross_profit_usd": {
-                    "type": ["number", "null"]
-                  },
-                  "state": {
-                    "type": "string",
-                    "enum": ["empty", "measured", "no_losses", "numeric_unavailable"]
-                  },
-                  "value": {
-                    "type": ["number", "null"]
-                  },
-                  "valued_decided": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "rolling": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "window_size",
-                    "valued_decided",
-                    "wins",
-                    "losses",
-                    "from_date",
-                    "through_date",
-                    "units",
-                    "units_display",
-                    "roi_pct",
-                    "roi_display",
-                    "win_rate_pct",
-                    "win_rate_display"
-                  ],
-                  "properties": {
-                    "from_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "losses": {
-                      "type": "integer"
-                    },
-                    "roi_display": {
-                      "type": ["string", "null"]
-                    },
-                    "roi_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "through_date": {
-                      "type": ["string", "null"],
-                      "format": "date"
-                    },
-                    "units": {
-                      "type": ["number", "null"]
-                    },
-                    "units_display": {
-                      "type": ["string", "null"]
-                    },
-                    "valued_decided": {
-                      "type": "integer"
-                    },
-                    "win_rate_display": {
-                      "type": ["string", "null"]
-                    },
-                    "win_rate_pct": {
-                      "type": ["number", "null"]
-                    },
-                    "window_size": {
-                      "type": "integer"
-                    },
-                    "wins": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayOutcomeStats"
           },
           "price_bands": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "records": {
-            "type": "object",
-            "required": ["sweeps"],
-            "properties": {
-              "best_day": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "picks",
-                  "wins",
-                  "losses",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "losses": {
-                    "type": "integer"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "picks": {
-                    "type": "integer"
-                  },
-                  "wins": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "biggest_win": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "matchup",
-                  "category",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "category": {
-                    "type": "string"
-                  },
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "matchup": {
-                    "type": "string"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  }
-                }
-              },
-              "longest_losing_day_streak": {
-                "type": "object",
-                "required": [
-                  "days",
-                  "start_date",
-                  "end_date",
-                  "range_display",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "days": {
-                    "type": "integer"
-                  },
-                  "end_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "range_display": {
-                    "type": "string"
-                  },
-                  "start_date": {
-                    "type": "string",
-                    "format": "date"
-                  }
-                }
-              },
-              "longest_winning_day_streak": {
-                "type": "object",
-                "required": [
-                  "days",
-                  "start_date",
-                  "end_date",
-                  "range_display",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "days": {
-                    "type": "integer"
-                  },
-                  "end_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "range_display": {
-                    "type": "string"
-                  },
-                  "start_date": {
-                    "type": "string",
-                    "format": "date"
-                  }
-                }
-              },
-              "sweeps": {
-                "type": "object",
-                "required": ["min_decided", "clean_sweeps", "wipeouts"],
-                "properties": {
-                  "clean_sweeps": {
-                    "type": "integer"
-                  },
-                  "latest_clean_sweep": {
-                    "type": "object",
-                    "required": ["date", "date_display", "wins", "losses"],
-                    "properties": {
-                      "date": {
-                        "type": "string",
-                        "format": "date"
-                      },
-                      "date_display": {
-                        "type": "string"
-                      },
-                      "losses": {
-                        "type": "integer"
-                      },
-                      "wins": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  "latest_wipeout": {
-                    "type": "object",
-                    "required": ["date", "date_display", "wins", "losses"],
-                    "properties": {
-                      "date": {
-                        "type": "string",
-                        "format": "date"
-                      },
-                      "date_display": {
-                        "type": "string"
-                      },
-                      "losses": {
-                        "type": "integer"
-                      },
-                      "wins": {
-                        "type": "integer"
-                      }
-                    }
-                  },
-                  "min_decided": {
-                    "type": "integer"
-                  },
-                  "wipeouts": {
-                    "type": "integer"
-                  }
-                }
-              },
-              "winning_days": {
-                "type": "object",
-                "required": [
-                  "winning",
-                  "losing",
-                  "flat",
-                  "settled",
-                  "winning_pct",
-                  "winning_pct_display"
-                ],
-                "properties": {
-                  "flat": {
-                    "type": "integer"
-                  },
-                  "losing": {
-                    "type": "integer"
-                  },
-                  "settled": {
-                    "type": "integer"
-                  },
-                  "winning": {
-                    "type": "integer"
-                  },
-                  "winning_pct": {
-                    "type": "number"
-                  },
-                  "winning_pct_display": {
-                    "type": "string"
-                  }
-                }
-              },
-              "worst_day": {
-                "type": "object",
-                "required": [
-                  "date",
-                  "date_display",
-                  "picks",
-                  "wins",
-                  "losses",
-                  "net_profit_usd",
-                  "net_profit_display"
-                ],
-                "properties": {
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "date_display": {
-                    "type": "string"
-                  },
-                  "losses": {
-                    "type": "integer"
-                  },
-                  "net_profit_display": {
-                    "type": "string"
-                  },
-                  "net_profit_usd": {
-                    "type": "number"
-                  },
-                  "picks": {
-                    "type": "integer"
-                  },
-                  "wins": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayStatsRecords"
           },
           "sections": {
             "type": "array",
@@ -48916,352 +46494,22 @@
           "sports": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "streaks": {
-            "type": "object",
-            "required": ["longest_win", "longest_loss"],
-            "properties": {
-              "current": {
-                "type": "integer"
-              },
-              "current_day": {
-                "type": "integer"
-              },
-              "current_day_display": {
-                "type": "string"
-              },
-              "current_display": {
-                "type": "string"
-              },
-              "longest_loss": {
-                "type": "integer"
-              },
-              "longest_win": {
-                "type": "integer"
-              }
-            }
+            "$ref": "#/components/schemas/PickOfTheDayStatsStreaks"
           },
           "tiers": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "total_sides": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "key",
-                "label",
-                "picks",
-                "wins",
-                "losses",
-                "void",
-                "pending",
-                "settled",
-                "priced_decided",
-                "small_sample",
-                "staked_usd",
-                "clv_measured"
-              ],
-              "properties": {
-                "canonical_category": {
-                  "type": "string"
-                },
-                "clv_avg_display": {
-                  "type": "string"
-                },
-                "clv_avg_pct": {
-                  "type": "number"
-                },
-                "clv_avg_pp": {
-                  "type": "number"
-                },
-                "clv_avg_pp_display": {
-                  "type": "string"
-                },
-                "clv_measured": {
-                  "type": "integer"
-                },
-                "edge_display": {
-                  "type": "string"
-                },
-                "edge_pp": {
-                  "type": "number"
-                },
-                "key": {
-                  "type": "string"
-                },
-                "label": {
-                  "type": "string"
-                },
-                "losses": {
-                  "type": "integer"
-                },
-                "net_profit_display": {
-                  "type": "string"
-                },
-                "net_profit_usd": {
-                  "type": "number"
-                },
-                "pending": {
-                  "type": "integer"
-                },
-                "picks": {
-                  "type": "integer"
-                },
-                "priced_decided": {
-                  "type": "integer"
-                },
-                "priced_in_display": {
-                  "type": "string"
-                },
-                "priced_in_pct": {
-                  "type": "number"
-                },
-                "roi_display": {
-                  "type": "string"
-                },
-                "roi_pct": {
-                  "type": "number"
-                },
-                "settled": {
-                  "type": "integer"
-                },
-                "small_sample": {
-                  "type": "boolean"
-                },
-                "staked_usd": {
-                  "type": "number"
-                },
-                "unit_score": {
-                  "type": "number"
-                },
-                "unit_score_display": {
-                  "type": "string"
-                },
-                "void": {
-                  "type": "integer"
-                },
-                "win_rate_display": {
-                  "type": "string"
-                },
-                "win_rate_pct": {
-                  "type": "number"
-                },
-                "wins": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsBucket"
             }
           },
           "view": {
@@ -49270,88 +46518,848 @@
           "voids": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["pick_id", "pick_date", "pick_rank"],
-              "properties": {
-                "backed_price": {
-                  "type": "number"
-                },
-                "backed_side": {
-                  "type": "string"
-                },
-                "category": {
-                  "type": "string"
-                },
-                "matchup": {
-                  "type": "string"
-                },
-                "pick_date": {
-                  "type": "string",
-                  "format": "date"
-                },
-                "pick_id": {
-                  "type": "string"
-                },
-                "pick_rank": {
-                  "type": "integer"
-                }
-              }
+              "$ref": "#/components/schemas/PickOfTheDayStatsVoid"
             }
           },
           "ask_comparison": {
-            "type": "object",
-            "required": ["valued_decided", "from_date", "from_date_display", "midpoint", "ask"],
-            "properties": {
-              "ask": {
-                "type": "object",
-                "required": ["units", "units_display", "roi_pct", "roi_display"],
-                "properties": {
-                  "roi_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "units": {
-                    "type": ["number", "null"]
-                  },
-                  "units_display": {
-                    "type": ["string", "null"]
-                  }
+            "$ref": "#/components/schemas/PickOfTheDayAskComparison"
+          }
+        },
+        "required": ["view", "sections"]
+      },
+      "PickOfTheDayStatsBucket": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "picks",
+          "wins",
+          "losses",
+          "void",
+          "pending",
+          "settled",
+          "priced_decided",
+          "small_sample",
+          "staked_usd",
+          "clv_measured"
+        ],
+        "properties": {
+          "canonical_category": {
+            "type": "string"
+          },
+          "clv_avg_display": {
+            "type": "string"
+          },
+          "clv_avg_pct": {
+            "type": "number"
+          },
+          "clv_avg_pp": {
+            "type": "number"
+          },
+          "clv_avg_pp_display": {
+            "type": "string"
+          },
+          "clv_measured": {
+            "type": "integer"
+          },
+          "edge_display": {
+            "type": "string"
+          },
+          "edge_pp": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "losses": {
+            "type": "integer"
+          },
+          "net_profit_display": {
+            "type": "string"
+          },
+          "net_profit_usd": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "picks": {
+            "type": "integer"
+          },
+          "priced_decided": {
+            "type": "integer"
+          },
+          "priced_in_display": {
+            "type": "string"
+          },
+          "priced_in_pct": {
+            "type": "number"
+          },
+          "roi_display": {
+            "type": "string"
+          },
+          "roi_pct": {
+            "type": "number"
+          },
+          "settled": {
+            "type": "integer"
+          },
+          "small_sample": {
+            "type": "boolean"
+          },
+          "staked_usd": {
+            "type": "number"
+          },
+          "unit_score": {
+            "type": "number"
+          },
+          "unit_score_display": {
+            "type": "string"
+          },
+          "void": {
+            "type": "integer"
+          },
+          "win_rate_display": {
+            "type": "string"
+          },
+          "win_rate_pct": {
+            "type": "number"
+          },
+          "wins": {
+            "type": "integer"
+          }
+        }
+      },
+      "PickOfTheDayStatsDay": {
+        "type": "object",
+        "required": ["date", "picks", "wins", "losses", "void", "pending"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "losses": {
+            "type": "integer"
+          },
+          "net_profit_display": {
+            "type": "string"
+          },
+          "net_profit_usd": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "picks": {
+            "type": "integer"
+          },
+          "sweep": {
+            "type": "string",
+            "enum": ["win", "loss"]
+          },
+          "unit_score": {
+            "type": "number"
+          },
+          "unit_score_display": {
+            "type": "string"
+          },
+          "void": {
+            "type": "integer"
+          },
+          "wins": {
+            "type": "integer"
+          }
+        }
+      },
+      "PickOfTheDayStatsVoid": {
+        "type": "object",
+        "required": ["pick_id", "pick_date", "pick_rank"],
+        "properties": {
+          "backed_price": {
+            "type": "number"
+          },
+          "backed_side": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "matchup": {
+            "type": "string"
+          },
+          "pick_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "pick_id": {
+            "type": "string"
+          },
+          "pick_rank": {
+            "type": "integer"
+          }
+        }
+      },
+      "PickOfTheDayMarketExpectations": {
+        "type": "object",
+        "required": ["as_of_date", "timezone", "price_basis", "windows"],
+        "properties": {
+          "as_of_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "price_basis": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "label",
+                "from_date",
+                "through_date",
+                "priced_decided",
+                "unpriced_decided",
+                "wins",
+                "expected_wins",
+                "expected_wins_display",
+                "units",
+                "units_display",
+                "wins_z",
+                "wins_z_display",
+                "units_z",
+                "units_z_display",
+                "clv_measured",
+                "clv_missing",
+                "clv_avg_pct",
+                "clv_avg_display",
+                "clv_avg_pp",
+                "clv_avg_pp_display",
+                "numeric_unavailable"
+              ],
+              "properties": {
+                "clv_avg_display": {
+                  "type": ["string", "null"]
+                },
+                "clv_avg_pct": {
+                  "type": ["number", "null"]
+                },
+                "clv_avg_pp": {
+                  "type": ["number", "null"]
+                },
+                "clv_avg_pp_display": {
+                  "type": ["string", "null"]
+                },
+                "clv_measured": {
+                  "type": "integer"
+                },
+                "clv_missing": {
+                  "type": "integer"
+                },
+                "expected_wins": {
+                  "type": ["number", "null"]
+                },
+                "expected_wins_display": {
+                  "type": ["string", "null"]
+                },
+                "from_date": {
+                  "type": ["string", "null"],
+                  "format": "date"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "numeric_unavailable": {
+                  "type": "boolean"
+                },
+                "priced_decided": {
+                  "type": "integer"
+                },
+                "through_date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "units": {
+                  "type": ["number", "null"]
+                },
+                "units_display": {
+                  "type": ["string", "null"]
+                },
+                "units_z": {
+                  "type": ["number", "null"]
+                },
+                "units_z_display": {
+                  "type": ["string", "null"]
+                },
+                "unpriced_decided": {
+                  "type": "integer"
+                },
+                "wins": {
+                  "type": "integer"
+                },
+                "wins_z": {
+                  "type": ["number", "null"]
+                },
+                "wins_z_display": {
+                  "type": ["string", "null"]
                 }
+              }
+            }
+          }
+        }
+      },
+      "PickOfTheDayOutcomeStats": {
+        "type": "object",
+        "required": ["drawdown", "rolling", "profit_factor", "concentration"],
+        "properties": {
+          "concentration": {
+            "type": "object",
+            "required": [
+              "valued_decided",
+              "positive_wins",
+              "removed_wins",
+              "target_wins",
+              "top_wins_share_pct",
+              "top_wins_share_display",
+              "remaining_valued_decided",
+              "roi_without_top_wins_pct",
+              "roi_without_top_wins_display"
+            ],
+            "properties": {
+              "positive_wins": {
+                "type": "integer"
               },
-              "from_date": {
-                "type": ["string", "null"],
-                "format": "date"
+              "remaining_valued_decided": {
+                "type": "integer"
               },
-              "from_date_display": {
+              "removed_wins": {
+                "type": "integer"
+              },
+              "roi_without_top_wins_display": {
                 "type": ["string", "null"]
               },
-              "midpoint": {
-                "type": "object",
-                "required": ["units", "units_display", "roi_pct", "roi_display"],
-                "properties": {
-                  "roi_display": {
-                    "type": ["string", "null"]
-                  },
-                  "roi_pct": {
-                    "type": ["number", "null"]
-                  },
-                  "units": {
-                    "type": ["number", "null"]
-                  },
-                  "units_display": {
-                    "type": ["string", "null"]
-                  }
-                }
+              "roi_without_top_wins_pct": {
+                "type": ["number", "null"]
+              },
+              "target_wins": {
+                "type": "integer"
+              },
+              "top_wins_share_display": {
+                "type": ["string", "null"]
+              },
+              "top_wins_share_pct": {
+                "type": ["number", "null"]
               },
               "valued_decided": {
                 "type": "integer"
               }
             }
+          },
+          "drawdown": {
+            "type": "object",
+            "required": [
+              "completed_days",
+              "excluded_days",
+              "from_date",
+              "through_date",
+              "max_drawdown_units",
+              "max_drawdown_display",
+              "current_drawdown_units",
+              "current_drawdown_display",
+              "days_below_peak",
+              "longest_days_below_peak",
+              "current_days_below_peak",
+              "longest_recovery_days",
+              "peak_date",
+              "peak_net_profit_usd"
+            ],
+            "properties": {
+              "completed_days": {
+                "type": "integer"
+              },
+              "current_days_below_peak": {
+                "type": ["integer", "null"]
+              },
+              "current_drawdown_display": {
+                "type": ["string", "null"]
+              },
+              "current_drawdown_units": {
+                "type": ["number", "null"]
+              },
+              "days_below_peak": {
+                "type": ["integer", "null"]
+              },
+              "excluded_days": {
+                "type": "integer"
+              },
+              "from_date": {
+                "type": ["string", "null"],
+                "format": "date"
+              },
+              "longest_days_below_peak": {
+                "type": ["integer", "null"]
+              },
+              "longest_recovery_days": {
+                "type": ["integer", "null"]
+              },
+              "max_drawdown_display": {
+                "type": ["string", "null"]
+              },
+              "max_drawdown_units": {
+                "type": ["number", "null"]
+              },
+              "peak_date": {
+                "type": ["string", "null"],
+                "format": "date"
+              },
+              "peak_net_profit_usd": {
+                "type": ["number", "null"]
+              },
+              "through_date": {
+                "type": ["string", "null"],
+                "format": "date"
+              }
+            }
+          },
+          "profit_factor": {
+            "type": "object",
+            "required": [
+              "valued_decided",
+              "state",
+              "gross_profit_usd",
+              "gross_loss_usd",
+              "value",
+              "display"
+            ],
+            "properties": {
+              "display": {
+                "type": ["string", "null"]
+              },
+              "gross_loss_usd": {
+                "type": ["number", "null"]
+              },
+              "gross_profit_usd": {
+                "type": ["number", "null"]
+              },
+              "state": {
+                "type": "string",
+                "enum": ["empty", "measured", "no_losses", "numeric_unavailable"]
+              },
+              "value": {
+                "type": ["number", "null"]
+              },
+              "valued_decided": {
+                "type": "integer"
+              }
+            }
+          },
+          "rolling": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "window_size",
+                "valued_decided",
+                "wins",
+                "losses",
+                "from_date",
+                "through_date",
+                "units",
+                "units_display",
+                "roi_pct",
+                "roi_display",
+                "win_rate_pct",
+                "win_rate_display"
+              ],
+              "properties": {
+                "from_date": {
+                  "type": ["string", "null"],
+                  "format": "date"
+                },
+                "losses": {
+                  "type": "integer"
+                },
+                "roi_display": {
+                  "type": ["string", "null"]
+                },
+                "roi_pct": {
+                  "type": ["number", "null"]
+                },
+                "through_date": {
+                  "type": ["string", "null"],
+                  "format": "date"
+                },
+                "units": {
+                  "type": ["number", "null"]
+                },
+                "units_display": {
+                  "type": ["string", "null"]
+                },
+                "valued_decided": {
+                  "type": "integer"
+                },
+                "win_rate_display": {
+                  "type": ["string", "null"]
+                },
+                "win_rate_pct": {
+                  "type": ["number", "null"]
+                },
+                "window_size": {
+                  "type": "integer"
+                },
+                "wins": {
+                  "type": "integer"
+                }
+              }
+            }
           }
-        },
-        "required": ["view", "sections"]
+        }
+      },
+      "PickOfTheDayStatsRecords": {
+        "type": "object",
+        "required": ["sweeps"],
+        "properties": {
+          "best_day": {
+            "type": "object",
+            "required": [
+              "date",
+              "date_display",
+              "picks",
+              "wins",
+              "losses",
+              "net_profit_usd",
+              "net_profit_display"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "date_display": {
+                "type": "string"
+              },
+              "losses": {
+                "type": "integer"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "picks": {
+                "type": "integer"
+              },
+              "wins": {
+                "type": "integer"
+              }
+            }
+          },
+          "biggest_win": {
+            "type": "object",
+            "required": [
+              "date",
+              "date_display",
+              "matchup",
+              "category",
+              "net_profit_usd",
+              "net_profit_display"
+            ],
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "date_display": {
+                "type": "string"
+              },
+              "matchup": {
+                "type": "string"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              }
+            }
+          },
+          "longest_losing_day_streak": {
+            "type": "object",
+            "required": [
+              "days",
+              "start_date",
+              "end_date",
+              "range_display",
+              "net_profit_usd",
+              "net_profit_display"
+            ],
+            "properties": {
+              "days": {
+                "type": "integer"
+              },
+              "end_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "range_display": {
+                "type": "string"
+              },
+              "start_date": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          },
+          "longest_winning_day_streak": {
+            "type": "object",
+            "required": [
+              "days",
+              "start_date",
+              "end_date",
+              "range_display",
+              "net_profit_usd",
+              "net_profit_display"
+            ],
+            "properties": {
+              "days": {
+                "type": "integer"
+              },
+              "end_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "range_display": {
+                "type": "string"
+              },
+              "start_date": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          },
+          "sweeps": {
+            "type": "object",
+            "required": ["min_decided", "clean_sweeps", "wipeouts"],
+            "properties": {
+              "clean_sweeps": {
+                "type": "integer"
+              },
+              "latest_clean_sweep": {
+                "type": "object",
+                "required": ["date", "date_display", "wins", "losses"],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "date_display": {
+                    "type": "string"
+                  },
+                  "losses": {
+                    "type": "integer"
+                  },
+                  "wins": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "latest_wipeout": {
+                "type": "object",
+                "required": ["date", "date_display", "wins", "losses"],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "date_display": {
+                    "type": "string"
+                  },
+                  "losses": {
+                    "type": "integer"
+                  },
+                  "wins": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "min_decided": {
+                "type": "integer"
+              },
+              "wipeouts": {
+                "type": "integer"
+              }
+            }
+          },
+          "winning_days": {
+            "type": "object",
+            "required": [
+              "winning",
+              "losing",
+              "flat",
+              "settled",
+              "winning_pct",
+              "winning_pct_display"
+            ],
+            "properties": {
+              "flat": {
+                "type": "integer"
+              },
+              "losing": {
+                "type": "integer"
+              },
+              "settled": {
+                "type": "integer"
+              },
+              "winning": {
+                "type": "integer"
+              },
+              "winning_pct": {
+                "type": "number"
+              },
+              "winning_pct_display": {
+                "type": "string"
+              }
+            }
+          },
+          "worst_day": {
+            "type": "object",
+            "required": [
+              "date",
+              "date_display",
+              "picks",
+              "wins",
+              "losses",
+              "net_profit_usd",
+              "net_profit_display"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "date_display": {
+                "type": "string"
+              },
+              "losses": {
+                "type": "integer"
+              },
+              "net_profit_display": {
+                "type": "string"
+              },
+              "net_profit_usd": {
+                "type": "number"
+              },
+              "picks": {
+                "type": "integer"
+              },
+              "wins": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "PickOfTheDayStatsStreaks": {
+        "type": "object",
+        "required": ["longest_win", "longest_loss"],
+        "properties": {
+          "current": {
+            "type": "integer"
+          },
+          "current_day": {
+            "type": "integer"
+          },
+          "current_day_display": {
+            "type": "string"
+          },
+          "current_display": {
+            "type": "string"
+          },
+          "longest_loss": {
+            "type": "integer"
+          },
+          "longest_win": {
+            "type": "integer"
+          }
+        }
+      },
+      "PickOfTheDayAskComparison": {
+        "type": "object",
+        "required": ["valued_decided", "from_date", "from_date_display", "midpoint", "ask"],
+        "properties": {
+          "ask": {
+            "type": "object",
+            "required": ["units", "units_display", "roi_pct", "roi_display"],
+            "properties": {
+              "roi_display": {
+                "type": ["string", "null"]
+              },
+              "roi_pct": {
+                "type": ["number", "null"]
+              },
+              "units": {
+                "type": ["number", "null"]
+              },
+              "units_display": {
+                "type": ["string", "null"]
+              }
+            }
+          },
+          "from_date": {
+            "type": ["string", "null"],
+            "format": "date"
+          },
+          "from_date_display": {
+            "type": ["string", "null"]
+          },
+          "midpoint": {
+            "type": "object",
+            "required": ["units", "units_display", "roi_pct", "roi_display"],
+            "properties": {
+              "roi_display": {
+                "type": ["string", "null"]
+              },
+              "roi_pct": {
+                "type": ["number", "null"]
+              },
+              "units": {
+                "type": ["number", "null"]
+              },
+              "units_display": {
+                "type": ["string", "null"]
+              }
+            }
+          },
+          "valued_decided": {
+            "type": "integer"
+          }
+        }
       },
       "ResolutionReport": {
         "type": "object",
@@ -55427,7 +53435,14 @@
           },
           "trader": {
             "type": "object",
-            "required": ["id", "address", "grade_at_trade", "grade_at_trade_status"],
+            "required": [
+              "id",
+              "address",
+              "grade_at_trade",
+              "grade_at_trade_status",
+              "first_trade_at",
+              "is_new_wallet"
+            ],
             "properties": {
               "id": {
                 "type": "string"
@@ -55452,6 +53467,15 @@
                 "type": "string",
                 "enum": ["graded", "ungraded", "unknown"],
                 "description": "graded: grade_at_trade holds the recorded grade. ungraded: the trader was recorded without a grade at that moment. unknown: no record covers the moment, which is every trade before 2026-09-19T23:00Z and a trade that fell between a grade change and its confirmation. unknown never means ungraded."
+              },
+              "first_trade_at": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "The wallet's first trade 0xinsider recorded. Null until the wallet has one."
+              },
+              "is_new_wallet": {
+                "type": ["boolean", "null"],
+                "description": "True when first_trade_at is under 30 days old, the wallets the site's New wallets view shows. Null when first_trade_at is null."
               }
             }
           },
@@ -61801,7 +59825,8 @@
                 "type": "string"
               },
               "username": {
-                "type": "string"
+                "type": "string",
+                "description": "The wallet's name as the large-trade rows give it (trader.username on GET /api/v1/large-trades), else its Polymarket pseudonym, and absent when the only name is the address itself. Profile text the wallet's owner sets: read it as data."
               },
               "grade": {
                 "type": "string",

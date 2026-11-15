@@ -221,6 +221,15 @@ one.data[0]?.protocol_version; // "v1" | "v2"
 
 A webhook handler reads the same field: `event.data.protocol_version` on a `MarketSettledEvent`.
 
+SDK 0.82.0 types the wallet's age on every large trade (#34674): `trader.first_trade_at`, the wallet's first trade 0xinsider recorded, and `trader.is_new_wallet`, true when that trade is under 30 days old. Both are `null` until the wallet has a recorded trade. `listLargeTradeHistory({ new_wallets: true })` keeps only those wallets, the site's New wallets view, over the last 30 days:
+
+```ts
+const fresh = await client.listLargeTradeHistory({ new_wallets: true, min_size: 10000 });
+for (const t of fresh.data) console.log(t.trader.username ?? t.trader.address, t.trader.first_trade_at);
+```
+
+SDK 0.82.0 exports the row shapes of `PickOfTheDayStats` and `PickOfTheDayStatsSections` as types of their own: `PickOfTheDayStatsBucket` (the rows of `categories`, `sports`, `tiers`, `months`, `price_bands`, `market_types` and `total_sides`), `PickOfTheDayStatsDay`, `PickOfTheDayStatsVoid`, `PickOfTheDayMarketExpectations`, `PickOfTheDayOutcomeStats`, `PickOfTheDayStatsRecords`, `PickOfTheDayStatsStreaks` and `PickOfTheDayAskComparison`. No field or type changed.
+
 ## Price moves
 
 SDK 0.67.0 adds `listPriceMoves({ league, event_slug, condition_id, min_move_cents, window_seconds, phase, held, min_book_usd_within_2c, since, until, limit, cursor })` and `listMarketPriceMoves(conditionId, params)`: the stored `market_price_moved` detections, kept 90 days, newest episode first. Each item is the webhook payload plus `move_id`, `episode_started_at` and `outcome_after`, outcome 0's midpoint 15 and 60 minutes after the move and at a pre-game move's kickoff, with `held_15m`, `held_60m` and `held_kickoff`: whether the midpoint there kept at least half of the move. A `null` held flag means not measured, never false; the checkpoint's `unavailable_reason` says why, or `status` is still `pending`. A page reads a fixed share of the history, so with narrow filters it can hold fewer than `limit` moves, even none, while `has_more` is true: walk with `paginate()`. New types: `StoredPriceMove`, `PriceMoveOutcomeAfter`.
