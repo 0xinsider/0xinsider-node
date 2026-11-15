@@ -185,7 +185,7 @@ export type BatchTraderItem = {
   error?: ApiErrorBody;
 };
 
-/** One bucketed OHLC price candle. Prices are in provider [0, 1] units: truncated to 4 decimals at 1d and 1w, Polymarket's own bucket price unrounded at 5m and 1h, where open, high, low and close are equal. */
+/** One bucketed OHLC price candle. Prices are in provider [0, 1] units: truncated to 4 decimals at 1d and 1w, unrounded at 5m and 1h. At 5m and 1h, basis says which Polymarket series the candle comes from: provider_bucket is Polymarket's own bucket price, so open, high, low and close are equal; provisional_minutes is built from Polymarket's 60-second prices in a bucket it has not published yet. */
 export type Candle = {
   /** Bucket-start unix epoch (seconds): the five-minute or hour boundary for 5m and 1h, UTC midnight for 1d, the ISO-week Monday's UTC midnight for 1w. */
   t: number;
@@ -197,6 +197,8 @@ export type Candle = {
   l: number;
   /** Close price in provider [0, 1] units (last observed point in the bucket). */
   c: number;
+  /** 5m and 1h only; absent at 1d and 1w. provider_bucket: Polymarket's own five-minute or hourly bucket, one price, so o=h=l=c. provisional_minutes: a bucket after Polymarket's newest published one, in a window that ended under 3 hours ago, built from Polymarket's 60-second prices inside it: o the first minute's price, h the highest, l the lowest, c the last. Provisional: a later read replaces it with Polymarket's bucket once published (its price has equalled the first minute's price, so o carries over and h, l and c collapse to it), and the bucket in progress gains minutes until it closes. A bucket with no 60-second price has no candle. */
+  basis?: "provider_bucket" | "provisional_minutes";
 };
 
 export type CategoryLeader = {
@@ -2452,7 +2454,7 @@ export type MarketCandles = {
   window_start?: number;
   /** 5m and 1h only: the end of the covered window, unix seconds, exclusive. Every candle has t before it. A bucket inside the window with no candle had no Polymarket price; nothing is filled in. */
   window_end?: number;
-  /** 5m and 1h only: when Polymarket's series was read. A window that reaches the present is re-read after at most 60 seconds. */
+  /** 5m and 1h only: when Polymarket's series was read. A window that reaches the present, or holds a provisional_minutes candle, is re-read after at most 60 seconds. */
   observed_at?: string;
   /** One entry per present provider token (YES first, then NO); empty when no tokens have been fetched yet. */
   outcomes: OutcomeCandles[];
