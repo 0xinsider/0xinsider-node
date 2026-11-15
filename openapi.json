@@ -25374,7 +25374,7 @@
       "get": {
         "operationId": "listSuspiciousTrades",
         "summary": "Get suspicious trades",
-        "description": "Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score (highest first) by default; sort=recent lists the newest flagged trade first. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope. Canonical since 2026-09-23; GET /api/v1/insider-radar is its deprecated alias.",
+        "description": "Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score (highest first) by default; sort=recent lists the newest flagged trade first. from and to bound the fill time (traded_at), from inclusive and to exclusive, as on GET /api/v1/large-trades/history. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope. Canonical since 2026-09-23; GET /api/v1/insider-radar is its deprecated alias.",
         "tags": ["Suspicious trades"],
         "parameters": [
           {
@@ -25442,6 +25442,24 @@
               "type": "string",
               "enum": ["suspicion_score", "recent"],
               "default": "suspicion_score"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive RFC3339 lower bound on traded_at, when the trade filled (created_at is the same instant). Applies in either sort and mode; a stable cursor is bound to it, so a changed window returns cursor_expired. A value that is not RFC3339 returns 400 bad_request with param from.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Exclusive RFC3339 upper bound on traded_at. Must be after from when both are present; otherwise 400 bad_request with param to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
@@ -26717,7 +26735,7 @@
       "get": {
         "operationId": "getGame",
         "summary": "Get one game",
-        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices, title, volume, liquidity, yes_quote or tournament. A game the board dropped while it was still in play returns 404. While any board source is unavailable (GET /api/v1/games names it on coverage.sources_unavailable), a slug the board does not carry and storage holds no finished record for returns 503 with error.reason read_model_warming and Retry-After, not 404: the game may exist on that source. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
+        "description": "The same game object GET /api/v1/games returns, for one event_slug, including soccer 1X2 home, draw and away market sides and draw_offered. The slug is the identity the live_sports_updated webhook pulse carries, so a receiver can read the full game straight from a pulse. A slug outside the published coverage returns 404, including a real Polymarket event in a sport this deployment does not serve; GET /api/v1/games names what is covered. A finished game leaves GET /api/v1/games with the live board and stays readable here by its slug: once the provider reports it final, awarded, forfeited, cancelled or postponed, or every moneyline leg has resolved, it is served from its stored record with freshness.source stored, the final score when a live-score frame carried one, no prices, title, volume, liquidity, yes_quote or tournament. A game whose kickoff has passed and that the provider never reported finished is carried by neither board half and stays readable here the same way, from its stored record: status.state is suspended or delayed when the provider last reported that, else unknown, status.ended is false, and GET /api/v1/market/{condition_id}/snapshot reads the current book of each of its markets. While any board source is unavailable (GET /api/v1/games names it on coverage.sources_unavailable), a slug the board does not carry and storage holds no finished record for returns 503 with error.reason read_model_warming and Retry-After, not 404: the game may exist on that source. markets holds the winner markets only; GET /api/v1/games/{event_slug}/markets lists every other market of the event.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -29101,7 +29119,7 @@
         "operationId": "listInsiderRadar",
         "deprecated": true,
         "summary": "Get insider radar flags",
-        "description": "Deprecated alias of GET /api/v1/suspicious-trades (2026-09-23), kept live until its sunset on 2027-02-01 (#29351); responses carry Deprecation, Sunset and a Link rel=\"successor-version\" to it, and from that date the path answers 410 Gone with error.code endpoint_retired. Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score (highest first) by default; sort=recent lists the newest flagged trade first. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope.",
+        "description": "Deprecated alias of GET /api/v1/suspicious-trades (2026-09-23), kept live until its sunset on 2027-02-01 (#29351); responses carry Deprecation, Sunset and a Link rel=\"successor-version\" to it, and from that date the path answers 410 Gone with error.code endpoint_retired. Stored trades whose recorded suspicion score meets the live flag threshold. Evidence contains the scorer's stored signals. Cursor-paginated by suspicion score (highest first) by default; sort=recent lists the newest flagged trade first. from and to bound the fill time (traded_at), from inclusive and to exclusive, as on GET /api/v1/large-trades/history. mode=live (default) uses fresh cached pages; mode=stable pins pagination to one published scoring generation and returns cursor_expired when scores or filters change. Sports and esports markets only (#27305): a flag on a market outside product scope is not listed, and the detail route answers it 404 not_found with error.reason=market_out_of_scope.",
         "tags": ["Insider Radar"],
         "parameters": [
           {
@@ -29169,6 +29187,24 @@
               "type": "string",
               "enum": ["suspicion_score", "recent"],
               "default": "suspicion_score"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive RFC3339 lower bound on traded_at, when the trade filled (created_at is the same instant). Applies in either sort and mode; a stable cursor is bound to it, so a changed window returns cursor_expired. A value that is not RFC3339 returns 400 bad_request with param from.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Exclusive RFC3339 upper bound on traded_at. Must be after from when both are present; otherwise 400 bad_request with param to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
