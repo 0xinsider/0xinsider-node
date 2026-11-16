@@ -70,6 +70,12 @@ export const API_ERROR_REASONS = [
   // fill into its running totals, and this wallet has more than 20,000 fills on
   // the market before the requested page. Dispatched to FillHistoryTooLargeError.
   "fill_history_too_large",
+  // 404 `not_found` refinements of `as_of=kickoff` on the holder routes (#34064):
+  // the kickoff is still ahead (sleep until `retryAt`, the kickoff), or the market
+  // has no stored kickoff roster (terminal). Dispatched to KickoffRosterPendingError
+  // and KickoffRosterNotCapturedError.
+  "kickoff_roster_pending",
+  "kickoff_roster_not_captured",
   "read_model_warming",
   "database_unavailable",
   "request_accounting_unavailable",
@@ -828,6 +834,45 @@ export class FillHistoryTooLargeError extends NotFoundError {
   }
 }
 
+/**
+ * 404 `reason: kickoff_roster_pending` - `as_of=kickoff` on a game moneyline whose
+ * kickoff is still ahead or less than 30 seconds past, so its holder roster is not
+ * served yet (#34064).
+ *
+ * "Not yet", not "does not exist": `retryAt` is 30 seconds after kickoff. Sleep
+ * until then and request once; a read before it cannot succeed.
+ */
+export class KickoffRosterPendingError extends NotFoundError {
+  override readonly reason = "kickoff_roster_pending" as const;
+  constructor(
+    status: number,
+    body: unknown,
+    retryAfterSeconds: number | null,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, { ...transport, retryAfterSeconds });
+    this.name = "KickoffRosterPendingError";
+  }
+}
+
+/**
+ * 404 `reason: kickoff_roster_not_captured` - `as_of=kickoff` on a market with no
+ * stored kickoff roster (#34064): not a game moneyline, a kickoff before the capture
+ * began, or no complete holder population held before kickoff. Terminal for this
+ * market: no retry produces one, and the API never answers today's roster instead.
+ */
+export class KickoffRosterNotCapturedError extends NotFoundError {
+  override readonly reason = "kickoff_roster_not_captured" as const;
+  constructor(
+    status: number,
+    body: unknown,
+    transport: ApiErrorTransportMetadata = {},
+  ) {
+    super(status, body, transport);
+    this.name = "KickoffRosterNotCapturedError";
+  }
+}
+
 /** Parse the RFC3339 `error.retry_at` off an error envelope, if present. */
 function parseRetryAt(body: unknown): Date | null {
   const raw = extractApiErrorBody(body)?.retry_at;
@@ -920,6 +965,10 @@ export function errorFromResponse(
       return new MarketOutOfScopeError(status, body, metadata);
     case "fill_history_too_large":
       return new FillHistoryTooLargeError(status, body, metadata);
+    case "kickoff_roster_pending":
+      return new KickoffRosterPendingError(status, body, retryAfterSeconds, metadata);
+    case "kickoff_roster_not_captured":
+      return new KickoffRosterNotCapturedError(status, body, metadata);
     case "idempotency_in_progress":
       return new IdempotencyInProgressError(status, body, metadata);
     case "webhook_delivery_in_progress":

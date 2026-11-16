@@ -3208,7 +3208,10 @@ export class OxinsiderApiClient {
    * The graded holders of up to 25 of one game's markets in one request
    * (`GET /api/v1/games/{event_slug}/holders`): each item is
    * {@link getMarketHolders} for one market, unfiltered and cut to `limit`.
-   * Batch envelope, so `meta` is the batch's own.
+   * Batch envelope, so `meta` is the batch's own. With `params.as_of:
+   * "kickoff"` (#34064) each item is that market's stored kickoff roster, or an
+   * item error whose `reason` is `kickoff_roster_pending` or
+   * `kickoff_roster_not_captured`.
    */
   getGameHolders(
     eventSlug: OperationPath["getGameHolders"]["event_slug"],
@@ -3271,6 +3274,13 @@ export class OxinsiderApiClient {
    * `B`), `params.limit` and `params.cursor` (the previous page's opaque `next_cursor`). The page carries
    * the `market`, `scan` and roster `totals` beside `data`; `total` is the
    * count matching the filters across every page.
+   *
+   * `params.as_of: "kickoff"` (#34064) pages a game moneyline's roster as it
+   * was stored at kickoff instead, with its clocks in `as_of` and
+   * `data_quality`. With none stored it throws
+   * {@link KickoffRosterPendingError} (until 30 seconds after kickoff; `retryAt`
+   * is that instant) or {@link KickoffRosterNotCapturedError} (terminal), never
+   * today's roster. Replay a cursor with the same `as_of`.
    */
   getMarketHolders(
     conditionId: OperationPath["getMarketHolders"]["condition_id"],
