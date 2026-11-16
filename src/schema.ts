@@ -2585,9 +2585,9 @@ export type MarketHolder = {
   token_id: string | null;
   /** All-time trader grade. This route lists the S/A/B cohort only, the same cohort a Pick of the Day roster lists. */
   grade: "S" | "A" | "B" | null;
-  /** Shares held on `side`, from the complete provider scan. */
+  /** Net shares on `side`, from the complete provider scan. For a wallet holding both outcomes, its shares on `side` minus `other_outcome_shares`. */
   shares: number;
-  /** Polymarket's own currentValue for this leg, in USD. Null when the snapshot predates the value map. */
+  /** What `shares` is worth, in USD: Polymarket's own currentValue for this leg. For a wallet holding both outcomes it is scaled to the net shares, at Polymarket's per-share value for the same position, so it never exceeds `shares`. Null when the snapshot predates the value map. */
   current_value_usd: number | null;
   /** Shares on the other outcome when the wallet holds both. Absent when the wallet is one-sided. */
   other_outcome_shares?: number;
@@ -2666,7 +2666,7 @@ export type MarketHoldersSideGrades = {
   b: number;
 };
 
-/** Polymarket currentValue in USD per grade on one side, over the same wallets as that side's usd total. Each value is rounded to the cent after summing, so s + a + b can differ from the side total by up to 2 cents. */
+/** The rows' current_value_usd per grade on one side, over the same wallets and values as that side's usd total. Each value is rounded to the cent after summing, so s + a + b can differ from the side total by up to 2 cents. */
 export type MarketHoldersSideGradeUsd = {
   /** USD held by S-grade wallets netting this side. */
   s: number;
@@ -2684,9 +2684,9 @@ export type MarketHoldersTotals = {
   no_count: number;
   yes_shares: number;
   no_shares: number;
-  /** Polymarket currentValue summed over the graded wallets netting YES. */
+  /** The rows' current_value_usd summed over the graded wallets netting YES: a wallet holding both outcomes counts at its net shares' value. */
   yes_usd: number;
-  /** Polymarket currentValue summed over the graded wallets netting NO. */
+  /** The rows' current_value_usd summed over the graded wallets netting NO: a wallet holding both outcomes counts at its net shares' value. */
   no_usd: number;
   yes_grades: MarketHoldersSideGrades;
   no_grades: MarketHoldersSideGrades;
