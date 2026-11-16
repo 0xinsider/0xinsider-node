@@ -49422,7 +49422,7 @@
             ]
           },
           "since_start": {
-            "description": "What S, A and B grade wallets bought on a binary game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, on a 1X2 (not read), or with no reading available.",
+            "description": "What S, A and B grade wallets bought on a game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available.",
             "anyOf": [
               {
                 "type": "object",
