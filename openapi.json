@@ -19421,7 +19421,7 @@
       "get": {
         "operationId": "getMarketHolders",
         "summary": "List a market's graded holders",
-        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. This is current state and takes no as-of parameter: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), and `scan.fetched_at` is the only timestamp on it. For a point-in-time roster, snapshot this route yourself on your own schedule; the one frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
+        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its shares, Polymarket's own currentValue for the leg, its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. An incomplete, unstable or failed scan is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. Without as_of this is current state: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), and `scan.fetched_at` is the only timestamp on it. With as_of=kickoff (#34064) the answer is a game moneyline's roster as it stood at kickoff: the roster this route computed in the 15 minutes before kickoff over the newest complete holder population it held then, stored before kickoff and never rewritten after (a game rescheduled to a later kickoff is captured again), with each clock in `as_of` and `data_quality`. It reads one stored row, walks nothing and spends no cold-read share. Until 30 s after kickoff it is 404 kickoff_roster_pending with retry_at at that instant; a market with no stored kickoff roster is 404 kickoff_roster_not_captured, never the current roster and never an empty list. For any other instant, snapshot this route yourself on your own schedule; the other frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -19477,9 +19477,19 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Page-only cursors from before 2026-10-02 are no longer accepted and return 400 bad_request with param=cursor; restart without a cursor. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes.",
+            "description": "Opaque pagination cursor from the previous response's next_cursor. New cursors carry an absolute next offset bound to normalized condition_id, outcome and effective min_grade, so limit can change without skipping or repeating rows on the same roster. Different market/filter bindings return 400 bad_request with param=cursor; omitted filters match all/B and mkt_-prefixed IDs match their raw condition_id. Page-only cursors from before 2026-10-02 are no longer accepted and return 400 bad_request with param=cursor; restart without a cursor. A cursor remains valid across roster refreshes, which can still repeat or skip holders as the live roster changes. A cursor also carries as_of: replay it with the same as_of, or receive 400 bad_request with param=cursor.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "description": "kickoff: the roster as it stood at the game's kickoff, for a sports or esports game moneyline (#34064). Omit it for the current roster; any other value is 400 bad_request with param=as_of. Holders, shares, current_value_usd and the population come from the newest complete holder walk or pregame census held in the 15 minutes before kickoff (as_of.population_fetched_at, as much as about 4 hours before kickoff); grades, badges and category records were read when the roster was computed (as_of.captured_at). Both are before as_of.kickoff_at, and the stored roster is never rewritten after it. market.status and market.end_date are read now; everything else is the kickoff instant's. Until 30 s after kickoff: 404 not_found, error.reason kickoff_roster_pending, retry_at at that instant. No stored roster (not a game moneyline, a game that kicked off before the capture shipped, a game whose live score showed play before its listed kickoff, or no complete population held before kickoff): 404 not_found, error.reason kickoff_roster_not_captured, terminal for that market. A census population keeps no display names, so every holder's name is null (as_of.population_source census).",
+            "schema": {
+              "type": "string",
+              "enum": ["kickoff"]
             }
           },
           {
@@ -19657,6 +19667,12 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ResponseMeta"
+                    },
+                    "as_of": {
+                      "$ref": "#/components/schemas/HoldersAsOf"
+                    },
+                    "data_quality": {
+                      "$ref": "#/components/schemas/DataQuality"
                     }
                   }
                 }
@@ -19706,7 +19722,7 @@
             "x-empty-body": true
           },
           "400": {
-            "description": "Invalid request parameter, malformed cursor, or cursor belonging to a different market, outcome or effective min_grade (error.param=cursor).",
+            "description": "Invalid request parameter (an as_of other than kickoff is error.param=as_of), malformed cursor, or cursor belonging to a different market, outcome, effective min_grade or as_of (error.param=cursor).",
             "content": {
               "application/json": {
                 "schema": {
@@ -19746,7 +19762,7 @@
             }
           },
           "404": {
-            "description": "Not found. error.reason=\"market_out_of_scope\" (#27303): the market is real but outside product scope -- 0xinsider serves sports and esports markets only. This is terminal: stop requesting this market. Without error.reason, no stored market has this condition_id. Both carry error.code=\"not_found\".",
+            "description": "Not found. error.reason=\"market_out_of_scope\" (#27303): the market is real but outside product scope -- 0xinsider serves sports and esports markets only. This is terminal: stop requesting this market. Without error.reason, no stored market has this condition_id. With as_of=kickoff (#34064), error.reason=\"kickoff_roster_pending\": the game has not kicked off, or did less than 30 s ago, so its kickoff roster is not served yet; retry_at is 30 s after kickoff and a read before it cannot succeed. error.reason=\"kickoff_roster_not_captured\": no kickoff roster is stored for this market; terminal, and the current roster is never served in its place. All carry error.code=\"not_found\".",
             "content": {
               "application/json": {
                 "schema": {
@@ -28759,7 +28775,7 @@
       "get": {
         "operationId": "getGameHolders",
         "summary": "Get a game's holders",
-        "description": "The S, A and B graded holders of up to 25 markets of one game in one call. Each item is GET /api/v1/market/{condition_id}/holders for one market, unfiltered and cut to limit, with the same market, scan and totals beside it. Pass condition_ids from GET /api/v1/games/{event_slug}/markets; a market that is not one of the game's is that item's not_found. A batch route: results preserve request order, duplicate inputs return duplicate rows, and each requested condition_id costs one batch item unit, reserved before any item is read. Each market loads its roster as the single-market route does (a 60-second cache over a complete provider holder scan). The request waits at most 150 ms for all of them together: a market whose roster is not ready by then is an item error with code rate_limit_unavailable, reason read_model_warming and retry_at, and its scan keeps running, so a retry after that time reads the cached roster. Page a market past limit on its own holders route. Pro and Max.",
+        "description": "The S, A and B graded holders of up to 25 markets of one game in one call. Each item is GET /api/v1/market/{condition_id}/holders for one market, unfiltered and cut to limit, with the same market, scan and totals beside it. Pass condition_ids from GET /api/v1/games/{event_slug}/markets; a market that is not one of the game's is that item's not_found. A batch route: results preserve request order, duplicate inputs return duplicate rows, and each requested condition_id costs one batch item unit, reserved before any item is read. Each market loads its roster as the single-market route does (a 60-second cache over a complete provider holder scan). The request waits at most 150 ms for all of them together: a market whose roster is not ready by then is an item error with code rate_limit_unavailable, reason read_model_warming and retry_at, and its scan keeps running, so a retry after that time reads the cached roster. Page a market past limit on its own holders route. With as_of=kickoff each item is that market's stored kickoff roster (#34064) instead, or the item error that says why it has none. Pro and Max.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -28807,6 +28823,16 @@
               "minimum": 1,
               "maximum": 100,
               "default": 20
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "description": "kickoff: each market's roster as it stood at the game's kickoff, as GET /api/v1/market/{condition_id}/holders?as_of=kickoff serves it (#34064), read for every market in one query with no wait, no walk and no cold-read share. Each ok item carries as_of and data_quality, computed_at is its capture, cached is true and stale is false. A market until 30 s after kickoff is an item error with reason kickoff_roster_pending and retry_at at that instant; a market with no stored kickoff roster is an item error with reason kickoff_roster_not_captured. Omit it for the current rosters; any other value is 400 bad_request with param=as_of.",
+            "schema": {
+              "type": "string",
+              "enum": ["kickoff"]
             }
           }
         ],
@@ -57204,186 +57230,105 @@
             }
           },
           "sharp_money": {
-            "type": "object",
-            "description": "Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias.",
-            "required": [
-              "net_flow_usd",
-              "direction",
-              "token_id",
-              "large_trade_count",
-              "whale_trade_count",
-              "buy_volume_usd",
-              "sell_volume_usd",
-              "top_positions",
-              "oldest_snapshot_as_of"
-            ],
-            "properties": {
-              "net_flow_usd": {
-                "type": "number"
-              },
-              "direction": {
-                "type": "string",
-                "enum": ["YES", "NO"]
-              },
-              "token_id": {
-                "type": ["string", "null"],
-                "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
-              },
-              "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
-                "type": "integer"
-              },
-              "whale_trade_count": {
-                "deprecated": true,
-                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
-                "type": "integer"
-              },
-              "buy_volume_usd": {
-                "type": "number"
-              },
-              "sell_volume_usd": {
-                "type": "number"
-              },
-              "top_positions": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "id",
-                    "address",
-                    "username",
-                    "grade",
-                    "side",
-                    "token_id",
-                    "size_usd"
-                  ],
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "address": {
-                      "type": "string"
-                    },
-                    "username": {
-                      "type": ["string", "null"]
-                    },
-                    "grade": {
-                      "type": ["string", "null"],
-                      "enum": ["S", "A", "B", "C", "D", "F", null]
-                    },
-                    "side": {
-                      "type": "string",
-                      "enum": ["YES", "NO"]
-                    },
-                    "token_id": {
-                      "type": ["string", "null"],
-                      "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets)."
-                    },
-                    "size_usd": {
-                      "type": "number"
-                    }
-                  }
-                }
-              },
-              "oldest_snapshot_as_of": {
-                "type": ["string", "null"],
-                "format": "date-time",
-                "description": "Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times."
-              }
-            }
+            "$ref": "#/components/schemas/MarketFlowSharpMoney",
+            "description": "Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias."
           },
           "smart_money": {
-            "type": "object",
+            "$ref": "#/components/schemas/MarketFlowSharpMoney",
             "deprecated": true,
-            "description": "Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.",
-            "required": [
-              "net_flow_usd",
-              "direction",
-              "token_id",
-              "large_trade_count",
-              "whale_trade_count",
-              "buy_volume_usd",
-              "sell_volume_usd",
-              "top_positions",
-              "oldest_snapshot_as_of"
-            ],
-            "properties": {
-              "net_flow_usd": {
-                "type": "number"
-              },
-              "direction": {
-                "type": "string",
-                "enum": ["YES", "NO"]
-              },
-              "token_id": {
-                "type": ["string", "null"],
-                "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
-              },
-              "large_trade_count": {
-                "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
-                "type": "integer"
-              },
-              "whale_trade_count": {
-                "deprecated": true,
-                "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
-                "type": "integer"
-              },
-              "buy_volume_usd": {
-                "type": "number"
-              },
-              "sell_volume_usd": {
-                "type": "number"
-              },
-              "top_positions": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "id",
-                    "address",
-                    "username",
-                    "grade",
-                    "side",
-                    "token_id",
-                    "size_usd"
-                  ],
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "address": {
-                      "type": "string"
-                    },
-                    "username": {
-                      "type": ["string", "null"]
-                    },
-                    "grade": {
-                      "type": ["string", "null"],
-                      "enum": ["S", "A", "B", "C", "D", "F", null]
-                    },
-                    "side": {
-                      "type": "string",
-                      "enum": ["YES", "NO"]
-                    },
-                    "token_id": {
-                      "type": ["string", "null"],
-                      "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets)."
-                    },
-                    "size_usd": {
-                      "type": "number"
-                    }
-                  }
-                }
-              },
-              "oldest_snapshot_as_of": {
-                "type": ["string", "null"],
-                "format": "date-time",
-                "description": "Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times."
-              }
-            }
+            "description": "Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money."
           },
           "timeframe": {
             "type": "string"
+          }
+        }
+      },
+      "MarketFlowSharpMoney": {
+        "type": "object",
+        "description": "One market's outcome-aware large-trade flow in the window and its top graded positions: the shape of MarketFlow's sharp_money and of its deprecated alias smart_money.",
+        "required": [
+          "net_flow_usd",
+          "direction",
+          "token_id",
+          "large_trade_count",
+          "whale_trade_count",
+          "buy_volume_usd",
+          "sell_volume_usd",
+          "top_positions",
+          "oldest_snapshot_as_of"
+        ],
+        "properties": {
+          "net_flow_usd": {
+            "type": "number"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["YES", "NO"]
+          },
+          "token_id": {
+            "type": ["string", "null"],
+            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
+          },
+          "large_trade_count": {
+            "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
+            "type": "integer"
+          },
+          "whale_trade_count": {
+            "deprecated": true,
+            "description": "Deprecated spelling of large_trade_count, emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read large_trade_count.",
+            "type": "integer"
+          },
+          "buy_volume_usd": {
+            "type": "number"
+          },
+          "sell_volume_usd": {
+            "type": "number"
+          },
+          "top_positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "address",
+                "username",
+                "grade",
+                "side",
+                "token_id",
+                "size_usd"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": ["string", "null"]
+                },
+                "grade": {
+                  "type": ["string", "null"],
+                  "enum": ["S", "A", "B", "C", "D", "F", null]
+                },
+                "side": {
+                  "type": "string",
+                  "enum": ["YES", "NO"]
+                },
+                "token_id": {
+                  "type": ["string", "null"],
+                  "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets)."
+                },
+                "size_usd": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "oldest_snapshot_as_of": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times."
           }
         }
       },
@@ -58210,7 +58155,7 @@
           "retry_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming) and omitted otherwise. Always in the future. For pick_not_released, the recommendation is advisory and can change before a pick becomes available. Schedule the next request from the returned value instead of inferring a release schedule or polling. Prefer Retry-After for the duration because it is immune to client clock skew."
+            "description": "The recommended next retry instant (RFC3339). Present on every retryable error (reason=pick_not_released, code=rate_limited including reason=monthly_quota_exceeded, code=rate_limit_unavailable, reason=read_model_warming, reason=kickoff_roster_pending, whose retry_at is 30 s after kickoff) and omitted otherwise. Always in the future. For pick_not_released, the recommendation is advisory and can change before a pick becomes available. Schedule the next request from the returned value instead of inferring a release schedule or polling. Prefer Retry-After for the duration because it is immune to client clock skew."
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessFailure"
@@ -58229,6 +58174,8 @@
               "trader_not_tracked",
               "market_out_of_scope",
               "fill_history_too_large",
+              "kickoff_roster_pending",
+              "kickoff_roster_not_captured",
               "read_model_warming",
               "database_unavailable",
               "request_accounting_unavailable",
@@ -58256,7 +58203,7 @@
               "max_plan_required",
               "endpoint_retired"
             ],
-            "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. fill_history_too_large (404 not_found, #33245): the wallet and market are tracked, but the position timeline sums every earlier fill into its running totals and this wallet has more than 20,000 fills on the market before the requested page -- stop asking for this pair; neither a retry nor another page can succeed. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. payment_overdue (402 subscription_required, #32592): the key is valid and the account still has its plan, but its latest subscription invoice is unpaid (Stripe past_due or unpaid), so paid access is paused; permanent until a person pays at billing_url (https://0xinsider.com/billing) -- stop retrying on a schedule and surface the link. The key works again the moment the invoice is paid. GET /api/v1/me and GET /api/v1/usage keep answering. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. cold_read_limited (429 rate_limited, #28752, #34815): the account has used its share of cold reads on a route, requests whose answer is not cached, each of which reads Polymarket: GET /api/v1/market/{condition_id}/holders for a market whose roster is not cached (6 a minute, in bursts of up to 400), and GET /api/v1/market/{condition_id}/candles at 5m or 1h for a window not cached (6 a minute, in bursts of up to 30); not the per-minute window, so a cached answer still answers, and the next cold read is admitted at Retry-After. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed."
+            "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. fill_history_too_large (404 not_found, #33245): the wallet and market are tracked, but the position timeline sums every earlier fill into its running totals and this wallet has more than 20,000 fills on the market before the requested page -- stop asking for this pair; neither a retry nor another page can succeed. kickoff_roster_pending (404 not_found, #34064): as_of=kickoff on a game moneyline whose kickoff is still ahead or less than 30 s past, so its kickoff roster is not served yet; retry_at is 30 s after kickoff, and a read before it cannot succeed. kickoff_roster_not_captured (404 not_found, #34064): as_of=kickoff on a market with no stored kickoff roster (not a game moneyline, a game that kicked off before the capture shipped, a game whose live score showed play before its listed kickoff, or no complete holder population held before kickoff); terminal for that market, and the current roster is never served in its place. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. payment_overdue (402 subscription_required, #32592): the key is valid and the account still has its plan, but its latest subscription invoice is unpaid (Stripe past_due or unpaid), so paid access is paused; permanent until a person pays at billing_url (https://0xinsider.com/billing) -- stop retrying on a schedule and surface the link. The key works again the moment the invoice is paid. GET /api/v1/me and GET /api/v1/usage keep answering. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. cold_read_limited (429 rate_limited, #28752, #34815): the account has used its share of cold reads on a route, requests whose answer is not cached, each of which reads Polymarket: GET /api/v1/market/{condition_id}/holders for a market whose roster is not cached (6 a minute, in bursts of up to 400), and GET /api/v1/market/{condition_id}/candles at 5m or 1h for a window not cached (6 a minute, in bursts of up to 30); not the per-minute window, so a cached answer still answers, and the next cold read is admitted at Retry-After. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed."
           }
         }
       },
@@ -58485,7 +58432,7 @@
           "computed_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this roster was computed. A fresh cached roster is at most 60 seconds old; a stale one at most 15 minutes."
+            "description": "When this roster was computed. A fresh cached roster is at most 60 seconds old; a stale one at most 15 minutes. On as_of=kickoff it is the capture, as_of.captured_at."
           },
           "cached": {
             "type": "boolean",
@@ -58494,6 +58441,56 @@
           "stale": {
             "type": "boolean",
             "description": "true when the market had no fresh roster at the batch deadline and this is the last roster published for it, up to 15 minutes old (read computed_at). The fresh one is still computing, so a read a few seconds later normally gets it; a market refused over the account's cold-read share is served the same way."
+          },
+          "as_of": {
+            "$ref": "#/components/schemas/HoldersAsOf"
+          },
+          "data_quality": {
+            "$ref": "#/components/schemas/DataQuality"
+          }
+        }
+      },
+      "HoldersAsOf": {
+        "type": "object",
+        "description": "The instant a stored kickoff roster stands at, with each of its clocks (#34064). Present only on as_of=kickoff; every clock is before kickoff_at.",
+        "required": [
+          "basis",
+          "kickoff_at",
+          "captured_at",
+          "population_fetched_at",
+          "population_started_at",
+          "population_source"
+        ],
+        "properties": {
+          "basis": {
+            "type": "string",
+            "enum": ["kickoff"],
+            "description": "Always kickoff."
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the roster was computed and stored. Its grades, badges and category records were read at this instant."
+          },
+          "kickoff_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The kickoff the roster stands at: the market's scheduled game start when the roster was stored, or its start now when that moved earlier since. A game moved to a later start is captured again for the new one."
+          },
+          "population_fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the provider holder walk behind the holders and their shares finished, the same instant as scan.fetched_at. It can be up to about 4 hours before kickoff."
+          },
+          "population_source": {
+            "type": "string",
+            "enum": ["snapshot", "census"],
+            "description": "snapshot: a complete holder walk, with the provider's display names. census: the pregame census, which keeps no names, so every holder's name is null."
+          },
+          "population_started_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When that walk started; null when its copy did not record it."
           }
         }
       },
@@ -58539,7 +58536,7 @@
               "retry_at": {
                 "type": "string",
                 "format": "date-time",
-                "description": "The recommended next request instant (RFC3339), always in the future. Present on every retryable error: `pick_not_released`, `rate_limited`, `rate_limit_unavailable`, and `read_model_warming`. Omitted otherwise. The absolute twin of `Retry-After`; prefer the header for the sleep duration. For `pick_not_released`, the earliest of the next scheduled release, the next automatic selector attempt, the operating-window start, or about 60 seconds. See that response."
+                "description": "The recommended next request instant (RFC3339), always in the future. Present on every retryable error: `pick_not_released`, `rate_limited`, `rate_limit_unavailable`, `read_model_warming`, and `kickoff_roster_pending`, whose retry_at is 30 s after kickoff. Omitted otherwise. The absolute twin of `Retry-After`; prefer the header for the sleep duration. For `pick_not_released`, the earliest of the next scheduled release, the next automatic selector attempt, the operating-window start, or about 60 seconds. See that response."
               },
               "freshness": {
                 "$ref": "#/components/schemas/FreshnessFailure"
@@ -58558,6 +58555,8 @@
                   "trader_not_tracked",
                   "market_out_of_scope",
                   "fill_history_too_large",
+                  "kickoff_roster_pending",
+                  "kickoff_roster_not_captured",
                   "read_model_warming",
                   "database_unavailable",
                   "request_accounting_unavailable",
@@ -58585,7 +58584,7 @@
                   "max_plan_required",
                   "endpoint_retired"
                 ],
-                "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. fill_history_too_large (404 not_found, #33245): the wallet and market are tracked, but the position timeline sums every earlier fill into its running totals and this wallet has more than 20,000 fills on the market before the requested page -- stop asking for this pair; neither a retry nor another page can succeed. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. payment_overdue (402 subscription_required, #32592): the key is valid and the account still has its plan, but its latest subscription invoice is unpaid (Stripe past_due or unpaid), so paid access is paused; permanent until a person pays at billing_url (https://0xinsider.com/billing) -- stop retrying on a schedule and surface the link. The key works again the moment the invoice is paid. GET /api/v1/me and GET /api/v1/usage keep answering. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. cold_read_limited (429 rate_limited, #28752, #34815): the account has used its share of cold reads on a route, requests whose answer is not cached, each of which reads Polymarket: GET /api/v1/market/{condition_id}/holders for a market whose roster is not cached (6 a minute, in bursts of up to 400), and GET /api/v1/market/{condition_id}/candles at 5m or 1h for a window not cached (6 a minute, in bursts of up to 30); not the per-minute window, so a cached answer still answers, and the next cold read is admitted at Retry-After. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed."
+                "description": "ADDITIVE (#7209). The specific, actionable cause behind `code`, when there is one more specific than the code itself. `code` keeps its published values, so existing clients are unaffected; new clients branch on `reason`. Omitted when the code already says everything we know. pick_not_released: no Pick of the Day is published for the current product day; schedule one request against retry_at instead of polling. unknown_endpoint: the PATH is not a route on this API -- read GET /api/v1, do not retry. trader_not_tracked: the wallet is real and the URL is right, but the trader is not on the warm sync tier (the wallets we sync most often) -- stop asking for this wallet. market_out_of_scope (404 not_found, #27303): the market or event is real and the URL is right, but 0xinsider serves sports and esports markets only -- stop asking for this market; neither a retry nor another URL for it can succeed. fill_history_too_large (404 not_found, #33245): the wallet and market are tracked, but the position timeline sums every earlier fill into its running totals and this wallet has more than 20,000 fills on the market before the requested page -- stop asking for this pair; neither a retry nor another page can succeed. kickoff_roster_pending (404 not_found, #34064): as_of=kickoff on a game moneyline whose kickoff is still ahead or less than 30 s past, so its kickoff roster is not served yet; retry_at is 30 s after kickoff, and a read before it cannot succeed. kickoff_roster_not_captured (404 not_found, #34064): as_of=kickoff on a market with no stored kickoff roster (not a game moneyline, a game that kicked off before the capture shipped, a game whose live score showed play before its listed kickoff, or no complete holder population held before kickoff); terminal for that market, and the current roster is never served in its place. cursor_expired: pagination went stale mid-walk -- re-request the first page and continue. read_model_warming: the requested endpoint cannot serve its read model yet; exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh. database_unavailable: the API's database or its connection pool is temporarily unreachable (a connection-class failure, not a query fault); code stays rate_limit_unavailable, nothing is rate-limited, retry after Retry-After / retry_at. idempotency_in_progress: retain the exact Idempotency-Key and request body, then retry shortly. webhook_delivery_in_progress: retry the URL or signing-secret configuration change after the destination's active request completes. request_accounting_unavailable: accounting capacity is unavailable before the handler executes; retry after Retry-After / retry_at. sandbox_api_key: the credential is a sandbox key (oxi_sk_test_) from POST /api/v1/agents/register, which only the sandbox server accepts -- call the sandbox base URL with it, or get a live key or OAuth access token; do not retry it here. api_key_in_query: the key was sent as a ?token= query parameter, which no route reads because URLs land in logs and history; the key itself was not checked -- resend it as Authorization: Bearer. subscription_inactive: the key is valid but the account's Pro subscription has lapsed (402 subscription_required); permanent until a person reactivates at https://0xinsider.com/billing, which the message names -- stop retrying on a schedule and surface the link. The key owner is emailed once per lapse. payment_overdue (402 subscription_required, #32592): the key is valid and the account still has its plan, but its latest subscription invoice is unpaid (Stripe past_due or unpaid), so paid access is paused; permanent until a person pays at billing_url (https://0xinsider.com/billing) -- stop retrying on a schedule and surface the link. The key works again the moment the invoice is paid. GET /api/v1/me and GET /api/v1/usage keep answering. monthly_quota_exceeded: the account has used the requests its plan includes for the UTC calendar month (429 rate_limited); retry_at and Retry-After name the first of next month, the only retry that can succeed, and the message names https://0xinsider.com/developers, where pay as you go for requests over the quota is turned on. The X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining and X-Monthly-Quota-Reset headers on every authenticated response say how close the account is. invalid_query, invalid_path, invalid_body (400 bad_request, #16146): a query parameter, a path segment or the JSON body did not parse or does not fit the route's schema, so no handler ran; param names the field when the parser named one (a query key, a path segment, a JSON path such as traders[0], or body); fix the request, never retry it as sent. unsupported_media_type (415 bad_request, param content-type): send the body with Content-Type: application/json. payload_too_large (413 bad_request, param body): the body is over 1048576 bytes. method_not_allowed (405 bad_request): the path is a route but not with this method; the Allow header names the methods it serves. ip_rate_limited (429 rate_limited, #16380): the per-address budget every caller behind one IP shares, counted before authentication, is spent; not the key's own window, and the RateLimit-* headers describe that bucket. ip_throttled (429 rate_limited): the address is in a cooldown after sustained over-limit traffic; Retry-After is minutes to days, and a request before it does not shorten the cooldown. cold_read_limited (429 rate_limited, #28752, #34815): the account has used its share of cold reads on a route, requests whose answer is not cached, each of which reads Polymarket: GET /api/v1/market/{condition_id}/holders for a market whose roster is not cached (6 a minute, in bursts of up to 400), and GET /api/v1/market/{condition_id}/candles at 5m or 1h for a window not cached (6 a minute, in bursts of up to 30); not the per-minute window, so a cached answer still answers, and the next cold read is admitted at Retry-After. max_plan_required (403 forbidden, #23085): the key is valid and its account is on Pro, but the route is part of Max (GET /api/v1/edge-hunter); every Pro route keeps working with the same key, so do not disable it. The message names https://0xinsider.com/pricing, where the account upgrades; a retry never clears it. endpoint_retired (410): this legacy sports endpoint no longer serves data. Migrate to GET /api/v1/edge-hunter; retrying the retired path cannot succeed."
               }
             }
           },
