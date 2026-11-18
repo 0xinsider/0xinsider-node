@@ -1606,6 +1606,8 @@ export type Game = {
   volume?: GameVolume;
   /** A tennis game's tournament edition: its tier, city and country, venue time zone and official dates, from 0xinsider's reviewed registry, the same facts the game's page states. Omitted outside tennis, on a finished game read from its stored record (freshness.source stored), and when the registry holds no single edition for the game's competition label, players' tour and kickoff; never a guessed value. */
   tournament?: GameTournament;
+  /** An esports series' maps, each with its score per competitor and its result, the map in play, and when the reading behind them was taken. The same per-map state the game's page shows. Present on every esports game, omitted for every other sport. */
+  map_state?: GameMapState;
 };
 
 /** One side of the game. */
@@ -1679,6 +1681,36 @@ export type GameHoldersItem = {
   stale: boolean;
   as_of?: HoldersAsOf;
   data_quality?: DataQuality;
+};
+
+/** One map of an esports series. */
+export type GameMap = {
+  /** The map's number in the series, 1 for the first. Polymarket's breakdown names no map, so the number is its identity. */
+  number: number;
+  /** finished: played to its end. current: the map in play, 0-0 before its first round. */
+  state: "finished" | "current";
+  /** Each competitor's score in this map, in competitors order: rounds in CS2 and Valorant, kills in League of Legends and Dota 2. */
+  scores: number[];
+  /** Each competitor's result in this map, in competitors order. Kills do not decide a League of Legends or Dota 2 map, so read the winner here, never from scores. Present on a finished map whose winner is known; omitted on the current map. */
+  results?: ("win" | "loss")[];
+};
+
+/** The per-map state of an esports series, read from 0xinsider's stored composition of Polymarket's per-map breakdown (the GRID data behind Polymarket's own esports scoreboard), which 0xinsider checks against the series score every 5 to 10 seconds while the series is in play. No provider is read for this response. maps is present only when availability is available; a series with no map reading says why in reason and never carries an empty or guessed list. */
+export type GameMapState = {
+  /** available: maps holds the series' maps. unavailable: there is no map reading to serve; reason says why. not_applicable: the series has no per-map state to read: it has not started, or it is a single-map series whose map score is the series score. */
+  availability: "available" | "unavailable" | "not_applicable";
+  /** Why maps is absent. not_started: the series has not started. single_map_series: a best-of-1, or a series that ended after one map; competitors[].score is that map's result. no_map_reading: no per-map reading is stored: most esports series have no per-map breakdown from Polymarket, and a series is read once it is in play. reading_unavailable: Polymarket's per-map breakdown was absent or could not be read. reading_disagrees: the breakdown trails or runs ahead of the series score, so it is not served. sides_unbound: the reading's two sides do not match this game's competitors by provider id. store_unavailable: the stored state could not be read for this response; retry. Omitted when availability is available. */
+  reason?: "not_started" | "single_map_series" | "no_map_reading" | "reading_unavailable" | "reading_disagrees" | "sides_unbound" | "store_unavailable";
+  /** The series' maps in order: every finished map, then the map in play. Empty only while no map has finished or started. Present only when availability is available. */
+  maps?: GameMap[];
+  /** The number of the map in play, the last entry of maps. Omitted when no map is in play: before the series, after it, and while the deciding map has been played but the provider has not yet ended the series. */
+  current_map?: number;
+  /** How complete the stored score is: full when it parsed and no map reading was unavailable or disagreed with the series score; partial when one was; unavailable when the provider score did not parse. Omitted when no stored score was read. */
+  quality?: "full" | "partial" | "unavailable";
+  /** When the per-map reading behind this state was taken, never this response's clock. A later reading that changed nothing does not move it, so a quiet map can show a reading minutes old. Omitted when no reading is stored. */
+  observed_at?: string;
+  /** Seconds from observed_at to the response's as_of, measured as freshness.scores_age_seconds is; 0 when the reading is newer than as_of. Omitted with observed_at. */
+  age_seconds?: number;
 };
 
 /** One Polymarket market linked to this game. */
