@@ -401,6 +401,8 @@ export type {
   GameCoverage,
   GameFreshness,
   GameHoldersItem,
+  GameMap,
+  GameMapState,
   GameMarket,
   GameMarketLiquidity,
   GameMarketPriceBindingProvenance,
