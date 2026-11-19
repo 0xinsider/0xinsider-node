@@ -6297,7 +6297,7 @@ export type Usage = {
     };
     /** The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
     monthly_quota: {
-      /** Admitted requests so far this UTC calendar month. */
+      /** Requests this UTC calendar month that answered below 500. A 4xx counts. A 5xx does not. */
       used: number;
       /** Requests the account's plan includes per UTC calendar month: 500,000 for Pro, 2,000,000 for Max. */
       limit: number;
@@ -7030,7 +7030,7 @@ export interface OperationData {
     };
     /** The monthly request quota (#16111): where the account stands against the requests the current Pro or Max plan includes per UTC calendar month. Reading it here spends nothing. null only when the month's count could not be read for this response. */
     monthly_quota: {
-      /** Admitted requests so far this UTC calendar month. */
+      /** Requests this UTC calendar month that answered below 500. A 4xx counts. A 5xx does not. */
       used: number;
       /** Requests the account's plan includes per UTC calendar month: 500,000 for Pro, 2,000,000 for Max. */
       limit: number;
