@@ -3228,7 +3228,7 @@ export type PickHolder = {
   category_price_edge_hold?: PickHolderPriceEdgeHold;
   /** Why there is no `category_scope_price_edge` beside a game or league rate, with the rule's figures when it has them. Present only beside `category_win_rate_game`, and never beside `category_scope_price_edge`. Absent otherwise and on payloads predating the field. */
   category_scope_price_edge_hold?: PickHolderPriceEdgeHold;
-  /** What this wallet did on the pick's market after the pick was released, read from the fills, merges, splits and redemptions 0xinsider stores. Sits beside the release `shares`, which never change. `state` is `held`, `added`, `reduced` or `exited` for the time between release and the game's start, then `redeemed` once the wallet redeemed backed shares after settlement. Read `unavailable` as unknown, never as held. Present on `display_holders` items of a full pick; absent on teasers and on payloads predating the field. */
+  /** What this wallet did on the pick's market after the pick was released, read from the fills, merges, splits and redemptions 0xinsider stores. Sits beside the release `shares`, which never change. `state` is `held`, `added`, `reduced`, `exited`, `hedged` or `switched` for the time between release and the game's start, then `redeemed` once the wallet redeemed backed shares after settlement, unless it switched. The state reads both outcomes: compare the release `backed_outcome_shares` and `other_outcome_shares` with `shares_after` and `other_shares_after`. Read `unavailable` as unknown, never as held. Present on `display_holders` items of a full pick; absent on teasers and on payloads predating the field. */
   after_release?: {
     /** End of the share-change window: the game's start once it has started, else `observed_at`. Trading during the game does not count. */
     changes_through: string;
@@ -3250,11 +3250,17 @@ export type PickHolder = {
     shares_after?: number;
     /** Net backed shares gained in the change window: bought, minus sold and merged, plus split. Negative when the wallet cut its position. */
     shares_change?: number;
-    /** `held`: no change to its backed shares before the game. `added`: bought more. `reduced`: sold or merged some. `exited`: left under one backed share. `redeemed`: redeemed backed shares after settlement. `unavailable`: the facts could not be read; see `unavailable_reason`. */
-    state: "held" | "added" | "reduced" | "exited" | "redeemed" | "unavailable";
+    /** `held`: no change to its backed shares before the game. `added`: bought more. `reduced`: sold or merged some. `exited`: left under one backed share. `hedged`: bought the other outcome, by more than it added to the backed one, and still holds more of the backed one. `switched`: changed its position and ended the window holding at least one share of the other outcome and more of it than of the backed one; it outranks `redeemed`, so a wallet that switched and later redeemed backed shares reads `switched` beside `redeemed_shares`. `redeemed`: redeemed backed shares after settlement. `unavailable`: the facts could not be read; see `unavailable_reason`. */
+    state: "held" | "added" | "reduced" | "exited" | "hedged" | "switched" | "redeemed" | "unavailable";
     /** Present only when `state` is `unavailable`. `read_failed`: the read failed or ran out of time, and a later request can answer. `wallet_not_indexed` or `market_not_indexed`: 0xinsider stores no fills of that wallet or on that market. */
     unavailable_reason?: "read_failed" | "wallet_not_indexed" | "market_not_indexed";
+    /** The release `other_outcome_shares` plus `other_shares_change`, never below zero: the other outcome's shares at the end of the change window. Absent when the release roster did not record the other outcome. */
+    other_shares_after?: number;
   };
+  /** Gross shares of the backed outcome this wallet held when the pick was released, from the same observation as `other_outcome_shares`; `shares` is the figure the pick lists. Present on `display_holders` items only, always with `other_outcome_shares`; absent on rosters recorded before the pair was. */
+  backed_outcome_shares?: number;
+  /** Shares of the other outcome this wallet held when the pick was released, from the same observation as `backed_outcome_shares`: 0 means it held none then. Beside `after_release.other_shares_change`, it says whether the wallet bought the other side before or after release. Present on `display_holders` items only, always with `backed_outcome_shares`; absent on rosters recorded before the pair was. */
+  other_outcome_shares?: number;
 };
 
 /** Edge over the price paid in one category, game or league: how often the side a wallet bought won, minus the average price it paid, over its settled markets there at a known entry price (`every_size`). Probabilities throughout: edge -0.171 is -17.1 percentage points. A market bought on both sides counts by its shares: the winning side's share of the shares bought is its hit, the cost over those shares its price. Figures from the daily record rebuild. */
