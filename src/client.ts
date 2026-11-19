@@ -3063,7 +3063,11 @@ export class OxinsiderApiClient {
    * or is still to come); the default, `"all"`, is the whole catalog, which can
    * start with games weeks old. `protocol_version: "v1"` or `"v2"` keeps the
    * games with a market on that Polymarket protocol and lists only those
-   * markets, each of which carries `protocol_version`. An unknown `sport` or `status`
+   * markets, each of which carries `protocol_version`. `"v2"` also counts the
+   * moneyline of the game's Protocol V2 copy (a `polyv2` event): the game keeps
+   * its own `event_slug`, and that market names the copy in `copy_event_slug`,
+   * the slug `listGameMarkets` takes for the copy's other markets, and carries
+   * no `prices`, `liquidity` or `yes_quote`. An unknown `sport` or `status`
    * returns an empty page rather than an error, and the response's `coverage`
    * names what this deployment serves.
    */

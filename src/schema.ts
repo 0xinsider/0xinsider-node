@@ -1745,6 +1745,8 @@ export type GameMarket = {
   condition_id: string;
   /** The Polymarket protocol the market trades on: v1 (CTF) or v2 (Protocol V2), read from the condition id, as GET /api/v1/games/{event_slug}/markets serves it. On a v2 market each outcome_token_ids entry is a V2 position id. */
   protocol_version: "v1" | "v2";
+  /** The game's Protocol V2 copy event (polyv2...) this market belongs to, on a market GET /api/v1/games?protocol_version=v2 lists from that copy; GET /api/v1/games/{event_slug}/markets with this slug lists the copy's other markets. Such a market takes side from the game's market it copies and carries no prices, liquidity or yes_quote. Omitted on the game's own markets. */
+  copy_event_slug?: string;
   /** Always polymarket. */
   platform: "polymarket";
   /** The provider's market slug. Omitted when the provider sent none. */
@@ -7825,7 +7827,7 @@ export interface OperationQuery {
     starts_before?: string;
     /** Which games to read. all, the default, lists the whole covered catalog, which can start with games the provider still holds open weeks after kickoff. now lists what is on now: every game the provider reports in play (live or paused), plus any other game whose kickoff was at most 3 hours ago or is still to come; ended, postponed and cancelled games are left out, and a game with no published kickoff stays and sorts last. Combines with every other filter. A value other than all or now returns 400 invalid_query with error.param=window. */
     window?: "all" | "now";
-    /** v1 lists the games with a market on Polymarket's CTF exchanges, v2 the ones with a market on Protocol V2 (ExchangeV3), and each listed game's markets[] keeps only the markets on that protocol, each market's protocol_version. Omitted keeps both. Combines with every other filter. Any other value returns 400 invalid_query with error.param=protocol_version. */
+    /** v1 lists the games with a market on Polymarket's CTF exchanges, v2 the ones with a market on Protocol V2 (ExchangeV3), and each listed game's markets[] keeps only the markets on that protocol, each market's protocol_version. v2 also counts the moneyline of the game's Protocol V2 copy, the polyv2 event Polymarket lists a CTF game's V2 markets on: the game keeps its own event_slug, and that market names the copy in copy_event_slug and carries no prices, liquidity or yes_quote. Omitted keeps both. Combines with every other filter. Any other value returns 400 invalid_query with error.param=protocol_version. */
     protocol_version?: "v1" | "v2";
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
