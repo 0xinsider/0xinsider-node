@@ -3061,7 +3061,9 @@ export class OxinsiderApiClient {
    * `event_slug`, with unscheduled games last. Pass `window: "now"` for what is
    * on now (games in play, plus any game whose kickoff was at most 3 hours ago
    * or is still to come); the default, `"all"`, is the whole catalog, which can
-   * start with games weeks old. An unknown `sport` or `status`
+   * start with games weeks old. `protocol_version: "v1"` or `"v2"` keeps the
+   * games with a market on that Polymarket protocol and lists only those
+   * markets, each of which carries `protocol_version`. An unknown `sport` or `status`
    * returns an empty page rather than an error, and the response's `coverage`
    * names what this deployment serves.
    */

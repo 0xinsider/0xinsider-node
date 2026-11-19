@@ -1743,6 +1743,8 @@ export type GameMarket = {
   id: string;
   /** The raw provider condition id. */
   condition_id: string;
+  /** The Polymarket protocol the market trades on: v1 (CTF) or v2 (Protocol V2), read from the condition id, as GET /api/v1/games/{event_slug}/markets serves it. On a v2 market each outcome_token_ids entry is a V2 position id. */
+  protocol_version: "v1" | "v2";
   /** Always polymarket. */
   platform: "polymarket";
   /** The provider's market slug. Omitted when the provider sent none. */
@@ -7823,6 +7825,8 @@ export interface OperationQuery {
     starts_before?: string;
     /** Which games to read. all, the default, lists the whole covered catalog, which can start with games the provider still holds open weeks after kickoff. now lists what is on now: every game the provider reports in play (live or paused), plus any other game whose kickoff was at most 3 hours ago or is still to come; ended, postponed and cancelled games are left out, and a game with no published kickoff stays and sorts last. Combines with every other filter. A value other than all or now returns 400 invalid_query with error.param=window. */
     window?: "all" | "now";
+    /** v1 lists the games with a market on Polymarket's CTF exchanges, v2 the ones with a market on Protocol V2 (ExchangeV3), and each listed game's markets[] keeps only the markets on that protocol, each market's protocol_version. Omitted keeps both. Combines with every other filter. Any other value returns 400 invalid_query with error.param=protocol_version. */
+    protocol_version?: "v1" | "v2";
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
@@ -7943,6 +7947,8 @@ export interface OperationQuery {
     condition_id?: string;
     /** Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), pages with cursor, and cannot be combined with since or with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug. */
     event_slug?: string;
+    /** v1 keeps the large trades on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each trade's condition_id. Omitted keeps both. Combines with every other filter, since and cursor included; with condition_id or event_slug it keeps that market's or game's trades on the protocol, so a market on the other protocol answers an empty list. Any other value returns 400 bad_request with error.param protocol_version. */
+    protocol_version?: "v1" | "v2";
   };
   listLeaderboard: {
     /** Maximum number of ranked traders to return. Out-of-range values are clamped to 1..100. */
@@ -8012,6 +8018,8 @@ export interface OperationQuery {
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Filter by the binary outcome side. `yes` maps to outcome_index=0, `no` to outcome_index=1. */
     side?: "yes" | "no";
+    /** v1 keeps the positions on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each position's condition_id. Omitted keeps both. Combines with every other filter, and a consistency=snapshot cursor is bound to it. Any other value returns 400 bad_request with error.param protocol_version. */
+    protocol_version?: "v1" | "v2";
   };
   listPriceMoves: {
     /** One league prefix, lowercase, as the event slug starts: nba, nfl, epl, cs2. Name at most one of league, event_slug and condition_id. */
@@ -8234,6 +8242,8 @@ export interface OperationQuery {
     condition_id?: string;
     /** Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), pages with cursor, and cannot be combined with since or with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug. */
     event_slug?: string;
+    /** v1 keeps the large trades on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each trade's condition_id. Omitted keeps both. Combines with every other filter, since and cursor included; with condition_id or event_slug it keeps that market's or game's trades on the protocol, so a market on the other protocol answers an empty list. Any other value returns 400 bad_request with error.param protocol_version. */
+    protocol_version?: "v1" | "v2";
   };
   prepareWebhookSecret: Record<string, never>;
   redeliverWebhookDelivery: Record<string, never>;
