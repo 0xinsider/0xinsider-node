@@ -331,6 +331,7 @@ export type {
   BatchTraderItem,
   Candle,
   CategoryLeader,
+  CategoryNumbers,
   CategorySkillModelReadiness,
   CategorySkillV2,
   Clv,

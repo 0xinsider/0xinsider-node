@@ -216,6 +216,16 @@ export type CategoryLeader = {
   unresolved_events: number;
   username: string | null;
   win_rate: number | null;
+  /** Whether n_resolved, win_rate and pnl take the wallet's latest settlements (#36089). */
+  category_numbers: CategoryNumbers;
+};
+
+/** Whether a wallet's category figures take its latest settlements (#36089). The figures are updated from a queue as the wallet's markets settle. state is behind when an update for this wallet has waited over an hour, because the whole queue is behind or because the wallet's own updates wait until its settled record is complete; the figures then stay served, and as_of says when the oldest waiting update was queued. Read from a check the server runs about every three minutes, never on the request. */
+export type CategoryNumbers = {
+  /** When the oldest waiting update for this wallet was queued, UTC: the figures take nothing newer than about this instant. null unless state is behind. */
+  as_of: string | null;
+  /** current: no update of this wallet's category figures has waited over an hour. behind: one has, since as_of. unknown: the check has no result from the last 375 seconds, so the figures are neither confirmed current nor known to be behind; treat them as unverified, not as current. */
+  state: "current" | "behind" | "unknown";
 };
 
 /** Model-wide readiness, read in the same database snapshot as category_records. Individual category rows retain their own status. */
@@ -5129,6 +5139,8 @@ export type SportLeaderboard = {
     win_rate_wilson_lb: number | null;
     /** Markets n_resolved counts that settled at a realized profit. */
     wins: number;
+    /** Whether this row's figures take the wallet's latest settlements (#36089). A row whose state is behind keeps its rank and its figures, dated by as_of. */
+    category_numbers: CategoryNumbers;
   })[];
   /** The order rows are in. edge: by edge_skill, with every wallet whose edge is not ranked, or is held, after the ranked ones. pnl: by realized P&L in the sport or league. win_rate: by the Wilson lower bound of the win rate. */
   sort: "edge" | "pnl" | "win_rate";
@@ -5438,6 +5450,8 @@ export type Trader = {
   price_edge?: TraderPriceEdge;
   /** The profile's strategy measures over the wallet's sports and esports markets: P&L and win rate by UTC hour, hold-time and first-trade-hour bands, position sizes with category concentration, and entry-price buckets (#32622). Present only when expand=breakdowns or expand[]=breakdowns is requested, on GET /api/v1/trader/{address} only: POST /api/v1/traders/batch refuses the expand. Computed on the read from the wallet's whole sports and esports history, so a large wallet can take seconds; a read that cannot finish answers 503 with Retry-After. */
   breakdowns?: TraderBreakdowns;
+  /** Whether category_strengths and category_records take the wallet's latest settlements (#36089). Present exactly when expand=categories or expand[]=categories is requested. */
+  category_numbers?: CategoryNumbers;
 };
 
 /** The profile's strategy measures (expand=breakdowns, #32622), the same figures as the wallet profile's Insights and Performance breakdown cards. Every figure counts the wallet's sports and esports markets only, from the same read the profile makes. */
