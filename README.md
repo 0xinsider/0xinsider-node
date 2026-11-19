@@ -165,6 +165,15 @@ for (const row of v2.data) {
 }
 ```
 
+SDK 0.106.0 types `category_numbers` (#36089): whether a wallet's category figures take its latest settlements. It is on every `getSportLeaderboard` row, every `getCategoryLeaderboard` and `listCategoryLeaders` row, and on `getTrader` with `expand: ["categories"]`. `state` is `current`, `behind` (an update for the wallet has waited over an hour; `as_of` is when the oldest waiting one was queued, and the figures stay served) or `unknown` (the server's check has no recent result: treat the figures as unverified, not current). New type: `CategoryNumbers`.
+
+```ts
+const board = await client.getSportLeaderboard("tennis");
+for (const row of board.data.rows) {
+  if (row.category_numbers.state === "behind") row.category_numbers.as_of; // string, UTC
+}
+```
+
 SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. `batchGetMarketClose({ condition_ids })` reads up to 25 markets' closes in one request (#33025). New types: `MarketClose`, `TraderClv`.
 
 ```ts
