@@ -26367,7 +26367,7 @@
             "name": "league",
             "in": "query",
             "required": false,
-            "description": "League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb. Omit for every league inside the selected sports.",
+            "description": "League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Omit for every league inside the selected sports.",
             "schema": {
               "type": "string"
             }
@@ -50770,7 +50770,7 @@
             "items": {
               "type": "string"
             },
-            "description": "League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb and NCAA women's college basketball cwbb, all under the Basketball sport bucket."
+            "description": "League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb, NCAA women's college basketball cwbb and Turkey's Basketbol Super Ligi bkbsl, all under the Basketball sport bucket."
           },
           "sources_unavailable": {
             "type": "array",
@@ -64699,7 +64699,7 @@
           },
           "board_upcoming_unavailable_scopes": {
             "type": "array",
-            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, cwbb, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
+            "description": "Configured upcoming scopes that did not complete as available. Values are category, a provider league tag slug (nfl, cfb, nba, wnba, euroleague-basketball, ncaa-basketball, cwbb, bkbsl, nhl, mls, valorant, league-of-legends, counter-strike-2, or dota-2), registry when the compiled scope/projection contract drifted, union when cross-scope identity reconciliation failed, or wave when the outer fair-wave deadline expired before scope-level evidence returned. Empty means no unavailable upcoming scope was identified; this includes healthy/not-configured rows and a legacy cached row. Observation league scopes are upcoming-only and perform no live-membership read.",
             "items": {
               "type": "string",
               "enum": [
@@ -64711,6 +64711,7 @@
                 "euroleague-basketball",
                 "ncaa-basketball",
                 "cwbb",
+                "bkbsl",
                 "nhl",
                 "mls",
                 "valorant",
