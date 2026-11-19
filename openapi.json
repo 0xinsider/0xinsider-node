@@ -6131,6 +6131,16 @@
             }
           },
           {
+            "name": "protocol_version",
+            "in": "query",
+            "required": false,
+            "description": "v1 keeps the positions on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each position's condition_id. Omitted keeps both. Combines with every other filter, and a consistency=snapshot cursor is bound to it. Any other value returns 400 bad_request with error.param protocol_version.",
+            "schema": {
+              "type": "string",
+              "enum": ["v1", "v2"]
+            }
+          },
+          {
             "name": "If-None-Match",
             "in": "header",
             "required": false,
@@ -7012,6 +7022,16 @@
             }
           },
           {
+            "name": "protocol_version",
+            "in": "query",
+            "required": false,
+            "description": "v1 keeps the large trades on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each trade's condition_id. Omitted keeps both. Combines with every other filter, since and cursor included; with condition_id or event_slug it keeps that market's or game's trades on the protocol, so a market on the other protocol answers an empty list. Any other value returns 400 bad_request with error.param protocol_version.",
+            "schema": {
+              "type": "string",
+              "enum": ["v1", "v2"]
+            }
+          },
+          {
             "name": "If-None-Match",
             "in": "header",
             "required": false,
@@ -7524,6 +7544,16 @@
             "description": "Only the large trades in one game: every market of the game behind this event slug, the moneyline, spreads, totals and props, as GET /api/v1/games/{event_slug}/trades reads them. Matched case-insensitively. Newest first only (sort=market_volume_share answers 400), pages with cursor, and cannot be combined with since or with condition_id (400). An unknown slug answers 404 not_found with error.param event_slug.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "protocol_version",
+            "in": "query",
+            "required": false,
+            "description": "v1 keeps the large trades on markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), read from each trade's condition_id. Omitted keeps both. Combines with every other filter, since and cursor included; with condition_id or event_slug it keeps that market's or game's trades on the protocol, so a market on the other protocol answers an empty list. Any other value returns 400 bad_request with error.param protocol_version.",
+            "schema": {
+              "type": "string",
+              "enum": ["v1", "v2"]
             }
           },
           {
@@ -26394,6 +26424,16 @@
             }
           },
           {
+            "name": "protocol_version",
+            "in": "query",
+            "required": false,
+            "description": "v1 lists the games with a market on Polymarket's CTF exchanges, v2 the ones with a market on Protocol V2 (ExchangeV3), and each listed game's markets[] keeps only the markets on that protocol, each market's protocol_version. Omitted keeps both. Combines with every other filter. Any other value returns 400 invalid_query with error.param=protocol_version.",
+            "schema": {
+              "type": "string",
+              "enum": ["v1", "v2"]
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -26589,6 +26629,7 @@
                         {
                           "id": "mkt_0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
                           "condition_id": "0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
+                          "protocol_version": "v1",
                           "platform": "polymarket",
                           "slug": "nfl-buf-nyj-2026-09-22",
                           "sports_market_type": "moneyline",
@@ -27025,6 +27066,7 @@
                       {
                         "id": "mkt_0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
                         "condition_id": "0x2f1c0c9d5f3b4a7e8d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706",
+                        "protocol_version": "v1",
                         "platform": "polymarket",
                         "slug": "nfl-buf-nyj-2026-09-22",
                         "sports_market_type": "moneyline",
@@ -50422,7 +50464,7 @@
       "GameMarket": {
         "type": "object",
         "description": "One Polymarket market linked to this game.",
-        "required": ["id", "condition_id", "platform"],
+        "required": ["id", "condition_id", "protocol_version", "platform"],
         "properties": {
           "id": {
             "type": "string",
@@ -50431,6 +50473,11 @@
           "condition_id": {
             "type": "string",
             "description": "The raw provider condition id."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on: v1 (CTF) or v2 (Protocol V2), read from the condition id, as GET /api/v1/games/{event_slug}/markets serves it. On a v2 market each outcome_token_ids entry is a V2 position id."
           },
           "platform": {
             "type": "string",
