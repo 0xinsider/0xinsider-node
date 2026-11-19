@@ -174,6 +174,20 @@ for (const row of board.data.rows) {
 }
 ```
 
+SDK 0.107.0 types a third most-held selection for Edge Hunter observations (#36106): `admission: "most_held_48h_min_25_usd"`, on `cohort: "wider_holder"`. It is the `most_held_48h` selection counting only graded holders whose position in the market is worth $25 or more, so a market held by many small positions no longer outranks one held by fewer, larger ones. Each row carries `indexed_graded_holders_min_25_usd`, the count that ordered it, and `admitted_by: "most_held_48h_min_25_usd"`; each `most_held_48h_cutoffs` entry carries the same field for its sport's last admitted market. `most_held_48h_position` and `most_held_48h_cutoffs` describe this selection's own order. `most_held_48h` and `most_held_48h_by_type` do not change. A sport not asked for in the last 30 minutes answers 503 `read_model_warming` with `Retry-After` while the next refresh computes it.
+
+```ts
+const held = await client.edgeHunter.observations({
+  cohort: "wider_holder", admission: "most_held_48h_min_25_usd", sports: ["Basketball"], limit: 20,
+});
+if (held.object === "list") {
+  for (const row of held.data ?? []) {
+    row.indexed_graded_holders_min_25_usd; // number on this selection, never above row.indexed_graded_holders
+  }
+  held.most_held_48h_cutoffs?.map((cutoff) => cutoff.indexed_graded_holders_min_25_usd);
+}
+```
+
 SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. `batchGetMarketClose({ condition_ids })` reads up to 25 markets' closes in one request (#33025). New types: `MarketClose`, `TraderClv`.
 
 ```ts
