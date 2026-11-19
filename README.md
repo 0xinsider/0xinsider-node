@@ -152,6 +152,19 @@ for (const row of page.data) {
 }
 ```
 
+SDK 0.105.0 types `protocol_version`: `"v1"` for a market that trades on Polymarket's CTF exchanges, `"v2"` for one on Protocol V2, where an outcome's `token_id` is its V2 position id. It is on every `listGameMarkets` and `listProps` row, `getFairPrice`, the large-trade and position rows, the market snapshot, candles, close and trades reads, and position timelines. `listGameMarkets` and `listProps` take a `protocol_version` filter, and on `listGameMarkets` `trading_terms.trading` names where an order on the market is signed:
+
+```ts
+const v2 = await client.listGameMarkets("polyv2-nba-gsw-mem-2026-11-19", { protocol_version: "v2", expand: ["trading_terms"] });
+for (const row of v2.data) {
+  row.protocol_version; // "v1" | "v2"
+  row.trading_terms?.trading?.exchange; // "ctf_exchange_v2" | "neg_risk_ctf_exchange_v2" | "exchange_v3"
+  row.trading_terms?.trading?.eip712_domain_version; // "2" | "3"
+  row.trading_terms?.trading?.verifying_contract; // the exchange's Polygon address
+  row.trading_terms?.trading?.balance_asset_type; // "CONDITIONAL" | "CONDITIONAL-V2"
+}
+```
+
 SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. `batchGetMarketClose({ condition_ids })` reads up to 25 markets' closes in one request (#33025). New types: `MarketClose`, `TraderClv`.
 
 ```ts

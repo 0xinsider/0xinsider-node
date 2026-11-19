@@ -1560,6 +1560,8 @@ export type FairPrice = {
   };
   /** When this answer was read. */
   as_of: string;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 export type FreshnessFailure = {
@@ -2187,6 +2189,8 @@ export type LargePosition = {
     slug?: string;
     event_slug?: string;
     category?: string;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
 };
 
@@ -2249,6 +2253,8 @@ export type LargeTrade = {
     slug?: string;
     /** Provider-backed market_canonical category. */
     category?: string;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
   /** Closing line value against the market's stored close (GET /api/v1/market/{condition_id}/close). Always present; status says whether it is measured. */
   clv: {
@@ -2508,6 +2514,8 @@ export type MarketCandles = {
   observed_at?: string;
   /** One entry per present provider token (YES first, then NO); empty when no tokens have been fetched yet. */
   outcomes: OutcomeCandles[];
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 /** A market's stored closing line (#32517): Polymarket's price-history value for the last minute bucket ending at or before kickoff, read once after settlement and never recomputed. */
@@ -2551,6 +2559,8 @@ export type MarketClose = {
   status: "measured" | "pending" | "unavailable";
   /** Set exactly when status is unavailable. no_observation_in_lookback, provider_empty_window, provider_invalid_contract and capture_window_closed are the capture's own stored refusals; no_game_start_time: the market has no kickoff time; not_one_sided_resolution: it resolved to neither side; not_captured: the capture does not read it (kickoff over 30 days ago; a market that is not a moneyline and had no tracked buy before resolution; or a moneyline whose game started before the capture began reading every moneyline); close_token_mismatch: the close was read on a different YES token than the market carries now. */
   unavailable_reason: "no_observation_in_lookback" | "provider_empty_window" | "provider_invalid_contract" | "capture_window_closed" | "no_game_start_time" | "not_one_sided_resolution" | "not_captured" | "close_token_mismatch" | "anchor_stale" | "outcome_unknown" | null;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 export type MarketFlow = {
@@ -2865,6 +2875,8 @@ export type MarketSnapshot = {
     created_at: string | null;
     end_date: string | null;
     resolved_at: string | null;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
   outcomes: ({
     side: "yes" | "no";
@@ -4550,6 +4562,8 @@ export type Position = {
     /** Provider-reported outcome label (e.g. team name for sports). Separate from `side` because provider labels can diverge from the binary Yes/No axis. */
     outcome_label?: string;
     end_date?: string;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
 };
 
@@ -4587,6 +4601,8 @@ export type PositionTimelineEvent = {
   running_amount: number;
   /** Cumulative buy-weighted average of stored fills for this outcome, including older pages; not provider current-position avgPrice. Sells do not change this value. 0 when no stored buys have occurred yet. */
   running_avg_price: number;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 /** Returned entry permission bound to the named market, token and outcome. Honor the immutable max_entry_price and expires_at, and quote a current executable book for the actual stake. The submitted order price must remain within the returned limit; fills may be lower. Fees are separate, and this grant does not guarantee liquidity, execution or positive expected value. */
@@ -4966,6 +4982,8 @@ export type SmartMoneyFlowMarket = {
     category: string | null;
     /** Provider platform. Always polymarket, or null when the row carries no stored value. */
     platform: "polymarket" | null;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
   /** Sharp-money flow aggregate for the market (canonical; smart_money is a deprecated byte-identical alias). */
   sharp_money: {
@@ -7146,7 +7164,20 @@ export interface OperationData {
       status: "observed" | "not_listed" | "unavailable";
       tick_size: number | null;
       min_order_size_shares: number | null;
+      /** Where an order on this market is signed and which balance it draws on, from the row's protocol_version and negative_risk: Polymarket's order-signing table, not the Gamma record, so it is present whatever status says. The EIP-712 domain name is Polymarket CTF Exchange and the chain id 137 on both protocols. Absent on a v1 market whose negative_risk is not stored. */
+      trading?: {
+        /** The CLOB asset_type of the market's positions on a balance or allowance read: CONDITIONAL on a v1 market, CONDITIONAL-V2 on a v2 market. */
+        balance_asset_type: "CONDITIONAL" | "CONDITIONAL-V2";
+        /** The EIP-712 domain version of an order: 2 on a v1 market, 3 on a v2 market. Not the market's protocol_version. */
+        eip712_domain_version: "2" | "3";
+        /** The exchange an order is signed for: ctf_exchange_v2 or neg_risk_ctf_exchange_v2 on a v1 market, by its negative_risk; exchange_v3 on every v2 market. */
+        exchange: "ctf_exchange_v2" | "neg_risk_ctf_exchange_v2" | "exchange_v3";
+        /** The domain's verifyingContract, the exchange's Polygon address: 0xE111180000d2663C0091e4f400237545B87B996B (CTF Exchange), 0xe2222d279d744050d28e00520010520000310F59 (Neg Risk CTF Exchange) or 0xe3333700cA9d93003F00f0F71f8515005F6c00Aa (ExchangeV3). */
+        verifying_contract: string;
+      };
     };
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   })[];
   listGames: Game[];
   listGameTrades: GameTrade[];
@@ -7200,6 +7231,8 @@ export interface OperationData {
     group_item_title: string | null;
     player_unavailable_reason: "missing_provider_title" | null;
     resolved_at: string | null;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   })[];
   listSettledMarkets: SettledMarketData[];
   listSharpMoneyFlows: SmartMoneyFlowMarket[];
@@ -7718,6 +7751,8 @@ export interface OperationQuery {
     sports_market_type?: string;
     /** active, closed or all. closed means the provider closed the market or it resolved. */
     status?: "active" | "closed" | "all";
+    /** v1 keeps the markets that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), each row's protocol_version. Omitted keeps both. Any other value returns 400 bad_request naming v1 and v2. */
+    protocol_version?: "v1" | "v2";
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
     /** Opaque gmk_v1_ cursor from next_cursor, sent with the same filters. It pins the page position (sports_market_type, line, condition_id), not a snapshot. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
@@ -7975,6 +8010,8 @@ export interface OperationQuery {
     max_spread_c?: number;
     /** Keep only props with an outcome whose cached book holds at least this many USD on each side within 2 cents of its midpoint: bids at or above the midpoint minus 0.02 and asks at or below the midpoint plus 0.02, each level's price times size, from the whole book. A whole number from 1 to 10000000, the measure the market_price_moved webhook filter of the same name uses; expand=quotes serves the two sums as book_depth_within_2c. With max_spread_c, one outcome must meet both. The books are read from the cache with no request-path CLOB call. A prop whose book or depth is not cached yet is left out of data and counted on coverage.rows_without_book; the board reads its league's books behind the response, so a read a few seconds later can judge it. A cursor never revisits a prop a page passed over, so when coverage.rows_without_book is above 0, read from the first page again after a few seconds to judge those props; the board reads books for active props only, so a closed prop, or one whose outcome has no provider token id yet, stays unjudged. When the book cache cannot be read for the first prop a page must judge, the read answers 503 with error.reason read_model_warming and Retry-After, not an empty page that repeats its cursor. */
     min_book_usd_within_2c?: number;
+    /** v1 keeps the props that trade on Polymarket's CTF exchanges, v2 the ones on Protocol V2 (ExchangeV3), each row's protocol_version. Omitted keeps both. Judged on the rows a page reads, as scope is: a page can hold fewer rows than limit while has_more is true. Any other value returns 400 bad_request naming v1 and v2. */
+    protocol_version?: "v1" | "v2";
     /** Page size. Out-of-range values are clamped to 1..200. */
     limit?: number;
     /** Opaque prp_v1_ cursor from next_cursor, sent with the same filters. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
@@ -9121,6 +9158,8 @@ export interface OperationResponse {
       retention_days: number;
     };
     meta: ResponseMeta;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
   listPositions: {
     object: "list";
