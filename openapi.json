@@ -54334,7 +54334,7 @@
                   "redeemed",
                   "unavailable"
                 ],
-                "description": "`held`: no change to its backed shares before the game. `added`: bought more. `reduced`: sold or merged some. `exited`: left under one backed share. `hedged`: bought the other outcome, by more than it added to the backed one, and still holds more of the backed one. `switched`: changed its position and ended the window holding at least one share of the other outcome and more of it than of the backed one; it outranks `redeemed`, so a wallet that switched and later redeemed backed shares reads `switched` beside `redeemed_shares`. `redeemed`: redeemed backed shares after settlement. `unavailable`: the facts could not be read; see `unavailable_reason`."
+                "description": "`held`: no change to its backed shares before the game. `added`: bought more. `reduced`: sold or merged some. `exited`: left under one backed share. `hedged`: bought more of the other outcome than of the backed one, still holds at least one backed share, and ends with other-outcome shares of at least a tenth of its backed shares and under 110% of them. `switched`: changed its position and ended the window holding at least one share of the other outcome and at least 10% more of it than of the backed one; it outranks `redeemed`, so a wallet that switched and later redeemed backed shares reads `switched` beside `redeemed_shares`. `redeemed`: redeemed backed shares after settlement. `unavailable`: the facts could not be read; see `unavailable_reason`."
               },
               "unavailable_reason": {
                 "type": "string",
