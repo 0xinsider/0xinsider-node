@@ -436,7 +436,7 @@ export type ComboLegMarket = {
   title: string | null;
   slug: string | null;
   event_slug: string | null;
-  /** Provider-resolved URL including the referral tag. */
+  /** The leg's event on Polymarket, carrying the 0xinsider tags: `https://polymarket.com/event/<event_slug>?via=0xinsider&r=0xinsidercom`. Present whenever `event_slug` is. */
   polymarket_url?: string;
   outcome_label: string | null;
   image: string | null;
@@ -2832,7 +2832,7 @@ export type MarketSettledData = {
     winning_outcome_index: number | null;
     oracle_updated_at: string | null;
   };
-  /** The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: the new markets from 2026-11-09 and the polyv2 copies). Read from the condition id, the same value on the webhook, the MarketSettled stream frame and GET /api/v1/markets/settled. A redelivery resends its event as first delivered, so one first delivered before the field shipped lacks it. */
+  /** The Polymarket protocol the market settles and redeems on, Gamma's market version: v1 (ConditionalTokens) or v2 (the Protocol V2 modules: every market whose Gamma version reads v2, the polyv2 copies included). Read from the condition id, the same value on the webhook, the MarketSettled stream frame and GET /api/v1/markets/settled. A redelivery resends its event as first delivered, so one first delivered before the field shipped lacks it. */
   protocol_version: "v1" | "v2";
 };
 
@@ -3414,7 +3414,7 @@ export type PickOfTheDay = {
   thesis?: string;
   /** Canonical web market URL. */
   market_url?: string;
-  /** Where this pick's outbound Polymarket link lands: Polymarket's own redirect answer for `/event/<event_slug>`, carrying the referral tag. Omitted until that redirect has been resolved; link to the event page instead when it is absent. */
+  /** The pick's event on Polymarket, carrying the 0xinsider tags: `https://polymarket.com/event/<event_slug>?via=0xinsider&r=0xinsidercom`. Present whenever `event_slug` is. */
   polymarket_url?: string;
   /** The canonical /event game-page slug (one neutral page per game); omitted when the game has no neutral event page. */
   event_slug?: string;
