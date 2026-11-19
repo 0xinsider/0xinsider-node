@@ -845,6 +845,8 @@ export type EdgeHunterObservation = {
   most_held_48h_position?: number | null;
   /** admission=most_held_48h_min_25_usd only: of indexed_graded_holders, the S, A and B graded wallets whose position in the market is worth $25 or more, both outcomes together, at the value the 0xinsider index last read for the wallet. That selection ranks each sport by this count, then by most volume, then by soonest game_start_time, then by condition_id, at most 4 markets per event. It is never larger than indexed_graded_holders. Omitted on every other response. */
   indexed_graded_holders_min_25_usd?: number;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 /** Measured coverage of the frozen canonical observation generation and this requested page. For sports and esports reads, the first four counts remain global through category, cohort and all selectors; with admission=most_held_48h they count that selection's generation, where every wider_holder candidate it did not take is capacity_limited. They are neither a census of all provider markets nor a count of successfully evaluated holders. Selected and returned counts describe the requested projection. An unmappable legacy category synthesizes a zero-work empty generation with all six counts zero and no degradation reasons; it does not read the all-sports cache. */
@@ -1032,6 +1034,8 @@ export type EdgeHunterRankedSignal = {
   rank: number;
   /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
   market_context: EdgeHunterMarketContext | null;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 /** One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null. */
@@ -1053,6 +1057,8 @@ export type EdgeHunterRow = {
   signal: EdgeHunterSignal | null;
   /** Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead. */
   market_context: EdgeHunterMarketContext | null;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 /** Normalized requested selection axes. Only requested axes appear; omitted for unselected defaults. Arrays are nonempty, sorted and deduplicated. OR within an axis, AND across axes. */
@@ -1376,6 +1382,8 @@ export type ExploreMarket = {
     enrichment_status: "available" | "unavailable";
     price_status: "available" | "unavailable";
   };
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 export type ExploreStandalone = {
@@ -2586,6 +2594,8 @@ export type MarketFlow = {
     category: string | null;
     /** Provider platform. Always polymarket, or null when the row carries no stored value. */
     platform: "polymarket" | null;
+    /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+    protocol_version: "v1" | "v2";
   };
   /** Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias. */
   sharp_money: MarketFlowSharpMoney;
@@ -2703,6 +2713,8 @@ export type MarketHoldersMarket = {
   end_date?: string;
   /** A settled market's roster is whatever the provider still lists as open; it empties as holders redeem. */
   status: "open" | "closed" | "resolved";
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version: "v1" | "v2";
 };
 
 export type MarketHoldersScan = {
@@ -3575,6 +3587,8 @@ export type PickOfTheDay = {
   sealed_at?: string;
   /** The backed market's Polymarket sports market type as recorded with the pick: moneyline, spreads, totals, map_handicap and others, the value the archive row returns for the pick. Omitted when the market states none. Additive and optional. */
   sports_market_type?: string;
+  /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+  protocol_version?: "v1" | "v2";
 };
 
 export type PickOfTheDayArchive = {
@@ -4762,6 +4776,10 @@ export type ReportPayload = {
     pseudonym: string | null;
     /** Trader grade (S-F) at snapshot time. */
     trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+    /** The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with. */
+    condition_id: string | null;
+    /** The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed. */
+    protocol_version: "v1" | "v2" | null;
   })[] | null;
   top_whale_trades: ({
     /** Provider outcome label for the traded side. */
@@ -4790,6 +4808,10 @@ export type ReportPayload = {
     pseudonym: string | null;
     /** Trader grade (S-F) at snapshot time. */
     trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+    /** The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with. */
+    condition_id: string | null;
+    /** The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed. */
+    protocol_version: "v1" | "v2" | null;
   })[] | null;
   categories: ({
     category: string | null;
@@ -6831,7 +6853,7 @@ export interface OperationData {
     }[];
     pick_count: number;
     pick_date: string;
-    picks: {
+    picks: ({
       backed_price?: number;
       category?: string;
       clv_pct?: number;
@@ -6864,7 +6886,9 @@ export interface OperationData {
       sharp_positioned_usd?: number;
       /** The full pick's sports_market_type. */
       sports_market_type?: string;
-    }[];
+      /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
+      protocol_version?: "v1" | "v2";
+    })[];
     proof_pending_picks?: ({
       is_free_selection: boolean;
       kickoff?: string;

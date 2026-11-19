@@ -11794,6 +11794,11 @@
                                   "sports_market_type": {
                                     "type": "string",
                                     "description": "The full pick's sports_market_type."
+                                  },
+                                  "protocol_version": {
+                                    "type": "string",
+                                    "enum": ["v1", "v2"],
+                                    "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
                                   }
                                 }
                               }
@@ -16967,6 +16972,7 @@
                             {
                               "id": "mkt_0xabc1230000000000000000000000000000000abc613f54180a6d82f81c586f87",
                               "condition_id": "0xabc1230000000000000000000000000000000abc613f54180a6d82f81c586f87",
+                              "protocol_version": "v1",
                               "title": "Giants vs. Rams",
                               "slug": "nfl-nyg-la-2026-09-22",
                               "url_slug": "nfl-nyg-la-2026-09-22",
@@ -17036,6 +17042,7 @@
                             {
                               "id": "mkt_0xdef4560000000000000000000000000000000def5d625ced3aab59ab944b0149",
                               "condition_id": "0xdef4560000000000000000000000000000000def5d625ced3aab59ab944b0149",
+                              "protocol_version": "v1",
                               "title": "Spread: Rams (-6.5)",
                               "slug": "nfl-nyg-la-2026-09-22-spread-home-6pt5",
                               "url_slug": "nfl-nyg-la-2026-09-22-spread-home-6pt5",
@@ -17112,6 +17119,7 @@
                           "market": {
                             "id": "mkt_0xdef4560000000000000000000000000000000def4c2638b15eda50ca1b7ce303",
                             "condition_id": "0xdef4560000000000000000000000000000000def4c2638b15eda50ca1b7ce303",
+                            "protocol_version": "v1",
                             "title": "Dallas Wings vs. Phoenix Mercury",
                             "slug": "wnba-dal-phx-2026-09-21",
                             "url_slug": "wnba-dal-phx-2026-09-21",
@@ -20330,6 +20338,7 @@
                         "market": {
                           "id": "mkt_0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
                           "condition_id": "0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
+                          "protocol_version": "v1",
                           "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
                           "slug": "will-the-sacramento-kings-win-the-2025-nba-finals",
                           "category": "NBA",
@@ -20735,6 +20744,7 @@
                         "market": {
                           "id": "mkt_0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
                           "condition_id": "0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
+                          "protocol_version": "v1",
                           "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
                           "slug": "will-the-sacramento-kings-win-the-2025-nba-finals",
                           "category": "NBA",
@@ -21195,6 +21205,7 @@
                             "market": {
                               "id": "mkt_0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
                               "condition_id": "0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
+                              "protocol_version": "v1",
                               "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
                               "slug": "will-the-sacramento-kings-win-the-2025-nba-finals",
                               "category": "NBA",
@@ -22107,6 +22118,7 @@
                             "market": {
                               "id": "mkt_0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
                               "condition_id": "0xabc1230000000000000000000000000000000abc2e8ec47636c7803c1033cfab",
+                              "protocol_version": "v1",
                               "title": "Will the Sacramento Kings win the 2025 NBA Finals?",
                               "slug": "will-the-sacramento-kings-win-the-2025-nba-finals",
                               "category": "NBA",
@@ -29067,6 +29079,7 @@
                             "market": {
                               "id": "mkt_0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
                               "condition_id": "0x5e1f0c2a9b7d4e83a6c1f2b09d8e7a6c5b4f3e2d1c0b9a8f7e6d5c4b3a291807",
+                              "protocol_version": "v1",
                               "title": "Celtics vs. Magic: O/U 219.5",
                               "slug": "nba-bos-orl-2026-11-01-total-219pt5",
                               "event_slug": "nba-bos-orl-2026-11-01",
@@ -36145,6 +36158,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 666091.1616,
                               "price": 0.64,
                               "market_category": "Soccer",
@@ -36160,6 +36175,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 440760.7883,
                               "price": 0.639774,
                               "market_category": "Soccer",
@@ -36177,6 +36194,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 666091.1616,
                               "price": 0.64,
                               "market_category": "Soccer",
@@ -36192,6 +36211,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 440760.7883,
                               "price": 0.639774,
                               "market_category": "Soccer",
@@ -36534,6 +36555,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 666091.1616,
                               "price": 0.64,
                               "market_category": "Soccer",
@@ -36549,6 +36572,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 440760.7883,
                               "price": 0.639774,
                               "market_category": "Soccer",
@@ -36566,6 +36591,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 666091.1616,
                               "price": 0.64,
                               "market_category": "Soccer",
@@ -36581,6 +36608,8 @@
                               "title": "Will Chelsea FC win on 2026-09-18?",
                               "outcome": "No",
                               "token_id": "78286428694124582556689109371207595630990062941257883403830956483521756500097",
+                              "condition_id": "0xbdd54adcdfc01d5e5c748aa0f65a1736c0f2b9491197f221d2f1ece291612e23",
+                              "protocol_version": "v1",
                               "size": 440760.7883,
                               "price": 0.639774,
                               "market_category": "Soccer",
@@ -36942,6 +36971,8 @@
                               "title": "US Open ATP: Alexander Zverev vs Botic van de Zandschulp",
                               "outcome": "Alexander Zverev",
                               "token_id": "9158437108174135547239483835198621883927847537872618727943792296109949759031",
+                              "condition_id": "0xd318d7b6332b24e6c8a85a2b8ec780beebc0eee0a2b70ce8fe073bab2fad8d35",
+                              "protocol_version": "v1",
                               "size": 491236.3567,
                               "price": 0.88,
                               "market_category": "Tennis",
@@ -36957,6 +36988,8 @@
                               "title": "US Open ATP: Alexander Zverev vs Botic van de Zandschulp",
                               "outcome": "Alexander Zverev",
                               "token_id": "9158437108174135547239483835198621883927847537872618727943792296109949759031",
+                              "condition_id": "0xd318d7b6332b24e6c8a85a2b8ec780beebc0eee0a2b70ce8fe073bab2fad8d35",
+                              "protocol_version": "v1",
                               "size": 378649.17296,
                               "price": 0.88,
                               "market_category": "Tennis",
@@ -36974,6 +37007,8 @@
                               "title": "US Open ATP: Alexander Zverev vs Botic van de Zandschulp",
                               "outcome": "Alexander Zverev",
                               "token_id": "9158437108174135547239483835198621883927847537872618727943792296109949759031",
+                              "condition_id": "0xd318d7b6332b24e6c8a85a2b8ec780beebc0eee0a2b70ce8fe073bab2fad8d35",
+                              "protocol_version": "v1",
                               "size": 491236.3567,
                               "price": 0.88,
                               "market_category": "Tennis",
@@ -36989,6 +37024,8 @@
                               "title": "US Open ATP: Alexander Zverev vs Botic van de Zandschulp",
                               "outcome": "Alexander Zverev",
                               "token_id": "9158437108174135547239483835198621883927847537872618727943792296109949759031",
+                              "condition_id": "0xd318d7b6332b24e6c8a85a2b8ec780beebc0eee0a2b70ce8fe073bab2fad8d35",
+                              "protocol_version": "v1",
                               "size": 378649.17296,
                               "price": 0.88,
                               "market_category": "Tennis",
@@ -37330,6 +37367,8 @@
                               "title": "Will Arsenal win the 2026-27 English Premier League?",
                               "outcome": "No",
                               "token_id": "51736214498022917360548120394716285037741962208815573690124478506613382910447",
+                              "condition_id": null,
+                              "protocol_version": null,
                               "size": 599403.5518,
                               "price": 0.779956,
                               "market_category": "Soccer",
@@ -37345,6 +37384,8 @@
                               "title": "Will Arsenal win the 2026-27 English Premier League?",
                               "outcome": "No",
                               "token_id": "51736214498022917360548120394716285037741962208815573690124478506613382910447",
+                              "condition_id": null,
+                              "protocol_version": null,
                               "size": 372393.81953,
                               "price": 0.809366,
                               "market_category": "Soccer",
@@ -37362,6 +37403,8 @@
                               "title": "Will Arsenal win the 2026-27 English Premier League?",
                               "outcome": "No",
                               "token_id": "51736214498022917360548120394716285037741962208815573690124478506613382910447",
+                              "condition_id": null,
+                              "protocol_version": null,
                               "size": 599403.5518,
                               "price": 0.779956,
                               "market_category": "Soccer",
@@ -37377,6 +37420,8 @@
                               "title": "Will Arsenal win the 2026-27 English Premier League?",
                               "outcome": "No",
                               "token_id": "51736214498022917360548120394716285037741962208815573690124478506613382910447",
+                              "condition_id": null,
+                              "protocol_version": null,
                               "size": 372393.81953,
                               "price": 0.809366,
                               "market_category": "Soccer",
@@ -54970,6 +55015,11 @@
           "sports_market_type": {
             "type": "string",
             "description": "The backed market's Polymarket sports market type as recorded with the pick: moneyline, spreads, totals, map_handicap and others, the value the archive row returns for the pick. Omitted when the market states none. Additive and optional."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         }
       },
@@ -56563,7 +56613,8 @@
           "no_change_pct_24h",
           "discover_score",
           "score_components",
-          "freshness"
+          "freshness",
+          "protocol_version"
         ],
         "properties": {
           "id": {
@@ -56811,6 +56862,11 @@
                 "enum": ["available", "unavailable"]
               }
             }
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         }
       },
@@ -57095,7 +57151,8 @@
           "outcome_no",
           "token_id_yes",
           "token_id_no",
-          "status"
+          "status",
+          "protocol_version"
         ],
         "properties": {
           "id": {
@@ -57138,6 +57195,11 @@
             "type": "string",
             "enum": ["open", "closed", "resolved"],
             "description": "A settled market's roster is whatever the provider still lists as open; it empties as holders redeem."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         }
       },
@@ -57511,7 +57573,7 @@
         "properties": {
           "market": {
             "type": "object",
-            "required": ["id", "condition_id", "title", "slug", "category", "platform"],
+            "required": ["id", "condition_id", "title", "slug", "category", "platform", "protocol_version"],
             "properties": {
               "id": {
                 "type": "string"
@@ -57532,6 +57594,11 @@
                 "type": ["string", "null"],
                 "enum": ["polymarket", null],
                 "description": "Provider platform. Always polymarket, or null when the row carries no stored value."
+              },
+              "protocol_version": {
+                "type": "string",
+                "enum": ["v1", "v2"],
+                "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
               }
             }
           },
@@ -59121,7 +59188,9 @@
                 "platform",
                 "name",
                 "pseudonym",
-                "trader_grade"
+                "trader_grade",
+                "condition_id",
+                "protocol_version"
               ],
               "properties": {
                 "outcome": {
@@ -59179,6 +59248,22 @@
                   "type": ["string", "null"],
                   "description": "Trader grade (S-F) at snapshot time.",
                   "enum": ["S", "A", "B", "C", "D", "F", null]
+                },
+                "condition_id": {
+                  "type": ["string", "null"],
+                  "description": "The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with."
+                },
+                "protocol_version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["v1", "v2"]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed."
                 }
               }
             }
@@ -59200,7 +59285,9 @@
                 "platform",
                 "name",
                 "pseudonym",
-                "trader_grade"
+                "trader_grade",
+                "condition_id",
+                "protocol_version"
               ],
               "properties": {
                 "outcome": {
@@ -59258,6 +59345,22 @@
                   "type": ["string", "null"],
                   "description": "Trader grade (S-F) at snapshot time.",
                   "enum": ["S", "A", "B", "C", "D", "F", null]
+                },
+                "condition_id": {
+                  "type": ["string", "null"],
+                  "description": "The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with."
+                },
+                "protocol_version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["v1", "v2"]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed."
                 }
               }
             }
@@ -63659,7 +63762,8 @@
           "image",
           "outcomes",
           "signal",
-          "market_context"
+          "market_context",
+          "protocol_version"
         ],
         "properties": {
           "rank": {
@@ -63752,6 +63856,11 @@
               }
             ],
             "description": "Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         },
         "description": "One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null."
@@ -63891,7 +64000,8 @@
           "ranked_at",
           "backing_score",
           "side_share",
-          "market_context"
+          "market_context",
+          "protocol_version"
         ],
         "properties": {
           "side": {
@@ -64055,6 +64165,11 @@
               }
             ],
             "description": "Required nullable frozen metadata context. Null only during the legacy-generation transition; selected reads require sidecar readiness and fail closed with 503 instead."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         }
       },
@@ -64210,7 +64325,8 @@
           "backing_score",
           "side_share",
           "market_context",
-          "indexed_graded_holders"
+          "indexed_graded_holders",
+          "protocol_version"
         ],
         "properties": {
           "side": {
@@ -64443,6 +64559,11 @@
             "type": "integer",
             "minimum": 0,
             "description": "admission=most_held_48h_min_25_usd only: of indexed_graded_holders, the S, A and B graded wallets whose position in the market is worth $25 or more, both outcomes together, at the value the 0xinsider index last read for the wallet. That selection ranks each sport by this count, then by most volume, then by soonest game_start_time, then by condition_id, at most 4 markets per event. It is never larger than indexed_graded_holders. Omitted on every other response."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
           }
         }
       },
