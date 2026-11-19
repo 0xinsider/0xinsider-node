@@ -188,6 +188,21 @@ if (held.object === "list") {
 }
 ```
 
+SDK 0.108.0 reads both outcomes in a Pick of the Day holder's `after_release` (#36149). `state` gains `hedged` (the wallet bought the other outcome, by more than it added to the backed one, and still holds more of the backed one) and `switched` (it ended the window holding at least one share of the other outcome and more of it than of the backed one). `switched` outranks `redeemed`, so a wallet that switched and later redeemed backed shares reads `switched` beside `redeemed_shares`. `after_release.other_shares_after` is the other outcome's shares at the end of the change window. Each `display_holders` item carries `backed_outcome_shares` and `other_outcome_shares`, the two outcomes' shares when the pick was released, from one observation; both are absent on rosters recorded before the pair was. A wallet that bought the other side after release no longer reads `added` or `held`.
+
+```ts
+const slate = await client.getPickOfTheDay();
+if (slate.object === "pick_of_the_day") {
+  const full = slate.data.picks?.flatMap((pick) => ("display_holders" in pick ? [pick] : [])) ?? []; // a teaser lists no holders
+  for (const holder of full.flatMap((pick) => pick.display_holders ?? [])) {
+    const after = holder.after_release;
+    if (after?.state === "hedged" || after?.state === "switched") {
+      console.log(holder.other_outcome_shares, after.other_shares_after); // other side at release, then at the end of the window
+    }
+  }
+}
+```
+
 SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. `batchGetMarketClose({ condition_ids })` reads up to 25 markets' closes in one request (#33025). New types: `MarketClose`, `TraderClv`.
 
 ```ts
