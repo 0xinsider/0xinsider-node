@@ -44168,10 +44168,10 @@
             "name": "admission",
             "in": "query",
             "required": false,
-            "description": "Opt-in admission rule for view=observations with cohort=wider_holder; rejected for every other view and cohort. most_held_48h returns the most-held selection instead of the default one: per sport, up to 8 wider_holder markets kicking off within 48 hours, most indexed_graded_holders first, then most volume, then soonest kickoff, at most 4 per event. indexed_graded_holders, on every row, counts the S, A and B wallets in the 0xinsider index holding either outcome; graded_holders counts the piled side of the provider's holder page and can be larger or smaller, so check the selection against indexed_graded_holders. rank orders the admitted rows by directional_rank_score, as in the default selection, not by either count. It is recomputed every refresh and keeps no place, so a more-held market displaces a less-held one; markets view=signals lists stay excluded. Every row carries admitted_by most_held_48h, including a market the default selection also evaluates, and the response echoes admission. funnel, coverage, degraded and degradation_reasons describe this selection: a wider_holder candidate it did not take counts as capacity_limited, and one it skips counts as provider_excluded. It skips every market of a game the provider marks postponed, cancelled, suspended or final, its exact-score, half-time and other side events included, and a market of the game's main event at a Yes price of 0.02 or lower, or 0.98 or higher. Its markets that no default place covers are read at most once per 10 minutes, one with no holder page to serve right after every default market with none, so a row can rest on a holder page up to 15 minutes old, or up to 30 minutes for a market more than an hour before kickoff that has not traded since that page (holder_snapshot_at). most_held_48h_by_type requires market_types and runs the same rule within each named type: per sport and market_context.market_type, up to 8 markets (4 per event), most indexed_graded_holders first, then volume, then soonest kickoff, so a type whose markets hold fewer wallets than team-win markets still gets its own places. Its rows carry admitted_by most_held_48h_by_type and it has no departures. most_held_48h ranks every market type in one queue per sport with no type weighted or dropped before ranking, ties broken by soonest kickoff and then condition_id; market_types narrows its rows only after admission. Both values add most_held_48h_position to each row, the market's place in that queue, and most_held_48h_cutoffs, each sport's last most_held_48h market and its ranking values, so a most_held_48h_by_type row shows how far it was from a most_held_48h slot. Its markets no other selection read take turns with the most_held_48h ones in that same order, at most once per 10 minutes. A market type not asked for in the last 30 minutes answers 503 read_model_warming with Retry-After 45 s while the next refresh computes it. Omit for the default selection. Cursors and ETags bind it.",
+            "description": "Opt-in admission rule for view=observations with cohort=wider_holder; rejected for every other view and cohort. most_held_48h returns the most-held selection instead of the default one: per sport, up to 8 wider_holder markets kicking off within 48 hours, most indexed_graded_holders first, then most volume, then soonest kickoff, at most 4 per event. indexed_graded_holders, on every row, counts the S, A and B wallets in the 0xinsider index holding either outcome; graded_holders counts the piled side of the provider's holder page and can be larger or smaller, so check the selection against indexed_graded_holders. rank orders the admitted rows by directional_rank_score, as in the default selection, not by either count. It is recomputed every refresh and keeps no place, so a more-held market displaces a less-held one; markets view=signals lists stay excluded. Every row carries admitted_by most_held_48h, including a market the default selection also evaluates, and the response echoes admission. funnel, coverage, degraded and degradation_reasons describe this selection: a wider_holder candidate it did not take counts as capacity_limited, and one it skips counts as provider_excluded. It skips every market of a game the provider marks postponed, cancelled, suspended or final, its exact-score, half-time and other side events included, and a market of the game's main event at a Yes price of 0.02 or lower, or 0.98 or higher. Its markets that no default place covers are read at most once per 10 minutes, one with no holder page to serve right after every default market with none, so a row can rest on a holder page up to 15 minutes old, or up to 30 minutes for a market more than an hour before kickoff that has not traded since that page (holder_snapshot_at). most_held_48h_by_type requires market_types and runs the same rule within each named type: per sport and market_context.market_type, up to 8 markets (4 per event), most indexed_graded_holders first, then volume, then soonest kickoff, so a type whose markets hold fewer wallets than team-win markets still gets its own places. Its rows carry admitted_by most_held_48h_by_type and it has no departures. most_held_48h ranks every market type in one queue per sport with no type weighted or dropped before ranking, ties broken by soonest kickoff and then condition_id; market_types narrows its rows only after admission. Both values add most_held_48h_position to each row, the market's place in that queue, and most_held_48h_cutoffs, each sport's last most_held_48h market and its ranking values, so a most_held_48h_by_type row shows how far it was from a most_held_48h slot. Its markets no other selection read take turns with the most_held_48h ones in that same order, at most once per 10 minutes. A market type not asked for in the last 30 minutes answers 503 read_model_warming with Retry-After 45 s while the next refresh computes it. most_held_48h_min_25_usd runs the most_held_48h rule counting only the graded holders whose position in the market is worth $25 or more: per sport, up to 8 markets (4 per event), most indexed_graded_holders_min_25_usd first, then most volume, then soonest kickoff, so a market held by many small positions no longer outranks one held by fewer, larger ones. Each row carries indexed_graded_holders_min_25_usd, the count it was ranked by, and admitted_by most_held_48h_min_25_usd; most_held_48h_position and most_held_48h_cutoffs are that selection's own; it has no departures. most_held_48h and most_held_48h_by_type do not change. Its markets no other selection read take their turns after the other two selections', at most once per 10 minutes. A sport, or the all-sports scope, not asked for in the last 30 minutes answers 503 read_model_warming with Retry-After 45 s while the next refresh computes it. Omit for the default selection. Cursors and ETags bind it.",
             "schema": {
               "type": "string",
-              "enum": ["most_held_48h", "most_held_48h_by_type"]
+              "enum": ["most_held_48h", "most_held_48h_by_type", "most_held_48h_min_25_usd"]
             }
           },
           {
@@ -64271,8 +64271,14 @@
           },
           "admitted_by": {
             "type": "string",
-            "enum": ["most_held", "soonest_kickoff", "most_held_48h", "most_held_48h_by_type"],
-            "description": "Which evaluation place in its sport the row took this refresh. most_held: a wider_holder place for up to 8 markets per sport kicking off within 24 hours, most graded holders first, kept until kickoff while the holder page still shows a card or could not be read; also every in_play row, whose places go most graded holders first. soonest_kickoff: a wider_holder place among the sport's 8 soonest kickoffs, which is not kept. emerging_pile rows carry their source wider_holder row's value. Filter on most_held to keep the most-held selection. most_held_48h: every row of an admission=most_held_48h response, which is that opt-in selection (up to 8 markets per sport within 48 hours, most graded holders first, recomputed every refresh), including a market a default place also evaluates; it never appears on a default response."
+            "enum": [
+              "most_held",
+              "soonest_kickoff",
+              "most_held_48h",
+              "most_held_48h_by_type",
+              "most_held_48h_min_25_usd"
+            ],
+            "description": "Which evaluation place in its sport the row took this refresh. most_held: a wider_holder place for up to 8 markets per sport kicking off within 24 hours, most graded holders first, kept until kickoff while the holder page still shows a card or could not be read; also every in_play row, whose places go most graded holders first. soonest_kickoff: a wider_holder place among the sport's 8 soonest kickoffs, which is not kept. emerging_pile rows carry their source wider_holder row's value. Filter on most_held to keep the most-held selection. most_held_48h: every row of an admission=most_held_48h response, which is that opt-in selection (up to 8 markets per sport within 48 hours, most graded holders first, recomputed every refresh), including a market a default place also evaluates; it never appears on a default response. most_held_48h_min_25_usd: every row of an admission=most_held_48h_min_25_usd response, the same selection counting only graded holders with $25 or more in the market."
           },
           "observation_only": {
             "type": "boolean",
@@ -64410,7 +64416,12 @@
           "most_held_48h_position": {
             "type": ["integer", "null"],
             "minimum": 1,
-            "description": "admission=most_held_48h and most_held_48h_by_type only: the market's 1-based place in its sport's most_held_48h admission order, every market type ranked together, from the same refresh that admitted the row. The order is most indexed_graded_holders first, then most volume, then soonest game_start_time, then condition_id, skipping a market whose event (parent event first) already holds 4 markets of the order. Places 1 to 8 are the most_held_48h list; a place above 8 is the number of slots the sport would need for this market to take one, so compare it with most_held_48h_cutoffs[].position. null when the market has no place: its event already held 4 markets ranked above it, so no number of sport slots would admit it. A place stays taken by a market whose holder read ended without a card (a split pile, no read), so the cards of a most_held_48h response can skip places. Omitted on a default read and on a snapshot computed before this field."
+            "description": "admission=most_held_48h and most_held_48h_by_type only: the market's 1-based place in its sport's most_held_48h admission order, every market type ranked together, from the same refresh that admitted the row. The order is most indexed_graded_holders first, then most volume, then soonest game_start_time, then condition_id, skipping a market whose event (parent event first) already holds 4 markets of the order. Places 1 to 8 are the most_held_48h list; a place above 8 is the number of slots the sport would need for this market to take one, so compare it with most_held_48h_cutoffs[].position. null when the market has no place: its event already held 4 markets ranked above it, so no number of sport slots would admit it. A place stays taken by a market whose holder read ended without a card (a split pile, no read), so the cards of a most_held_48h response can skip places. On admission=most_held_48h_min_25_usd it is the place in that selection's own order, most indexed_graded_holders_min_25_usd first. Omitted on a default read and on a snapshot computed before this field."
+          },
+          "indexed_graded_holders_min_25_usd": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "admission=most_held_48h_min_25_usd only: of indexed_graded_holders, the S, A and B graded wallets whose position in the market is worth $25 or more, both outcomes together, at the value the 0xinsider index last read for the wallet. That selection ranks each sport by this count, then by most volume, then by soonest game_start_time, then by condition_id, at most 4 markets per event. It is never larger than indexed_graded_holders. Omitted on every other response."
           }
         }
       },
@@ -64785,7 +64796,7 @@
           },
           "admission": {
             "type": "string",
-            "enum": ["most_held_48h", "most_held_48h_by_type"],
+            "enum": ["most_held_48h", "most_held_48h_by_type", "most_held_48h_min_25_usd"],
             "x-narrowed": true,
             "description": "Echoes the opt-in admission rule a request named; omitted on a default read. When present, data, funnel, coverage, degraded and degradation_reasons describe that selection, not the default one."
           },
@@ -64807,7 +64818,7 @@
             "items": {
               "$ref": "#/components/schemas/EdgeHunterMostHeld48hCutoff"
             },
-            "description": "admission=most_held_48h and most_held_48h_by_type only: for each sport in the response's category scope that most_held_48h admitted a market in, the last market it admitted in the same snapshot (the 8th when 8 are admitted) and the values it was ranked by. A row whose most_held_48h_position is greater than its sport's position took no most_held_48h slot. Not narrowed by selectors other than category. Omitted on a default read and on a snapshot computed before this field."
+            "description": "admission=most_held_48h and most_held_48h_by_type only: for each sport in the response's category scope that most_held_48h admitted a market in, the last market it admitted in the same snapshot (the 8th when 8 are admitted) and the values it was ranked by. A row whose most_held_48h_position is greater than its sport's position took no most_held_48h slot. Not narrowed by selectors other than category. On admission=most_held_48h_min_25_usd they are that selection's own last markets, each with indexed_graded_holders_min_25_usd. Omitted on a default read and on a snapshot computed before this field."
           }
         },
         "description": "Full Edge Hunter observations list envelope. Required degradation_reasons explains the source-generation verdict; required coverage distinguishes source input, intentional capacity exclusions, source emissions, incomplete holder scans, selection and the returned page. The view literal distinguishes advanced collections, including empty pages."
@@ -64849,6 +64860,11 @@
             "type": "string",
             "format": "date-time",
             "description": "The third ranking value: of two markets with equal holders and volume, the earlier kickoff ranks first, then the lower condition_id."
+          },
+          "indexed_graded_holders_min_25_usd": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "admission=most_held_48h_min_25_usd only: the first ranking value of that selection, the market's indexed_graded_holders_min_25_usd; volume and game_start_time follow it. Omitted on the other admissions, which rank by indexed_graded_holders."
           }
         },
         "description": "One sport's most_held_48h cutoff: the last market the selection admitted and the values it was ranked by."
@@ -64897,6 +64913,7 @@
           "admitted_by": {
             "type": "string",
             "enum": ["most_held", "soonest_kickoff", "most_held_48h", "most_held_48h_by_type"],
+            "x-narrowed": true,
             "description": "The departed card's admitted_by: most_held_48h on an admission=most_held_48h response."
           },
           "game_start_time": {
