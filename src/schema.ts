@@ -1875,7 +1875,7 @@ export type GameMarketQuote = {
 export type GamesCoverage = {
   /** Canonical sport buckets served, sorted. */
   sports: string[];
-  /** League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb, NCAA women's college basketball cwbb and Turkey's Basketbol Super Ligi bkbsl, all under the Basketball sport bucket. */
+  /** League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb, NCAA women's college basketball cwbb and Turkey's Basketbol Super Ligi bkbsl, all under the Basketball sport bucket. Any other basketball or hockey league appears under the provider's league code, such as ahl, khl or bkligend, while it has a listed game. */
   leagues: string[];
   /** Scopes whose source half was unavailable for this read, as <sport>:<half>. Empty means every scope answered. */
   sources_unavailable: string[];
@@ -7819,7 +7819,7 @@ export interface OperationQuery {
   listGames: {
     /** Canonical sport bucket, case-insensitive, with - and _ read as a space: table-tennis and Table Tennis are the same bucket. Omit for every covered sport. A bucket this deployment does not serve returns an empty page, not an error, and the response names sport in X-Query-Unmatched; coverage.sports lists the served buckets. */
     sport?: string;
-    /** League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Omit for every league inside the selected sports. */
+    /** League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Any other basketball or hockey league uses the provider's league code, such as ahl, khl or bkligend, listed in coverage.leagues while it has a game. Omit for every league inside the selected sports. */
     league?: string;
     /** Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). Without status, or with any other state, the list is the live and upcoming board. A value outside the enum answers 400 invalid_query with error.param=status, and its message lists the accepted values: upcoming games are scheduled. */
     status?: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
