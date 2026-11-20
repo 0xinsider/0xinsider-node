@@ -387,7 +387,7 @@ export type ComboFill = {
   trader: string | null;
   trader_name: string | null;
   trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
-  /** Recorded wallet-wide trade time. */
+  /** The wallet's newest known trade: the later of its recorded wallet-wide trade time and this fill's block_timestamp. Since 2026-11-20 (#36342) it is never earlier than the fill and is set for a wallet with no recorded trade time. */
   last_traded_at: string | null;
   action: "buy" | "sell";
   /** Combo identifier: 0x followed by 62 lowercase hex characters. This differs from a binary market condition ID. */
