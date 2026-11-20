@@ -50503,11 +50503,11 @@
           },
           "outcome_yes": {
             "type": "string",
-            "description": "What the market's YES outcome is. On a two-outcome market it is Polymarket's own text for its first outcome, usually a team or player, and outcome_no names the other. A three-way game, a soccer 1X2 event or a cricket match that can end in a draw, lists each team and Draw as its own Yes/No market; on such a leg outcome_yes is what the leg prices, the team or Draw, and outcome_no is omitted. A finished game read from its stored record serves such a leg's raw outcomes instead: Yes, and outcome_no No. Omitted when Polymarket names neither the outcome nor the leg."
+            "description": "What the market's YES outcome is. On a two-outcome market it is Polymarket's own text for its first outcome, usually a team or player, and outcome_no names the other. A three-way game, a soccer 1X2 event or a cricket match that can end in a draw, lists each team and Draw as its own Yes/No market; on such a leg outcome_yes is what the leg prices, the team or Draw, and outcome_no is omitted. A finished game read from its stored record serves the same: the team, from Polymarket's title for the leg, or Draw. Omitted when Polymarket names neither the outcome nor the leg."
           },
           "outcome_no": {
             "type": "string",
-            "description": "What the market's NO outcome is. On a two-outcome market it is Polymarket's own text for its second outcome, usually the other team or player. Omitted on a leg of a three-way game, whose NO outcome is every result but outcome_yes; a finished game read from its stored record serves No there instead. Also omitted when Polymarket names no outcome."
+            "description": "What the market's NO outcome is. On a two-outcome market it is Polymarket's own text for its second outcome, usually the other team or player. Omitted on a leg of a three-way game, whose NO outcome is every result but outcome_yes, also on a finished game read from its stored record. Also omitted when Polymarket names no outcome."
           },
           "outcome_token_ids": {
             "type": "array",
