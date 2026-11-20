@@ -3056,7 +3056,8 @@ export class OxinsiderApiClient {
   /**
    * List covered games: both sides with their provider ids and live scores, the
    * UTC kickoff, the provider's own status, and the winner markets (the
-   * moneyline, or a soccer game's three 1X2 legs) with their condition ids and
+   * moneyline, or the three legs of a game that can end in a draw: a soccer 1X2
+   * game, or a Test or first-class cricket match) with their condition ids and
    * outcome token ids; `listGameMarkets` lists the rest. Ordered by kickoff, then by
    * `event_slug`, with unscheduled games last. Pass `window: "now"` for what is
    * on now (games in play, plus any game whose kickoff was at most 3 hours ago

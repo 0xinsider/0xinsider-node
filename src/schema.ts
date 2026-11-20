@@ -1619,9 +1619,9 @@ export type Game = {
   competitors: GameCompetitor[];
   /** The esports series length, for example Bo3. Omitted for everything else. */
   series_format?: string;
-  /** Whether this read includes a market classified as paying on a draw, including soccer's independent 1X2 draw leg. Read this instead of assuming a two-outcome moneyline. */
+  /** Whether this read includes a market classified as paying on a draw, including the independent draw leg of a soccer 1X2 event or of a cricket match that can end in a draw. Read this instead of assuming a two-outcome moneyline. */
   draw_offered: boolean;
-  /** The game's winner markets the sports board binds to its sides (the moneyline, or a soccer game's three 1X2 legs), ordered by condition_id. Spreads, totals, period lines and props are on GET /api/v1/games/{event_slug}/markets. */
+  /** The game's winner markets the sports board binds to its sides (the moneyline, or the three legs of a game that can end in a draw: a soccer 1X2 event, or a Test or first-class cricket match), ordered by condition_id. Spreads, totals, period lines and props are on GET /api/v1/games/{event_slug}/markets. */
   markets: GameMarket[];
   freshness: GameFreshness;
   coverage: GameCoverage;
@@ -1755,9 +1755,9 @@ export type GameMarket = {
   slug?: string;
   /** The provider's own market type, for example moneyline or spread. Omitted when the provider sent none. Not an enum: the provider owns this vocabulary and adds to it. */
   sports_market_type?: string;
-  /** Which side of the game this market's YES leg pays. home and away are the provider's own home/away designation of the team the YES leg names (Polymarket's teams[].ordering), never its place in competitors. Soccer 1X2 legs are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg or the provider designates neither team home or away, which is not the same as other. */
+  /** Which side of the game this market's YES leg pays. home and away are the provider's own home/away designation of the team the YES leg names (Polymarket's teams[].ordering), never its place in competitors. The legs of a three-way game (soccer 1X2, a cricket match that can end in a draw) are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg or the provider designates neither team home or away, which is not the same as other. */
   side?: "home" | "away" | "draw" | "other";
-  /** What the market's YES outcome is. On a two-outcome market it is Polymarket's own text for its first outcome, usually a team or player, and outcome_no names the other. A three-way game, such as a soccer 1X2 event, lists each team and Draw as its own Yes/No market; on such a leg outcome_yes is what the leg prices, the team or Draw, and outcome_no is omitted. A finished game read from its stored record serves such a leg's raw outcomes instead: Yes, and outcome_no No. Omitted when Polymarket names neither the outcome nor the leg. */
+  /** What the market's YES outcome is. On a two-outcome market it is Polymarket's own text for its first outcome, usually a team or player, and outcome_no names the other. A three-way game, a soccer 1X2 event or a cricket match that can end in a draw, lists each team and Draw as its own Yes/No market; on such a leg outcome_yes is what the leg prices, the team or Draw, and outcome_no is omitted. A finished game read from its stored record serves such a leg's raw outcomes instead: Yes, and outcome_no No. Omitted when Polymarket names neither the outcome nor the leg. */
   outcome_yes?: string;
   /** What the market's NO outcome is. On a two-outcome market it is Polymarket's own text for its second outcome, usually the other team or player. Omitted on a leg of a three-way game, whose NO outcome is every result but outcome_yes; a finished game read from its stored record serves No there instead. Also omitted when Polymarket names no outcome. */
   outcome_no?: string;
