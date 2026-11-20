@@ -1662,7 +1662,7 @@ export type GameCoverage = {
 
 /** How current this game's facts are. Independent per source: the board half that produced the game, and the live-score frame that produced its scores. */
 export type GameFreshness = {
-  /** What produced this game: live or upcoming, the board half that carried it, or stored, the stored record of a finished game that has left the board (GET /api/v1/games/{event_slug}, and GET /api/v1/games with a finished status). */
+  /** What produced this game: live or upcoming, the board half that carried it, or stored, the stored record of a started game that has left the board (GET /api/v1/games/{event_slug}, and GET /api/v1/games with a finished status, or unknown, suspended or delayed). */
   source: "live" | "upcoming" | "stored";
   /** Whether that half returned a truthful source body for this read. */
   source_status: "ok" | "unavailable";
@@ -7821,9 +7821,9 @@ export interface OperationQuery {
     sport?: string;
     /** League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Any other basketball or hockey league uses the provider's league code, such as ahl, khl or bkligend, listed in coverage.leagues while it has a game. Omit for every league inside the selected sports. */
     league?: string;
-    /** Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). Without status, or with any other state, the list is the live and upcoming board. A value outside the enum answers 400 invalid_query with error.param=status, and its message lists the accepted values: upcoming games are scheduled. */
+    /** Keep only games in this state. ended, cancelled and postponed also list finished games that have left the live board, read from their stored records, for kickoffs within starts_after..starts_before (default: the 7 days before now). unknown, suspended and delayed also list started games that have left the live board without a final result, such as a game whose result Polymarket has proposed but not yet settled, from the same stored records and window, while every board source answers (else coverage.sources_unavailable names the one that did not). Such a game is on the unknown list until its result is final, then on the ended list, never both: each list holds the games that read its state at GET /api/v1/games/{event_slug}. Without status, or with scheduled, live or paused, the list is the live and upcoming board. A value outside the enum answers 400 invalid_query with error.param=status, and its message lists the accepted values: upcoming games are scheduled. */
     status?: "scheduled" | "live" | "paused" | "ended" | "postponed" | "cancelled" | "suspended" | "delayed" | "unknown";
-    /** RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. With a finished status, the stored games' look-back starts here; omitted, it starts 7 days before starts_before, and nothing caps an earlier value. */
+    /** RFC 3339 instant. Keep only games whose kickoff is at or after it. Games with no published kickoff are excluded whenever either bound is set. With a finished status, or unknown, suspended or delayed, the stored games' look-back starts here; omitted, it starts 7 days before starts_before, and nothing caps an earlier value. */
     starts_after?: string;
     /** RFC 3339 instant. Keep only games whose kickoff is at or before it. Must be at or after starts_after. */
     starts_before?: string;
@@ -7833,7 +7833,7 @@ export interface OperationQuery {
     protocol_version?: "v1" | "v2";
     /** Page size. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    /** Opaque gms_v1_ cursor from next_cursor. It pins the page position (kickoff and event_slug), not a snapshot: the catalog is live, so a game added or removed between pages moves with it. With a finished status, or unknown, suspended or delayed, a page that spent its read budget carries a cursor past everything it read, which may be past the last game it returned. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
     /** Backward-compatible alias for expand. Repeatable: sharp_money, settlement. */
     "expand[]"?: ("sharp_money" | "settlement")[];
