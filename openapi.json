@@ -26367,7 +26367,7 @@
             "name": "league",
             "in": "query",
             "required": false,
-            "description": "League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Omit for every league inside the selected sports.",
+            "description": "League tag, case-insensitive, as this list's coverage.leagues spells it (GET /api/v1/coverage lists no leagues): nfl, epl, cs2, euroleague, cbb, cwbb, bkbsl. EuroLeague games use sport=Basketball and league=euroleague; NCAA men's and women's college basketball games use sport=Basketball with league=cbb and league=cwbb; Turkey's Basketbol Super Ligi uses sport=Basketball and league=bkbsl. Any other basketball or hockey league uses the provider's league code, such as ahl, khl or bkligend, listed in coverage.leagues while it has a game. Omit for every league inside the selected sports.",
             "schema": {
               "type": "string"
             }
@@ -50770,7 +50770,7 @@
             "items": {
               "type": "string"
             },
-            "description": "League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb, NCAA women's college basketball cwbb and Turkey's Basketbol Super Ligi bkbsl, all under the Basketball sport bucket."
+            "description": "League tags served, sorted. EuroLeague is euroleague, NCAA men's college basketball cbb, NCAA women's college basketball cwbb and Turkey's Basketbol Super Ligi bkbsl, all under the Basketball sport bucket. Any other basketball or hockey league appears under the provider's league code, such as ahl, khl or bkligend, while it has a listed game."
           },
           "sources_unavailable": {
             "type": "array",
