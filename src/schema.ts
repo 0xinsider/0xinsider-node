@@ -470,6 +470,8 @@ export type ComboLegMarket = {
   kickoff_date_passed: boolean;
   /** Whether the game this market belongs to has ended, from the same stored game state GET /api/v1/games/{event_slug} reads. A market in a child event, such as a soccer game's more-markets event, reads its parent game. False while the game is scheduled, in play or postponed. Null when no state is stored for the game, when the leg has no local market, or when the market has no event. Some games have no live feed, so null means unknown, not in play. A pending leg with game_ended or market_closed true is waiting on its result. */
   game_ended: boolean | null;
+  /** The day the game is played, as its event page names it. The event slug's date while that date holds the kickoff in some time zone from UTC-12 to UTC+14, so an evening game west of UTC that starts after midnight UTC keeps its slug's day. Otherwise, as after a postponement, the kickoff's UTC day. Null when the event slug carries no date. */
+  game_day: string | null;
 };
 
 export type ComboLifecycleStats = {
