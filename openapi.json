@@ -63330,7 +63330,7 @@
           },
           "last_traded_at": {
             "type": ["string", "null"],
-            "description": "Recorded wallet-wide trade time.",
+            "description": "The wallet's newest known trade: the later of its recorded wallet-wide trade time and this fill's block_timestamp. Since 2026-11-20 (#36342) it is never earlier than the fill and is set for a wallet with no recorded trade time.",
             "format": "date-time"
           },
           "action": {
