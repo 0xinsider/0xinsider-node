@@ -1757,9 +1757,9 @@ export type GameMarket = {
   sports_market_type?: string;
   /** Which side of the game this market's YES leg pays. home and away are the provider's own home/away designation of the team the YES leg names (Polymarket's teams[].ordering), never its place in competitors. Soccer 1X2 legs are explicitly classified as home, draw or away by the provider projection. draw is a real value, not a competitor. Omitted when the provider projection cannot classify the leg or the provider designates neither team home or away, which is not the same as other. */
   side?: "home" | "away" | "draw" | "other";
-  /** The provider's label for the YES outcome. Omitted when the provider sent none. */
+  /** What the market's YES outcome is. On a two-outcome market it is Polymarket's own text for its first outcome, usually a team or player, and outcome_no names the other. A three-way game, such as a soccer 1X2 event, lists each team and Draw as its own Yes/No market; on such a leg outcome_yes is what the leg prices, the team or Draw, and outcome_no is omitted. A finished game read from its stored record serves such a leg's raw outcomes instead: Yes, and outcome_no No. Omitted when Polymarket names neither the outcome nor the leg. */
   outcome_yes?: string;
-  /** The provider's label for the NO outcome. Omitted when the provider sent none. */
+  /** What the market's NO outcome is. On a two-outcome market it is Polymarket's own text for its second outcome, usually the other team or player. Omitted on a leg of a three-way game, whose NO outcome is every result but outcome_yes; a finished game read from its stored record serves No there instead. Also omitted when Polymarket names no outcome. */
   outcome_no?: string;
   /** Polymarket CLOB token ids in the provider's own outcome-index order. Omitted when the provider has published none for this market. */
   outcome_token_ids?: string[];
