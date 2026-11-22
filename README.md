@@ -1090,10 +1090,11 @@ Pass `apiKey` to the client constructor. Public operations (`getApiDiscovery`, `
 
 ## How it is built
 
-`src/schema.ts` is generated from the published [OpenAPI document](https://0xinsider.com/api/v1/openapi.json) by `scripts/generate.mjs`, which keeps the exact bytes it read in `openapi.json` and renders the types with the same generator the 0xinsider app runs (vendored in `scripts/app/`), so they are byte-identical to the app's for the same document. The client itself (`src/client.ts`, `src/stream.ts`, `src/pagination.ts`, `src/retry.ts`, `src/webhooks.ts`, `src/errors.ts`) is hand-written against those types.
+`src/schema.ts` is generated from the [OpenAPI document](https://0xinsider.com/api/v1/openapi.json) with the same generator the 0xinsider app runs (vendored in `scripts/app/`). A release takes the document and the types from one app commit: `scripts/sync-from-app.mjs` copies the app's document at that commit into `openapi.json` byte for byte, copies its `src/schema.ts`, and writes `src/provenance.ts`, so the types never depend on what the live site serves at release time. The client itself (`src/client.ts`, `src/stream.ts`, `src/pagination.ts`, `src/retry.ts`, `src/webhooks.ts`, `src/errors.ts`) is hand-written against those types.
 
 ```bash
-npm run generate     # fetch the published document; rewrite openapi.json, src/schema.ts, src/provenance.ts
+npm run generate     # re-render src/schema.ts and src/provenance.ts from the committed openapi.json
+node scripts/generate.mjs --live  # fetch the published document; rewrite openapi.json, src/schema.ts, src/provenance.ts
 npm run check        # the committed files match the committed snapshot, and the client table matches it
 npm run check:live   # the same checks against the published document: is this release behind the API?
 npm test             # build, then the unit tests (node:test, no network)

@@ -1,14 +1,25 @@
 #!/usr/bin/env node
 // Generate the SDK's contract types (src/schema.ts and its src/index.ts export
 // block) and release provenance
-// (src/provenance.ts) from the published 0xinsider OpenAPI document, and keep
+// (src/provenance.ts) from an 0xinsider OpenAPI document, and keep
 // the exact document bytes they came from in openapi.json.
 //
-//   node scripts/generate.mjs                        # fetch https://0xinsider.com/api/v1/openapi.json
-//   node scripts/generate.mjs --spec openapi.json    # regenerate from the committed snapshot
+//   node scripts/generate.mjs                        # regenerate from the committed snapshot, openapi.json
+//   node scripts/generate.mjs --spec path/to/openapi.json
 //   SPEC=path/to/openapi.json node scripts/generate.mjs
+//   node scripts/generate.mjs --live                 # fetch https://0xinsider.com/api/v1/openapi.json
 //   APP_COMMIT=<sha> node scripts/generate.mjs       # the 0xinsider/0xinsider commit the document belongs to
-//   node scripts/generate.mjs --check [--spec ...]   # exit 1 if the committed files are stale
+//   node scripts/generate.mjs --check [--spec ... | --live]  # exit 1 if the committed files are stale
+//
+// A RELEASE NEVER READS THE LIVE DOCUMENT (0xinsider-node#91).
+// scripts/sync-from-app.mjs copies the app's document, src/schema.ts and the
+// provenance for one app commit, so the snapshot is already that commit's
+// document and the default here re-renders it byte for byte. The live document
+// is whatever the app deploy serves at that moment, ahead of or behind the
+// commit a release names: before this, the default fetched it, and SDK 0.51.0
+// was nearly generated from the previous deploy's document under the next
+// commit's APP_COMMIT. --live is for the weekly regenerate workflow, whose
+// question is "has the published API moved since this release".
 //
 // THE GENERATOR IS THE APP'S. src/schema.ts is rendered by
 // scripts/app/generate-sdk-types.mjs, a verbatim copy of the generator the app
@@ -31,9 +42,9 @@
 // --check regenerates in memory and compares: src/schema.ts and the generated
 // src/index.ts export block must equal the rendering, and src/provenance.ts
 // must name the same document (SHA-256,
-// version, operation count). Against the live document (the default source)
-// that answers "is this release behind the API"; against --spec openapi.json it
-// answers "are the committed files generated from the committed snapshot".
+// version, operation count). Against the snapshot (the default source) it
+// answers "are the committed files generated from the committed snapshot";
+// with --live, "is this release behind the API".
 
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -167,9 +178,23 @@ export function renderProvenance({ source, sha256: digest, version, operationCou
   ].join("\n");
 }
 
+/**
+ * The source `main` reads: `--live` fetches the published document, `--spec`
+ * or `SPEC` names a file, and nothing means the committed snapshot. Unlike
+ * `specArgument`, no argument never means the live document.
+ */
+function generateSource(argv = process.argv.slice(2), env = process.env) {
+  const specPath = specArgument(argv, env);
+  if (argv.includes("--live")) {
+    if (specPath) throw new Error("--live and --spec (or SPEC) name two sources; pass one");
+    return undefined;
+  }
+  return specPath ?? snapshotPath;
+}
+
 async function main() {
   const check = process.argv.includes("--check");
-  const { raw, path, fetched } = await loadSpec(specArgument());
+  const { raw, path, fetched } = await loadSpec(generateSource());
   const spec = JSON.parse(raw.toString("utf-8"));
   const digest = sha256(raw);
   const version = spec.info?.version ?? "unknown";
@@ -196,7 +221,7 @@ async function main() {
       console.error(`generate: ${problems.join("; ")} against ${label}.`);
       console.error(
         fetched
-          ? "  The published document changed. Run: npm run generate"
+          ? "  The published document changed. Run: node scripts/generate.mjs --live"
           : `  Run: node scripts/generate.mjs --spec ${path}`,
       );
       process.exit(1);

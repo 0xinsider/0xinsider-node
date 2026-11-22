@@ -35,7 +35,7 @@ jobs:
           # OXINSIDER_APP_READ_TOKEN secret (read-only contents on that
           # repository) is set. Never guessed.
           GH_TOKEN: ${{ secrets.OXINSIDER_APP_READ_TOKEN || github.token }}
-        run: npm run generate
+        run: node scripts/generate.mjs --live
       # A pull request opened with the default token starts no CI run, so the
       # checks run here and their outcome goes into the pull request body.
       - name: Drift check
