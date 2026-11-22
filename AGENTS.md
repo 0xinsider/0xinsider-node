@@ -30,10 +30,12 @@ npx skills add 0xinsider/agent-plugin
 - **Read credentials from the environment** (`OXINSIDER_API_KEY`). Never write
   a key into a config file, a committed script, or an example.
 - **The OpenAPI spec is the source of truth.** This client is generated from
-  <https://0xinsider.com/api/v1/openapi.json>. Regenerate rather than hand-edit
-  generated files.
-- **Batch instead of looping.** Batch reads accept 25 items against a
-  100-request-per-minute budget.
+  the app's OpenAPI document, published at
+  <https://0xinsider.com/api/v1/openapi.json>; a release takes the copy at the
+  app commit it names, never the live one (Conventions). Regenerate rather
+  than hand-edit generated files.
+- **Batch instead of looping.** Batch reads accept 25 items against Pro's
+  100-request-per-minute budget (400 on Max).
 - **Branch on `error.code`, never the message string.**
 - **Follow cursors to completion.** Feeds and timelines are paged and move
   while you read them. Never page by offset, never total a partial page.
@@ -45,16 +47,18 @@ These are correctness requirements. Getting them wrong produces a confident,
 wrong number.
 
 - An absent field is not a zero. Serve a truthful unavailable state.
-- `pnl.realized` is omitted when no native accounting snapshot matches. Raw
-  total P&L is never a substitute for it.
-- The 0.0-1.0 significance score ranks attention, not outcomes. It is a
-  different quantity from Insider Radar's 0-100 suspicion score. Neither is a
-  probability or a forecast.
+- A wallet's P&L is `pnl.in_scope.realized_pnl`. `in_scope` is omitted until
+  0xinsider has computed the wallet's record: absent means not computed yet,
+  never zero. No other figure is a substitute for it.
+- A large trade's 0.0-1.0 `review_score` ranks attention, not outcomes. It is
+  a different quantity from a suspicious-trade flag's 0-100
+  `suspicion_score`. Neither is a probability or a forecast.
 - `BUY YES` and `SELL NO` add exposure; `BUY NO` and `SELL YES` subtract it.
   A zero-flow YES tie-break is not conviction.
 - An ungraded wallet is uncovered, not unskilled.
 - Keep full numeric precision until the final render.
-- Every polymarket.com link carries `?r=0xinsidercom`.
+- Every polymarket.com link carries `via=0xinsider` then `r=0xinsidercom`:
+  `?via=0xinsider&r=0xinsidercom`.
 
 ## Conventions
 
