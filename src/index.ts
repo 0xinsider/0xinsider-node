@@ -371,6 +371,7 @@ export type {
   EdgeHunterObservationCoverage,
   EdgeHunterObservationDegradationReason,
   EdgeHunterObservationDeparture,
+  EdgeHunterObservationPlaceExit,
   EdgeHunterObservationTerminalReason,
   EdgeHunterObservationsResponse,
   EdgeHunterOutcome,

@@ -1536,9 +1536,11 @@ export type EdgeHunterSignalsParams = EdgeHunterSelectionParams & Pick<Operation
  * "most_held_48h_min_25_usd" to the same rule counting only graded holders
  * with $25 or more in the market (each row carries that count as
  * indexed_graded_holders_min_25_usd); the read then requires the server to
- * echo it.
+ * echo it. place_exits_since (with an admission) adds place_exits: the
+ * selection's place stays that ended before kickoff since that time, with
+ * why, readable after the game starts.
  */
-export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "admission"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
+export type EdgeHunterObservationsParams = EdgeHunterSelectionParams & Pick<OperationQuery["getEdgeHunter"], "limit" | "cursor" | "admission" | "place_exits_since"> & { view: "observations"; cohort: NonNullable<OperationQuery["getEdgeHunter"]["cohort"]> };
 export type EdgeHunterAdvancedParams = EdgeHunterSignalsParams | EdgeHunterObservationsParams;
 export type EdgeHunterParams = EdgeHunterBoardParams | EdgeHunterAdvancedParams;
 const EDGE_HUNTER_SELECTION_ARRAYS = ["sports", "leagues", "market_types", "condition_ids", "event_slugs", "series_slugs"] as const;
