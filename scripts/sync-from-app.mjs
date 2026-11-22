@@ -5,13 +5,21 @@
 // a new or changed API route update `sdk/src/client.ts` in the same pull
 // request, and the 0xinsider CLI and MCP server compile that directory. This
 // repository is where the package is built, tested and published. This script
-// copies every hand-written `sdk/src/*.ts` file (everything but the generated
-// `schema.ts`), the example, the app's SDK generator and drift gate (into
-// `scripts/app/`), and the package version from an app checkout, then
-// re-adds the one thing this repository has that the app does not: the
-// provenance export in `src/index.ts`. `scripts/generate.mjs` renders
-// `schema.ts` with the synced generator and writes `provenance.ts`, from the
-// published document.
+// copies every `sdk/src/*.ts` file, the example, the app's SDK generator and
+// drift gate (into `scripts/app/`), and the package version from an app
+// checkout, then re-adds the one thing this repository has that the app does
+// not: the provenance export in `src/index.ts`.
+//
+// THE CONTRACT COMES FROM THE SAME COMMIT. The app's OpenAPI document at --ref
+// (`web/public/api/v1/openapi.json`) is copied byte for byte into `openapi.json`,
+// `sdk/src/schema.ts` (the app's generator ran on that document) is copied like
+// every other source, and `src/provenance.ts` is written for that document,
+// with APP_COMMIT the commit at or before --ref that last changed it. Before
+// 0xinsider-node#91, `scripts/generate.mjs` fetched the live document instead,
+// so a release generated before the app deploy served --ref published the
+// previous types under a version and APP_COMMIT that claimed --ref; and
+// `--check` skipped `schema.ts`, so nothing noticed. Now `--check` compares
+// all three with the app at --ref, and no step of a release reads the live site.
 //
 // Usage:
 //   node scripts/sync-from-app.mjs                     # ../0xinsider at origin/main
@@ -28,6 +36,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { APP_SCRIPTS } from "./app-shim.mjs";
+import { APP_REPOSITORY, APP_SPEC_PATH, documentOperationCount, renderProvenance, sha256 } from "./generate.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -39,8 +48,8 @@ const app = resolve(option("--app", resolve(root, "..", "0xinsider")));
 const ref = option("--ref", "origin/main");
 const check = args.includes("--check");
 
-// Generated here, from the published document, never copied.
-const GENERATED = new Set(["schema.ts", "provenance.ts"]);
+// Written here, for the app's document at --ref; the app has no such file.
+const GENERATED = new Set(["provenance.ts"]);
 const EXAMPLE = "examples/sdk-list-s-grade-wallets.ts";
 const PROVENANCE_EXPORT = `// Which OpenAPI document this release was generated from (scripts/generate.mjs).
 // Compare OPENAPI_SHA256 with the SHA-256 of the live document to see whether a
@@ -60,6 +69,11 @@ const PROVENANCE_ANCHOR = "// Generated contract types";
 
 function git(...gitArgs) {
   return execFileSync("git", ["-C", app, ...gitArgs], { encoding: "utf8", maxBuffer: 64 << 20 });
+}
+
+/** The exact bytes git prints, for a file that must be copied byte for byte. */
+function gitBytes(...gitArgs) {
+  return execFileSync("git", ["-C", app, ...gitArgs], { maxBuffer: 64 << 20 });
 }
 
 function fail(message) {
@@ -94,6 +108,24 @@ for (const name of APP_SCRIPTS) {
   wanted.set(`scripts/app/${name}`, git("show", `${ref}:scripts/${name}`));
 }
 
+// The OpenAPI document at --ref and the provenance that names it.
+// `src/schema.ts` came from the same commit with the sources above.
+const specBytes = gitBytes("show", `${ref}:${APP_SPEC_PATH}`);
+const spec = JSON.parse(specBytes.toString("utf8"));
+const specCommit = git("log", "-1", "--format=%H", commit, "--", APP_SPEC_PATH).trim();
+if (!specCommit) fail(`no commit at or before ${commit.slice(0, 10)} changed ${APP_SPEC_PATH}`);
+wanted.set("openapi.json", specBytes);
+wanted.set(
+  "src/provenance.ts",
+  renderProvenance({
+    source: `${APP_REPOSITORY}:${APP_SPEC_PATH}`,
+    sha256: sha256(specBytes),
+    version: spec.info?.version ?? "unknown",
+    operationCount: documentOperationCount(spec),
+    appCommit: specCommit,
+  }),
+);
+
 const appPackage = JSON.parse(git("show", `${ref}:sdk/package.json`));
 const ourPackagePath = resolve(root, "package.json");
 const ourPackage = JSON.parse(readFileSync(ourPackagePath, "utf8"));
@@ -102,14 +134,15 @@ wanted.set("package.json", `${JSON.stringify(syncedPackage, null, 2)}\n`);
 wanted.set(".app-sdk-commit", `${commit}\n`);
 
 const stale = [];
-for (const [path, text] of wanted) {
+for (const [path, content] of wanted) {
   const target = resolve(root, path);
-  const current = existsSync(target) ? readFileSync(target, "utf8") : null;
-  if (current === text) continue;
+  const bytes = typeof content === "string" ? Buffer.from(content, "utf8") : content;
+  const current = existsSync(target) ? readFileSync(target) : null;
+  if (current !== null && current.equals(bytes)) continue;
   stale.push(path);
   if (!check) {
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, text);
+    writeFileSync(target, bytes);
   }
 }
 // A hand-written file the app removed is reported, never deleted silently.
@@ -124,14 +157,18 @@ if (check) {
     for (const path of orphans) console.error(`  not in the app: ${path}`);
     process.exit(1);
   }
-  console.log(`sync-from-app --check: OK (0xinsider/0xinsider@${commit.slice(0, 10)}, ${appSources.length} sources)`);
+  console.log(
+    `sync-from-app --check: OK (0xinsider/0xinsider@${commit.slice(0, 10)}, ${appSources.length} sources, openapi.json sha256 ${sha256(specBytes)})`,
+  );
   process.exit(0);
 }
 
-console.log(`sync-from-app: synced from 0xinsider/0xinsider@${commit.slice(0, 10)} (version ${appPackage.version})`);
+console.log(
+  `sync-from-app: synced from 0xinsider/0xinsider@${commit.slice(0, 10)} (version ${appPackage.version}, openapi.json sha256 ${sha256(specBytes)}, last changed at ${specCommit.slice(0, 10)})`,
+);
 for (const path of stale) console.log(`  updated: ${path}`);
 for (const path of orphans) console.log(`  not in the app (remove it if the app removed it): ${path}`);
 if (!stale.length) console.log("  nothing changed");
 if (stale.includes("package.json")) {
-  console.log("next: npm install (refresh the lockfile), npm run generate, npm test, and port any sdk/README.md change");
+  console.log("next: npm install (refresh the lockfile), npm run check, npm test, and port any sdk/README.md change");
 }
