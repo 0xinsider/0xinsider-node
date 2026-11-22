@@ -4774,6 +4774,39 @@ export type ProofPendingPickSlot = {
   supersedes_pick_id: string | null;
 };
 
+export type ReportLargeTrade = {
+  /** Provider outcome label for the traded side. */
+  outcome: string | null;
+  /** Trade direction (BUY or SELL), not the outcome side. */
+  side: string | null;
+  /** Market title. */
+  title: string | null;
+  /** Trade size in USD. */
+  size: number | null;
+  /** Trade price in provider [0, 1] units. */
+  price: number | null;
+  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets). */
+  token_id: string | null;
+  /** Whale trade id. */
+  id: number | null;
+  /** Trade timestamp (UTC). */
+  trade_time: string | null;
+  /** Provider market category. */
+  market_category: string | null;
+  /** Always polymarket, or null when the row carries no stored value. */
+  platform: "polymarket" | null;
+  /** Trader display name, when known. */
+  name: string | null;
+  /** Trader pseudonym, when no display name is known. */
+  pseudonym: string | null;
+  /** Trader grade (S-F) at snapshot time. */
+  trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  /** The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with. */
+  condition_id: string | null;
+  /** The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed. */
+  protocol_version: "v1" | "v2" | null;
+};
+
 export type ReportPayload = {
   /** Canonical key since #16304; total_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   total_large_trades: number | null;
@@ -4784,70 +4817,8 @@ export type ReportPayload = {
   biggest_trade_size: number | null;
   active_traders: number | null;
   /** Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
-  top_large_trades: ({
-    /** Provider outcome label for the traded side. */
-    outcome: string | null;
-    /** Trade direction (BUY or SELL), not the outcome side. */
-    side: string | null;
-    /** Market title. */
-    title: string | null;
-    /** Trade size in USD. */
-    size: number | null;
-    /** Trade price in provider [0, 1] units. */
-    price: number | null;
-    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets). */
-    token_id: string | null;
-    /** Whale trade id. */
-    id: number | null;
-    /** Trade timestamp (UTC). */
-    trade_time: string | null;
-    /** Provider market category. */
-    market_category: string | null;
-    /** Always polymarket, or null when the row carries no stored value. */
-    platform: "polymarket" | null;
-    /** Trader display name, when known. */
-    name: string | null;
-    /** Trader pseudonym, when no display name is known. */
-    pseudonym: string | null;
-    /** Trader grade (S-F) at snapshot time. */
-    trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
-    /** The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with. */
-    condition_id: string | null;
-    /** The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed. */
-    protocol_version: "v1" | "v2" | null;
-  })[] | null;
-  top_whale_trades: ({
-    /** Provider outcome label for the traded side. */
-    outcome: string | null;
-    /** Trade direction (BUY or SELL), not the outcome side. */
-    side: string | null;
-    /** Market title. */
-    title: string | null;
-    /** Trade size in USD. */
-    size: number | null;
-    /** Trade price in provider [0, 1] units. */
-    price: number | null;
-    /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets). */
-    token_id: string | null;
-    /** Whale trade id. */
-    id: number | null;
-    /** Trade timestamp (UTC). */
-    trade_time: string | null;
-    /** Provider market category. */
-    market_category: string | null;
-    /** Always polymarket, or null when the row carries no stored value. */
-    platform: "polymarket" | null;
-    /** Trader display name, when known. */
-    name: string | null;
-    /** Trader pseudonym, when no display name is known. */
-    pseudonym: string | null;
-    /** Trader grade (S-F) at snapshot time. */
-    trader_grade: "S" | "A" | "B" | "C" | "D" | "F" | null;
-    /** The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with. */
-    condition_id: string | null;
-    /** The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed. */
-    protocol_version: "v1" | "v2" | null;
-  })[] | null;
+  top_large_trades: ReportLargeTrade[] | null;
+  top_whale_trades: ReportLargeTrade[] | null;
   categories: ({
     category: string | null;
     large_trade_count: number | null;
@@ -6017,58 +5988,10 @@ export type TraderPnl = {
   })[];
   /** Pre-derived period stats. Present unless the request's `sections` excluded it. Always the published all/90d/30d/7d windows over the full stored history; `from`/`to` never recompute them over the request's range. */
   stats?: {
-    all: {
-      current: number;
-      change: number;
-      change_pct: number;
-      best_day: number;
-      best_day_date?: string;
-      worst_day: number;
-      worst_day_date?: string;
-      win_days: number;
-      loss_days: number;
-      avg_day: number;
-      rebase_anchor: number;
-    };
-    d90: {
-      current: number;
-      change: number;
-      change_pct: number;
-      best_day: number;
-      best_day_date?: string;
-      worst_day: number;
-      worst_day_date?: string;
-      win_days: number;
-      loss_days: number;
-      avg_day: number;
-      rebase_anchor: number;
-    };
-    d30: {
-      current: number;
-      change: number;
-      change_pct: number;
-      best_day: number;
-      best_day_date?: string;
-      worst_day: number;
-      worst_day_date?: string;
-      win_days: number;
-      loss_days: number;
-      avg_day: number;
-      rebase_anchor: number;
-    };
-    d7: {
-      current: number;
-      change: number;
-      change_pct: number;
-      best_day: number;
-      best_day_date?: string;
-      worst_day: number;
-      worst_day_date?: string;
-      win_days: number;
-      loss_days: number;
-      avg_day: number;
-      rebase_anchor: number;
-    };
+    all: TraderPnlPeriodStat;
+    d90: TraderPnlPeriodStat;
+    d30: TraderPnlPeriodStat;
+    d7: TraderPnlPeriodStat;
   };
   /** Per-month P&L aggregation. Present unless the request's `sections` excluded it. Whole months over the full stored history, never clipped to `from`/`to`, so a month is never a partial month. */
   monthly?: ({
@@ -6117,6 +6040,20 @@ export type TraderPnlInScope = {
   markets_decided?: number;
   /** Additive (since 2026-11-11, #34333): measured from 5 decided markets (markets_decided), not_enough_data below. It is the floor the 0xinsider leaderboards, profile and trade rows apply before they show a win rate, so one lucky market never reads as 100%. Below it win_rate is still sent; quote the decided count instead of win_rate as a rate. Sent with markets_decided. */
   win_rate_status?: "measured" | "not_enough_data";
+};
+
+export type TraderPnlPeriodStat = {
+  current: number;
+  change: number;
+  change_pct: number;
+  best_day: number;
+  best_day_date?: string;
+  worst_day: number;
+  worst_day_date?: string;
+  win_days: number;
+  loss_days: number;
+  avg_day: number;
+  rebase_anchor: number;
 };
 
 /** Edge over the price paid (#32270, #32622): how often the side a wallet bought won, minus the average price it paid, over its settled sports and esports markets of $20 or more at a known entry price. Probabilities throughout: edge 0.012 is 1.2 percentage points. The same figures as LeaderboardPriceEdge, plus the shrunk edge the profile badge and the leaderboard show. No hold: a hold is a fact of a leaderboard row, not of the wallet. */
@@ -7321,6 +7258,25 @@ export interface OperationData {
   listSharpMoneyFlows: SmartMoneyFlowMarket[];
   listSmartMoneyFlows: SmartMoneyFlowMarket[];
   listSuspiciousTrades: SuspiciousTrade[];
+  listTradersGradeAt: ({
+    /** The wallet address, lowercase. */
+    address: string;
+    /** The grade visible at as_of; null when status is unknown. */
+    grade: "S" | "A" | "B" | null;
+    /** The trd_-prefixed trader id of the wallet. */
+    id: string;
+    /** The grade observation visible at as_of, as GET /api/v1/trader/{address}/grade-at returns it; null when status is unknown. */
+    observation: {
+      /** The immutable observation id. */
+      id: number;
+      /** Lower bound: the grade writer had begun the transition at this instant. */
+      observed_at: string;
+      /** Upper bound: a later read confirmed the observation was committed by this instant. */
+      published_by: string;
+    } | null;
+    /** graded: the grade was visibly recorded at as_of. unknown: a grade change was in flight at as_of and one of the listed grades is among those it could have held. */
+    status: "graded" | "unknown";
+  })[];
   listTrendingWallets: TrendingWallet[];
   listWebhookDeliveries: WebhookDelivery[];
   listWebhookEvents: WebhookEventDescriptor[];
@@ -8186,6 +8142,16 @@ export interface OperationQuery {
     /** Exclusive RFC3339 upper bound on traded_at. Must be after from when both are present; otherwise 400 bad_request with param to. */
     to?: string;
   };
+  listTradersGradeAt: {
+    /** RFC3339 past instant whose recorded grades are listed. Future instants are refused. With cursor, send the as_of the cursor was issued for. */
+    as_of: string;
+    /** The worst grade listed: S lists S, A lists S and A, B lists S, A and B. Any other value returns 400 with error.param=min_grade. With cursor, omit it or send the one the cursor was issued for. */
+    min_grade?: "S" | "A" | "B";
+    /** Page size. Out-of-range values are clamped to 1..100. */
+    limit?: number;
+    /** Opaque tga_v1_ cursor from next_cursor. It continues the walk after the last wallet the previous page checked and keeps the as_of and min_grade it was issued for: another as_of or min_grade answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
+    cursor?: string;
+  };
   listTrendingWallets: {
     /** Polymarket's weekly leaderboard caps the ranked set at 50 wallets; requests above 50 still return at most 50. Out-of-range values are clamped to 1..50. */
     limit?: number;
@@ -8554,6 +8520,7 @@ export interface OperationPath {
   listSharpMoneyFlows: Record<string, never>;
   listSmartMoneyFlows: Record<string, never>;
   listSuspiciousTrades: Record<string, never>;
+  listTradersGradeAt: Record<string, never>;
   listTrendingWallets: Record<string, never>;
   listWebhookDeliveries: {
     /** Webhook endpoint id owned by the authenticated API key user. */
@@ -8729,6 +8696,7 @@ export interface OperationBody {
   listSharpMoneyFlows: never;
   listSmartMoneyFlows: never;
   listSuspiciousTrades: never;
+  listTradersGradeAt: never;
   listTrendingWallets: never;
   listWebhookDeliveries: never;
   listWebhookEvents: never;
@@ -9326,6 +9294,24 @@ export interface OperationResponse {
     next_cursor?: string;
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
     total?: number;
+    meta: ResponseMeta;
+  };
+  listTradersGradeAt: {
+    object: "list";
+    /** The wallets, in a stable internal order. */
+    data: OperationData["listTradersGradeAt"];
+    /** True when more wallets may follow: send next_cursor for them. A page can hold fewer than limit wallets, even none, while this is true. */
+    has_more: boolean;
+    /** Opaque tga_v1_ cursor for the next page; null when has_more is false. */
+    next_cursor: string | null;
+    /** The instant read. */
+    as_of: string;
+    /** The worst grade listed. */
+    min_grade: "S" | "A" | "B";
+    /** recorded when as_of is at or after available_from; unknown before it, when data is empty because the set is not known. */
+    status: "recorded" | "unknown";
+    /** The first instant the record names the whole set; null while recording of the set has not finished. */
+    available_from: string | null;
     meta: ResponseMeta;
   };
   listTrendingWallets: {
