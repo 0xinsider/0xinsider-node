@@ -244,6 +244,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/traders/grade-at",
+    operationId: "listTradersGradeAt",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/trader/{address}/clv",
     operationId: "getTraderClv",
     auth: "bearer",
@@ -1510,6 +1516,9 @@ export type { GameTrade } from "./schema.js";
 
 /** Query parameters accepted by {@link OxinsiderApiClient.listMarketTrades}. */
 export type MarketTradesParams = OperationQuery["listMarketTrades"];
+
+/** Query parameters accepted by {@link OxinsiderApiClient.listTradersGradeAt}. */
+export type TradersGradeAtParams = OperationQuery["listTradersGradeAt"];
 
 /** Query parameters accepted by {@link OxinsiderApiClient.listPriceMoves}. */
 export type PriceMovesParams = OperationQuery["listPriceMoves"];
@@ -2866,6 +2875,32 @@ export class OxinsiderApiClient {
       path: { address },
       query: params,
     });
+  }
+
+  /**
+   * List every wallet graded `min_grade` or better (S, A or B; default B) at
+   * one past instant, from the same observations as
+   * {@link getTraderGradeAt}. Walk the set with `paginate()`, which resends
+   * `as_of`, which every page needs, and `min_grade` as given with each
+   * cursor; an omitted `min_grade` takes the cursor's grade. A page
+   * can hold fewer than `limit` wallets, even none, while `has_more` is true.
+   * A wallet with `status: "unknown"` had a grade change in flight at
+   * `as_of`. A page `status` of `"unknown"` (before `available_from`) means
+   * the set is not known, never that no wallet was graded. A 503
+   * `read_model_warming` means retry after `Retry-After`.
+   */
+  listTradersGradeAt(params: TradersGradeAtParams, options: ConvenienceOptions = {}) {
+    return this.list("listTradersGradeAt", { ...options, query: params });
+  }
+
+  /**
+   * Typed conditional-read variant of {@link listTradersGradeAt}. Returns the
+   * list envelope on 200 or the typed `not_modified` result on 304, where
+   * {@link listTradersGradeAt} throws on a 304. Send the last `ETag` as the
+   * `If-None-Match` header in `options.headers`.
+   */
+  listTradersGradeAtConditional(params: TradersGradeAtParams, options: ConvenienceOptions = {}) {
+    return this.call("listTradersGradeAt", { ...options, query: params });
   }
 
   /**

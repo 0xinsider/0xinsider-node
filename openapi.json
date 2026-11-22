@@ -1603,6 +1603,484 @@
         }
       }
     },
+    "/api/v1/traders/grade-at": {
+      "get": {
+        "operationId": "listTradersGradeAt",
+        "summary": "List the wallets graded S, A or B at a past instant",
+        "description": "Lists every wallet whose grade was min_grade or better (S, A or B; default B) at as_of, read from the same prospective grade observations as GET /api/v1/trader/{address}/grade-at, so a backtest or audit reads the whole set at one instant without one call per wallet. A wallet with status graded carries the grade and the observation that was visible at as_of: observed_at is when the grade writer began the transition and published_by is the later confirmation that the row was committed. A wallet with status unknown had a grade change in flight at as_of, and one of the listed grades is among those it could have held; its grade and observation are null. The page-level status is recorded from available_from, the instant the record names the whole set; before it, status is unknown and data is empty, which never means that no wallet was graded. A future as_of is refused. Wallets come in a stable internal order. A page checks a fixed number of wallets, so it can hold fewer than limit wallets, even none, while has_more is true: follow next_cursor until has_more is false. The answer for an as_of does not change once no row for it can still arrive. A grade change can reach the record hours after it began, so a page whose as_of is at least 48 hours old is served with Cache-Control private, max-age=604800, immutable; a younger one is private, no-cache, revalidated by ETag. Do not substitute current grades or a dated ranking row.",
+        "tags": [
+          "Traders"
+        ],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict"
+              ]
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": true,
+            "description": "RFC3339 past instant whose recorded grades are listed. Future instants are refused. With cursor, send the as_of the cursor was issued for.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "example": "2026-11-01T00:00:00Z"
+          },
+          {
+            "name": "min_grade",
+            "in": "query",
+            "required": false,
+            "description": "The worst grade listed: S lists S, A lists S and A, B lists S, A and B. Any other value returns 400 with error.param=min_grade. With cursor, omit it or send the one the cursor was issued for.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "S",
+                "A",
+                "B"
+              ],
+              "default": "B"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Out-of-range values are clamped to 1..100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque tga_v1_ cursor from next_cursor. It continues the walk after the last wallet the previous page checked and keeps the as_of and min_grade it was issued for: another as_of or min_grade answers 400 with error.reason cursor_expired. A cursor this endpoint did not issue returns 400 with error.param=cursor.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Conditional GET validator from a previous ETag. Matching values return 304 Not Modified with an empty body.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the wallets graded at or above min_grade at as_of",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "as_of",
+                    "min_grade",
+                    "status",
+                    "available_from",
+                    "meta"
+                  ],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "description": "The wallets, in a stable internal order.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "address": {
+                            "type": "string",
+                            "description": "The wallet address, lowercase."
+                          },
+                          "grade": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["S", "A", "B"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The grade visible at as_of; null when status is unknown."
+                          },
+                          "id": {
+                            "type": "string",
+                            "description": "The trd_-prefixed trader id of the wallet."
+                          },
+                          "observation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "observed_at",
+                                  "published_by"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "The immutable observation id."
+                                  },
+                                  "observed_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "Lower bound: the grade writer had begun the transition at this instant."
+                                  },
+                                  "published_by": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "Upper bound: a later read confirmed the observation was committed by this instant."
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The grade observation visible at as_of, as GET /api/v1/trader/{address}/grade-at returns it; null when status is unknown."
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "graded",
+                              "unknown"
+                            ],
+                            "description": "graded: the grade was visibly recorded at as_of. unknown: a grade change was in flight at as_of and one of the listed grades is among those it could have held."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "address",
+                          "status",
+                          "grade",
+                          "observation"
+                        ]
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "True when more wallets may follow: send next_cursor for them. A page can hold fewer than limit wallets, even none, while this is true."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Opaque tga_v1_ cursor for the next page; null when has_more is false."
+                    },
+                    "as_of": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The instant read."
+                    },
+                    "min_grade": {
+                      "type": "string",
+                      "enum": ["S", "A", "B"],
+                      "description": "The worst grade listed."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "recorded",
+                        "unknown"
+                      ],
+                      "description": "recorded when as_of is at or after available_from; unknown before it, when data is empty because the set is not known."
+                    },
+                    "available_from": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "The first instant the record names the whole set; null while recording of the set has not finished."
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "object": "list",
+                  "data": [
+                    {
+                      "id": "trd_0xabc1230000000000000000000000000000000abc",
+                      "address": "0xabc1230000000000000000000000000000000abc",
+                      "status": "graded",
+                      "grade": "A",
+                      "observation": {
+                        "id": 512340,
+                        "observed_at": "2026-10-30T14:02:11.402Z",
+                        "published_by": "2026-10-30T14:03:05.118Z"
+                      }
+                    },
+                    {
+                      "id": "trd_0xdef4560000000000000000000000000000000def",
+                      "address": "0xdef4560000000000000000000000000000000def",
+                      "status": "unknown",
+                      "grade": null,
+                      "observation": null
+                    }
+                  ],
+                  "has_more": true,
+                  "next_cursor": "tga_v1_eyJ2IjoxfQ",
+                  "as_of": "2026-11-01T00:00:00Z",
+                  "min_grade": "B",
+                  "status": "recorded",
+                  "available_from": "2026-09-20T04:46:06.209975Z",
+                  "meta": {
+                    "request_id": "req_example",
+                    "cached": false,
+                    "cost": 1
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified. Returned when If-None-Match matches the current payload.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "x-empty-body": true
+          },
+          "400": {
+            "description": "Bad request. error.param names the parameter: as_of missing or not an RFC 3339 time, or in the future; min_grade other than S, A or B; limit that is not an integer; or a cursor this endpoint did not issue. error.reason cursor_expired: the cursor was issued for another as_of or min_grade; send the same ones with it, or start again without it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no paid access: error.reason is subscription_inactive when the Pro subscription has lapsed, or payment_overdue when the plan stands but its latest invoice is unpaid (#32592). error.billing_url and error.message name where a person clears it (https://0xinsider.com/billing). Permanent until a person acts: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Four independent budgets. (1) 100 requests/minute per user on Pro, 400 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 10000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 10000 = 400 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted, and neither is a 5xx. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable. error.reason=database_unavailable means the read could not reach the database; retry after Retry-After. error.reason=read_model_warming means the read did not answer within its deadline (a cold replica); retry after Retry-After. The authenticated rate limiter being unavailable answers the same status with its own per-process cooldown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "cURL",
+            "source": "curl -sS \\\n  -H \"Authorization: Bearer $OXINSIDER_API_KEY\" \\\n  'https://api.0xinsider.com/api/v1/traders/grade-at?as_of=2026-11-01T00:00:00Z&min_grade=A'"
+          }
+        ],
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
     "/api/v1/trader/{address}/clv": {
       "get": {
         "operationId": "getTraderClv",
@@ -35469,7 +35947,7 @@
       "post": {
         "operationId": "createMcpJsonRpcResponse",
         "summary": "Remote MCP endpoint (JSON-RPC)",
-        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 79 tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, list_game_markets, list_props, get_fair_price, list_settled_markets, get_game_sharp_money, get_game_trades, get_game_holders, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_resolution_report, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_usage, get_account, get_large_positions, get_trending_wallets, get_leaderboard_leagues, get_sport_leaderboard, list_category_leaders, get_category_leaderboard, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_pick_of_the_day_stats, get_pick_of_the_day_wallet_markets, get_trader_context, get_trader_categories, get_trader_grade_at, get_trader_clv, get_trader_markets, get_market_holders, get_market_top_holders, get_market_candles, get_market_close, get_clv, get_market_trades, list_price_moves, get_market_wallets_in_out, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. tools/list answers every tool unless the endpoint URL names toolsets: /api/v1/mcp?toolsets=core lists the 16 core tools, and ?toolsets=games,picks lists those groups (the toolsets parameter names them all). A shortened list leaves out the deprecated alias tools; tools/call still runs every tool; an unknown toolset answers JSON-RPC error -32602. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
+        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 80 tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, list_game_markets, list_props, get_fair_price, list_settled_markets, get_game_sharp_money, get_game_trades, get_game_holders, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_resolution_report, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_usage, get_account, get_large_positions, get_trending_wallets, get_leaderboard_leagues, get_sport_leaderboard, list_category_leaders, get_category_leaderboard, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_pick_of_the_day_stats, get_pick_of_the_day_wallet_markets, get_trader_context, get_trader_categories, get_trader_grade_at, list_traders_grade_at, get_trader_clv, get_trader_markets, get_market_holders, get_market_top_holders, get_market_candles, get_market_close, get_clv, get_market_trades, list_price_moves, get_market_wallets_in_out, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. tools/list answers every tool unless the endpoint URL names toolsets: /api/v1/mcp?toolsets=core lists the 16 core tools, and ?toolsets=games,picks lists those groups (the toolsets parameter names them all). A shortened list leaves out the deprecated alias tools; tools/call still runs every tool; an unknown toolset answers JSON-RPC error -32602. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
         "tags": ["MCP"],
         "parameters": [
           {
@@ -59195,6 +59673,100 @@
           }
         }
       },
+      "ReportLargeTrade": {
+        "type": "object",
+        "required": [
+          "outcome",
+          "side",
+          "title",
+          "size",
+          "price",
+          "token_id",
+          "id",
+          "trade_time",
+          "market_category",
+          "platform",
+          "name",
+          "pseudonym",
+          "trader_grade",
+          "condition_id",
+          "protocol_version"
+        ],
+        "properties": {
+          "outcome": {
+            "type": ["string", "null"],
+            "description": "Provider outcome label for the traded side."
+          },
+          "side": {
+            "type": ["string", "null"],
+            "description": "Trade direction (BUY or SELL), not the outcome side."
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Market title."
+          },
+          "size": {
+            "type": ["number", "null"],
+            "description": "Trade size in USD."
+          },
+          "price": {
+            "type": ["number", "null"],
+            "description": "Trade price in provider [0, 1] units."
+          },
+          "token_id": {
+            "type": ["string", "null"],
+            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets)."
+          },
+          "id": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Whale trade id."
+          },
+          "trade_time": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Trade timestamp (UTC)."
+          },
+          "market_category": {
+            "type": ["string", "null"],
+            "description": "Provider market category."
+          },
+          "platform": {
+            "type": ["string", "null"],
+            "enum": ["polymarket", null],
+            "description": "Always polymarket, or null when the row carries no stored value."
+          },
+          "name": {
+            "type": ["string", "null"],
+            "description": "Trader display name, when known."
+          },
+          "pseudonym": {
+            "type": ["string", "null"],
+            "description": "Trader pseudonym, when no display name is known."
+          },
+          "trader_grade": {
+            "type": ["string", "null"],
+            "description": "Trader grade (S-F) at snapshot time.",
+            "enum": ["S", "A", "B", "C", "D", "F", null]
+          },
+          "condition_id": {
+            "type": ["string", "null"],
+            "description": "The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with."
+          },
+          "protocol_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["v1", "v2"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed."
+          }
+        }
+      },
       "ReportPayload": {
         "type": "object",
         "required": [
@@ -59235,195 +59807,13 @@
             "description": "Canonical key since #16304; top_whale_trades is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
             "type": ["array", "null"],
             "items": {
-              "type": "object",
-              "required": [
-                "outcome",
-                "side",
-                "title",
-                "size",
-                "price",
-                "token_id",
-                "id",
-                "trade_time",
-                "market_category",
-                "platform",
-                "name",
-                "pseudonym",
-                "trader_grade",
-                "condition_id",
-                "protocol_version"
-              ],
-              "properties": {
-                "outcome": {
-                  "type": ["string", "null"],
-                  "description": "Provider outcome label for the traded side."
-                },
-                "side": {
-                  "type": ["string", "null"],
-                  "description": "Trade direction (BUY or SELL), not the outcome side."
-                },
-                "title": {
-                  "type": ["string", "null"],
-                  "description": "Market title."
-                },
-                "size": {
-                  "type": ["number", "null"],
-                  "description": "Trade size in USD."
-                },
-                "price": {
-                  "type": ["number", "null"],
-                  "description": "Trade price in provider [0, 1] units."
-                },
-                "token_id": {
-                  "type": ["string", "null"],
-                  "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets)."
-                },
-                "id": {
-                  "type": ["integer", "null"],
-                  "format": "int64",
-                  "description": "Whale trade id."
-                },
-                "trade_time": {
-                  "type": ["string", "null"],
-                  "format": "date-time",
-                  "description": "Trade timestamp (UTC)."
-                },
-                "market_category": {
-                  "type": ["string", "null"],
-                  "description": "Provider market category."
-                },
-                "platform": {
-                  "type": ["string", "null"],
-                  "enum": ["polymarket", null],
-                  "description": "Always polymarket, or null when the row carries no stored value."
-                },
-                "name": {
-                  "type": ["string", "null"],
-                  "description": "Trader display name, when known."
-                },
-                "pseudonym": {
-                  "type": ["string", "null"],
-                  "description": "Trader pseudonym, when no display name is known."
-                },
-                "trader_grade": {
-                  "type": ["string", "null"],
-                  "description": "Trader grade (S-F) at snapshot time.",
-                  "enum": ["S", "A", "B", "C", "D", "F", null]
-                },
-                "condition_id": {
-                  "type": ["string", "null"],
-                  "description": "The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with."
-                },
-                "protocol_version": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "enum": ["v1", "v2"]
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed."
-                }
-              }
+              "$ref": "#/components/schemas/ReportLargeTrade"
             }
           },
           "top_whale_trades": {
             "type": ["array", "null"],
             "items": {
-              "type": "object",
-              "required": [
-                "outcome",
-                "side",
-                "title",
-                "size",
-                "price",
-                "token_id",
-                "id",
-                "trade_time",
-                "market_category",
-                "platform",
-                "name",
-                "pseudonym",
-                "trader_grade",
-                "condition_id",
-                "protocol_version"
-              ],
-              "properties": {
-                "outcome": {
-                  "type": ["string", "null"],
-                  "description": "Provider outcome label for the traded side."
-                },
-                "side": {
-                  "type": ["string", "null"],
-                  "description": "Trade direction (BUY or SELL), not the outcome side."
-                },
-                "title": {
-                  "type": ["string", "null"],
-                  "description": "Market title."
-                },
-                "size": {
-                  "type": ["number", "null"],
-                  "description": "Trade size in USD."
-                },
-                "price": {
-                  "type": ["number", "null"],
-                  "description": "Trade price in provider [0, 1] units."
-                },
-                "token_id": {
-                  "type": ["string", "null"],
-                  "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the traded outcome; null when unavailable (e.g. unsynced markets)."
-                },
-                "id": {
-                  "type": ["integer", "null"],
-                  "format": "int64",
-                  "description": "Whale trade id."
-                },
-                "trade_time": {
-                  "type": ["string", "null"],
-                  "format": "date-time",
-                  "description": "Trade timestamp (UTC)."
-                },
-                "market_category": {
-                  "type": ["string", "null"],
-                  "description": "Provider market category."
-                },
-                "platform": {
-                  "type": ["string", "null"],
-                  "enum": ["polymarket", null],
-                  "description": "Always polymarket, or null when the row carries no stored value."
-                },
-                "name": {
-                  "type": ["string", "null"],
-                  "description": "Trader display name, when known."
-                },
-                "pseudonym": {
-                  "type": ["string", "null"],
-                  "description": "Trader pseudonym, when no display name is known."
-                },
-                "trader_grade": {
-                  "type": ["string", "null"],
-                  "description": "Trader grade (S-F) at snapshot time.",
-                  "enum": ["S", "A", "B", "C", "D", "F", null]
-                },
-                "condition_id": {
-                  "type": ["string", "null"],
-                  "description": "The trade's market. Null in a report body built before this field shipped in November 2026: a closed period keeps the body it was built with."
-                },
-                "protocol_version": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "enum": ["v1", "v2"]
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "The Polymarket protocol of the trade's market: v1 (CTF, ConditionalTokens) or v2 (Protocol V2), read from condition_id. On a v2 market token_id is a V2 position id. Null when condition_id is null: the protocol is unknown and never guessed."
-                }
-              }
+              "$ref": "#/components/schemas/ReportLargeTrade"
             }
           },
           "categories": {
@@ -60929,6 +61319,57 @@
           }
         }
       },
+      "TraderPnlPeriodStat": {
+        "type": "object",
+        "required": [
+          "current",
+          "change",
+          "change_pct",
+          "best_day",
+          "worst_day",
+          "win_days",
+          "loss_days",
+          "avg_day",
+          "rebase_anchor"
+        ],
+        "properties": {
+          "current": {
+            "type": "number"
+          },
+          "change": {
+            "type": "number"
+          },
+          "change_pct": {
+            "type": "number"
+          },
+          "best_day": {
+            "type": "number"
+          },
+          "best_day_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "worst_day": {
+            "type": "number"
+          },
+          "worst_day_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "win_days": {
+            "type": "integer"
+          },
+          "loss_days": {
+            "type": "integer"
+          },
+          "avg_day": {
+            "type": "number"
+          },
+          "rebase_anchor": {
+            "type": "number"
+          }
+        }
+      },
       "TraderPnl": {
         "type": "object",
         "description": "A trader's sports and esports daily P&L object. `id`, `freshness_at`, `series_status` and `realized` are always present. The five sections -- `entries`, `stats`, `monthly`, `year_totals`, `drawdown` -- are present unless the request's `sections` parameter excluded them, so a request that sends no `sections` always carries all five. An excluded section is absent from the object, never null and never an empty array. While `series_status` is `pending` the sections are empty and never mean zero.",
@@ -61071,208 +61512,16 @@
             "required": ["all", "d90", "d30", "d7"],
             "properties": {
               "all": {
-                "type": "object",
-                "required": [
-                  "current",
-                  "change",
-                  "change_pct",
-                  "best_day",
-                  "worst_day",
-                  "win_days",
-                  "loss_days",
-                  "avg_day",
-                  "rebase_anchor"
-                ],
-                "properties": {
-                  "current": {
-                    "type": "number"
-                  },
-                  "change": {
-                    "type": "number"
-                  },
-                  "change_pct": {
-                    "type": "number"
-                  },
-                  "best_day": {
-                    "type": "number"
-                  },
-                  "best_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "worst_day": {
-                    "type": "number"
-                  },
-                  "worst_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "win_days": {
-                    "type": "integer"
-                  },
-                  "loss_days": {
-                    "type": "integer"
-                  },
-                  "avg_day": {
-                    "type": "number"
-                  },
-                  "rebase_anchor": {
-                    "type": "number"
-                  }
-                }
+                "$ref": "#/components/schemas/TraderPnlPeriodStat"
               },
               "d90": {
-                "type": "object",
-                "required": [
-                  "current",
-                  "change",
-                  "change_pct",
-                  "best_day",
-                  "worst_day",
-                  "win_days",
-                  "loss_days",
-                  "avg_day",
-                  "rebase_anchor"
-                ],
-                "properties": {
-                  "current": {
-                    "type": "number"
-                  },
-                  "change": {
-                    "type": "number"
-                  },
-                  "change_pct": {
-                    "type": "number"
-                  },
-                  "best_day": {
-                    "type": "number"
-                  },
-                  "best_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "worst_day": {
-                    "type": "number"
-                  },
-                  "worst_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "win_days": {
-                    "type": "integer"
-                  },
-                  "loss_days": {
-                    "type": "integer"
-                  },
-                  "avg_day": {
-                    "type": "number"
-                  },
-                  "rebase_anchor": {
-                    "type": "number"
-                  }
-                }
+                "$ref": "#/components/schemas/TraderPnlPeriodStat"
               },
               "d30": {
-                "type": "object",
-                "required": [
-                  "current",
-                  "change",
-                  "change_pct",
-                  "best_day",
-                  "worst_day",
-                  "win_days",
-                  "loss_days",
-                  "avg_day",
-                  "rebase_anchor"
-                ],
-                "properties": {
-                  "current": {
-                    "type": "number"
-                  },
-                  "change": {
-                    "type": "number"
-                  },
-                  "change_pct": {
-                    "type": "number"
-                  },
-                  "best_day": {
-                    "type": "number"
-                  },
-                  "best_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "worst_day": {
-                    "type": "number"
-                  },
-                  "worst_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "win_days": {
-                    "type": "integer"
-                  },
-                  "loss_days": {
-                    "type": "integer"
-                  },
-                  "avg_day": {
-                    "type": "number"
-                  },
-                  "rebase_anchor": {
-                    "type": "number"
-                  }
-                }
+                "$ref": "#/components/schemas/TraderPnlPeriodStat"
               },
               "d7": {
-                "type": "object",
-                "required": [
-                  "current",
-                  "change",
-                  "change_pct",
-                  "best_day",
-                  "worst_day",
-                  "win_days",
-                  "loss_days",
-                  "avg_day",
-                  "rebase_anchor"
-                ],
-                "properties": {
-                  "current": {
-                    "type": "number"
-                  },
-                  "change": {
-                    "type": "number"
-                  },
-                  "change_pct": {
-                    "type": "number"
-                  },
-                  "best_day": {
-                    "type": "number"
-                  },
-                  "best_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "worst_day": {
-                    "type": "number"
-                  },
-                  "worst_day_date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "win_days": {
-                    "type": "integer"
-                  },
-                  "loss_days": {
-                    "type": "integer"
-                  },
-                  "avg_day": {
-                    "type": "number"
-                  },
-                  "rebase_anchor": {
-                    "type": "number"
-                  }
-                }
+                "$ref": "#/components/schemas/TraderPnlPeriodStat"
               }
             }
           },
