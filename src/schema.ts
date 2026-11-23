@@ -2684,7 +2684,7 @@ export type MarketHolder = {
   side: "YES" | "NO";
   /** Polymarket CLOB token id (ERC1155 asset id, decimal string) for `side`; null when the market has no stored token id. */
   token_id: string | null;
-  /** All-time trader grade. This route lists the S/A/B cohort only, the same cohort a Pick of the Day roster lists. */
+  /** All-time trader grade. This route lists the S/A/B cohort only, the cohort a Pick of the Day draws its list from: S and A grade wallets alone on picks from late November 2026. */
   grade: "S" | "A" | "B" | null;
   /** Net shares on `side`, from the complete provider scan. For a wallet holding both outcomes, its shares on `side` minus `other_outcome_shares`. */
   shares: number;
@@ -3406,7 +3406,7 @@ export type PickOfTheDay = {
   token_id?: string;
   /** The backed side as the pick's headline reads it (e.g. "Bengals to win", "Seahawks (-14.5)", "O/U 38.5 (Under)"). */
   position?: string;
-  /** One-line summary of which side sharp money is backing. On a pick dated 2026-08-12 or later it counts the S and A grade wallets the pick lists on the backed side, the sharp_wallet_count value, and names those grades: "26 S and A grade wallets on Alexander Shevchenko", or "1 S or A grade wallet on ...". The list can leave out wallets that hold the side. The site's "profitable wallets" counts the S, A and B grade wallets the pick lists, so its number can be larger for the same pick. A pick whose only recorded backing is its lead wallet reads "Recorded lead wallet on ...". Earlier picks, and a pick recorded without graded holders, keep the sentence recorded with them. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
+  /** One-line summary of which side sharp money is backing. On a pick dated 2026-08-12 or later it counts the S and A grade wallets the pick lists on the backed side, the sharp_wallet_count value, and names those grades: "26 S and A grade wallets on Alexander Shevchenko", or "1 S or A grade wallet on ...". The list can leave out wallets that hold the side. From late November 2026 a pick lists S and A grade wallets alone, and the site's "profitable wallets" counts the same wallets; on earlier picks it counts the S, A and B grade wallets the pick lists, so its number can be larger for the same pick. A pick whose only recorded backing is its lead wallet reads "Recorded lead wallet on ...". Earlier picks, and a pick recorded without graded holders, keep the sentence recorded with them. Required on every item in `picks`: a current-day published pick whose required holder proof is not safely readable is listed in `proof_pending_picks` instead of being served with a partial success shape or a synthetic zero, and the route returns 503 read_model_warming only when no published pick has readable proof. */
   side_summary?: string;
   /** S/A wallet count of the wallets the pick lists on the backed side, in the public V1 compatibility projection. */
   sharp_wallet_count?: number;
