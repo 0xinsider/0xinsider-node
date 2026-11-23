@@ -685,7 +685,7 @@ export type EdgeHunterBoard = {
   unranked: {
     /** A side is backed, but no wallet on it is at or above min_grade. */
     below_grade_floor: number;
-    /** No S, A or B wallet holds either side now. */
+    /** No S or A wallet holds either side now; a market only B wallets hold counts here. */
     no_graded_holders: number;
     /** Graded money on the two sides is too evenly split to back a side. */
     split_holder_pile: number;
@@ -1364,9 +1364,11 @@ export type ExploreMarket = {
   /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the NO outcome; null when unavailable (e.g. unsynced markets). */
   token_id_no: string | null;
   event_slug: string | null;
+  /** Where graded money sits on the market, from -1 (all on NO) to 1 (all on YES): YES dollars minus NO dollars over both. Graded money is the money of wallets graded S or A; a B grade wallet's money is not counted. Null when no S or A grade wallet holds the market. */
   smart_score: number | null;
+  /** Distinct wallets graded S or A holding either side of the market, the wallets smart_score counts: 0 on a market held only by lower grades, B included. Null when the market's graded money was not read. */
   smart_count: number | null;
-  /** The outcome graded money leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side sits well past that side's price-implied share, enough graded money backs the leaning side that a few small positions cannot name it, and the side is not a long shot holding nearly all of the graded money. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
+  /** The outcome graded money (wallets graded S or A) leans toward RELATIVE TO THE PRICE: named only when the graded money's share of a side sits well past that side's price-implied share, enough graded money backs the leaning side that a few small positions cannot name it, and the side is not a long shot holding nearly all of the graded money. Null when the money sits with the price (no lean), when there is no graded money, or when the price is unavailable. The same rule as the market page. */
   smart_label: string | null;
   /** When the oldest stored smart-money wallet behind this split (smart_score, smart_count and smart_label) last finished syncing. Graded wallets sync on different schedules, so this is often hours or days ago. Some holdings in the split can come from a Polymarket holder read cached for up to 3 minutes, which this time does not describe. Null when there is no split or a wallet's sync time is unknown. */
   sharp_money_as_of: string | null;
@@ -1938,7 +1940,7 @@ export type GameSharpMoney = {
   trader_count: number | null;
   unallocated_usd: number | null;
   verdict: GameSharpMoneyVerdict | null;
-  /** The split as the site last recorded it before the game started (before its scheduled start and before it was reported live), valued at the prices of that moment, while lifecycle is in_play, ended or settled, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. null on every other lifecycle and when no state with graded money was recorded before the game started. */
+  /** The split as the site last recorded it before the game started (before its scheduled start and before it was reported live), valued at the prices of that moment, while lifecycle is in_play, ended or settled, so outcomes[].pct keeps meaning now. as_of is when that state was recorded. For a game postponed or cancelled after its scheduled start it is still the split before that time. A game that started before the money counted only S and A grade wallets keeps the split it had then, B grade wallets included. money_grades names the grades its total_usd, trader_count, each outcome's usd and its verdict count: ["S", "A"], or ["S", "A", "B"] on a split recorded before B grade wallets' money stopped counting. null on every other lifecycle and when no state with graded money was recorded before the game started. */
   at_kickoff: {
     as_of: string;
     outcomes: ({
@@ -1951,8 +1953,9 @@ export type GameSharpMoney = {
     total_usd: number;
     trader_count: number;
     verdict: GameSharpMoneyVerdict;
+    money_grades: ("S" | "A" | "B" | "C" | "D" | "F")[];
   } | null;
-  /** What S, A and B grade wallets bought on a game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available. */
+  /** What S and A grade wallets bought on a game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available. */
   since_start: {
     as_of: string;
     bought_usd: number;
@@ -7798,7 +7801,7 @@ export interface OperationQuery {
     limit?: number;
     /** Opaque gmk_v1_ cursor from next_cursor, sent with the same filters. It pins the page position (sports_market_type, line, condition_id), not a snapshot. A cursor this endpoint did not issue returns 400 with error.param=cursor. */
     cursor?: string;
-    /** sharp_money adds each row's sharp_money: the game page's per-line split, side USD and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. quotes adds each outcome's quote: the cached display price and best bid and ask, each with its observation time, in one cache read for the page; it adds 1 to the cost, on every plan. trading_terms adds each row's fee schedule, reward settings and allocations, order delay, tick and minimum order size in shares from its Gamma record, with the read's time; it adds 1 to the cost, on every plan. Repeatable: sharp_money, quotes, trading_terms. */
+    /** sharp_money adds each row's sharp_money: the game page's per-line split, side USD from S and A grade wallets and S, A and B wallet counts per outcome. One read for the event whatever the page size; the request costs 5 instead of 2. Pro and Max. quotes adds each outcome's quote: the cached display price and best bid and ask, each with its observation time, in one cache read for the page; it adds 1 to the cost, on every plan. trading_terms adds each row's fee schedule, reward settings and allocations, order delay, tick and minimum order size in shares from its Gamma record, with the read's time; it adds 1 to the cost, on every plan. Repeatable: sharp_money, quotes, trading_terms. */
     expand?: ("sharp_money" | "quotes" | "trading_terms")[];
     /** Backward-compatible alias for expand. Repeatable: sharp_money, quotes, trading_terms. */
     "expand[]"?: ("sharp_money" | "quotes" | "trading_terms")[];
