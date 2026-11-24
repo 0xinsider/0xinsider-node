@@ -763,7 +763,7 @@ export type EdgeHunterMostHeld48hCutoff = {
 export type EdgeHunterObservation = {
   /** The side profitable wallets hold, as a provider-backed display label. Canonical spelling of piled_side (#16310), same value: when provider group context is unavailable it may remain a bare Yes/No/Over/Under, so do not use it alone as participant identity. */
   side: string | null;
-  /** Recorded side backing score; higher values indicate stronger backing. */
+  /** Recorded side backing score; higher values indicate stronger backing. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted. */
   backing_score: number;
   /** Signed share of graded money on the side, in [-1, 1]. Canonical spelling of smart_score (#16309, #16310), same value. */
   side_share: number;
@@ -819,7 +819,7 @@ export type EdgeHunterObservation = {
   /** Cumulative provider taker volume in shares, not cash or dollars. */
   volume: number;
   /**
-   * Recorded conviction score; higher values indicate stronger conviction.
+   * Recorded conviction score; higher values indicate stronger conviction. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted.
    * @deprecated
    */
   conviction_score: number;
@@ -835,7 +835,7 @@ export type EdgeHunterObservation = {
   hedged_holder_count: number | null;
   one_way_graded_usd: number | null;
   directional_confidence: number | null;
-  /** Recorded side ordering score; higher values sort first. */
+  /** Recorded side ordering score; higher values sort first. Like conviction_score, it counts S and A wallets, not B wallets. */
   directional_rank_score: number;
   /** 1-based rank within this observation cohort and snapshot: directional_rank_score descending, then conviction_score descending, then category and condition_id. Admission decides which markets a response holds, not their rank, so under admission=most_held_48h or most_held_48h_by_type rank does not follow indexed_graded_holders. */
   rank: number;
@@ -994,7 +994,7 @@ export type EdgeHunterRankedSignal = {
   side: string | null;
   /** UTC time at which the snapshot that ranked this row was computed. Canonical spelling of signal_created_at (#16310), same value. */
   ranked_at: string;
-  /** Recorded side backing score; higher values indicate stronger backing. */
+  /** Recorded side backing score; higher values indicate stronger backing. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted. */
   backing_score: number;
   /** Signed share of graded money on the side, (yes_usd - no_usd)/(yes_usd + no_usd) in [-1, 1] (side-yes positive, side-no negative). Canonical spelling of smart_score (#16309, #16310), same value. */
   side_share: number | null;
@@ -1030,7 +1030,7 @@ export type EdgeHunterRankedSignal = {
   s_count: number;
   /** A-grade graded holders on the piled side. */
   a_count: number;
-  /** B-grade graded holders on the piled side. */
+  /** B-grade graded holders on the piled side. Listed, not counted in conviction_score or rank. */
   b_count: number;
   /** Piled-side graded holder count (s_count + a_count + b_count). */
   graded_holders: number;
@@ -1046,7 +1046,7 @@ export type EdgeHunterRankedSignal = {
   /** Aggregate recent flow direction on the market; null when unavailable. */
   net_side: "BUY" | "SELL" | null;
   /**
-   * Recorded conviction score; higher values indicate stronger conviction.
+   * Recorded conviction score; higher values indicate stronger conviction. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted.
    * @deprecated
    */
   conviction_score: number;
@@ -1058,7 +1058,7 @@ export type EdgeHunterRankedSignal = {
   one_way_graded_usd: number | null;
   /** One-way fraction, in [0, 1], of the piled graded dollars the directional read classified: hedged and two-sided dollars count against it, unclassified ones are left out. Null when the read was not computed or over 10% of the pile is unclassified. */
   directional_confidence: number | null;
-  /** Recorded side ordering score; higher values sort first. */
+  /** Recorded side ordering score; higher values sort first. Like conviction_score, it counts S and A wallets, not B wallets. */
   directional_rank_score: number;
   category_skill: EdgeHunterCategorySkill;
   /** 1-based rank within the (min_grade-filtered) ranked result. */
@@ -1170,7 +1170,7 @@ export type EdgeHunterSportFunnelReport = {
   board_upcoming_unavailable_scopes: ("category" | "nfl" | "cfb" | "nba" | "wnba" | "euroleague-basketball" | "ncaa-basketball" | "cwbb" | "bkbsl" | "nhl" | "mls" | "valorant" | "league-of-legends" | "counter-strike-2" | "dota-2" | "registry" | "union" | "wave")[];
   /** Stored-universe rows plus provider-board rows missing from storage. */
   input: number;
-  /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means the view=signals snapshot named by signals_as_of lists the market at its widest selection (horizon_hours=48, min_grade=B, no selector), so it is not a wider_holder candidate; when no view=signals snapshot could be read (signals_as_of null), no market takes it. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means a holder read sent to the provider failed and the market had no reusable holder page; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline, or local capacity never sent the holder read, and the market had no reusable holder page; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable. */
+  /** Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means the view=signals snapshot named by signals_as_of lists the market at its widest selection (horizon_hours=48, min_grade=B, no selector), so it is not a wider_holder candidate; when no view=signals snapshot could be read (signals_as_of null), no market takes it. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means a holder read sent to the provider failed and the market had no reusable holder page; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline, or local capacity never sent the holder read, and the market had no reusable holder page; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable; no_current_graded_holder means no S or A wallet's money backs either side now, and a market only B wallets hold counts here. */
   terminals: Record<string, number>;
   /** Sum of every sparse terminal count. */
   terminal_total: number;

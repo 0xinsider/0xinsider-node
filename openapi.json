@@ -64340,7 +64340,7 @@
           },
           "backing_score": {
             "type": "number",
-            "description": "Recorded side backing score; higher values indicate stronger backing."
+            "description": "Recorded side backing score; higher values indicate stronger backing. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted."
           },
           "side_share": {
             "type": ["number", "null"],
@@ -64423,7 +64423,7 @@
           },
           "b_count": {
             "type": "integer",
-            "description": "B-grade graded holders on the piled side."
+            "description": "B-grade graded holders on the piled side. Listed, not counted in conviction_score or rank."
           },
           "graded_holders": {
             "type": "integer",
@@ -64451,7 +64451,7 @@
           "conviction_score": {
             "deprecated": true,
             "type": "number",
-            "description": "Recorded conviction score; higher values indicate stronger conviction."
+            "description": "Recorded conviction score; higher values indicate stronger conviction. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted."
           },
           "one_way_holder_count": {
             "type": ["integer", "null"],
@@ -64471,7 +64471,7 @@
           },
           "directional_rank_score": {
             "type": "number",
-            "description": "Recorded side ordering score; higher values sort first."
+            "description": "Recorded side ordering score; higher values sort first. Like conviction_score, it counts S and A wallets, not B wallets."
           },
           "category_skill": {
             "$ref": "#/components/schemas/EdgeHunterCategorySkill"
@@ -64661,7 +64661,7 @@
           "backing_score": {
             "type": "number",
             "minimum": 0,
-            "description": "Recorded side backing score; higher values indicate stronger backing."
+            "description": "Recorded side backing score; higher values indicate stronger backing. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted."
           },
           "side_share": {
             "type": "number",
@@ -64811,7 +64811,7 @@
             "deprecated": true,
             "type": "number",
             "minimum": 0,
-            "description": "Recorded conviction score; higher values indicate stronger conviction."
+            "description": "Recorded conviction score; higher values indicate stronger conviction. It counts the piled side's S and A wallets and their share of S and A money; B wallets appear in b_count but are not counted."
           },
           "provider_read_source": {
             "type": "string",
@@ -64852,7 +64852,7 @@
           "directional_rank_score": {
             "type": "number",
             "minimum": 0,
-            "description": "Recorded side ordering score; higher values sort first."
+            "description": "Recorded side ordering score; higher values sort first. Like conviction_score, it counts S and A wallets, not B wallets."
           },
           "rank": {
             "type": "integer",
@@ -65006,7 +65006,7 @@
           },
           "terminals": {
             "type": "object",
-            "description": "Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means the view=signals snapshot named by signals_as_of lists the market at its widest selection (horizon_hours=48, min_grade=B, no selector), so it is not a wider_holder candidate; when no view=signals snapshot could be read (signals_as_of null), no market takes it. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means a holder read sent to the provider failed and the market had no reusable holder page; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline, or local capacity never sent the holder read, and the market had no reusable holder page; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable.",
+            "description": "Sparse counts over the closed 25-value terminal vocabulary: outside_horizon, resolved, provider_closed, provider_excluded, invalid_market, missing_token, missing_stored_market, not_provider_live, board_source_unavailable, board_deadline_unavailable, primary_slate_candidate, zero_indexed_holder_research, capacity_limited, provider_unavailable, holder_deadline_unavailable, holder_computation_unavailable, holder_scan_incomplete, no_current_graded_holder, split_holder_pile, price_unavailable, wider_holder_emitted, in_play_emitted, in_play_stale_observed, in_play_directional_unavailable, or internal_unclassified. primary_slate_candidate means the view=signals snapshot named by signals_as_of lists the market at its widest selection (horizon_hours=48, min_grade=B, no selector), so it is not a wider_holder candidate; when no view=signals snapshot could be read (signals_as_of null), no market takes it. capacity_limited is intentional bounded provider-work admission, is fully accounted here, and does not itself set degraded=true. board_source_unavailable means a completed board source was unavailable; board_deadline_unavailable means live-board work missed either an internal configured-scope deadline or the outer fair-wave deadline; provider_unavailable means a holder read sent to the provider failed and the market had no reusable holder page; holder_deadline_unavailable means holder cache/provider work missed the absolute request deadline, or local capacity never sent the holder read, and the market had no reusable holder page; holder_computation_unavailable means post-holder provider or DB-backed price/metadata evaluation was unavailable; no_current_graded_holder means no S or A wallet's money backs either side now, and a market only B wallets hold counts here.",
             "propertyNames": {
               "$ref": "#/components/schemas/EdgeHunterObservationTerminalReason"
             },
