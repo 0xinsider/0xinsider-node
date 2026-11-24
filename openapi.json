@@ -38187,7 +38187,7 @@
       "get": {
         "operationId": "getResolutionReport",
         "summary": "Get the daily resolution report",
-        "description": "One UTC day's resolved markets: how often the side the profitable (S, A and B grade) wallets held won, beside how often every qualifying wallet's side won, one vote each. `markets` lists each market they held a position in, with the consensus side, its confidence, and the full roster of wallets, their side, cost and realized P&L; `view=totals` drops it. Counts cover the whole day before that list is filtered. A day from 2026-10-21 counts sports and esports markets only; an earlier day counts every resolved Polymarket market, and `market_scope` says which. A past day is served from its retained build: `generated_at` says when it was built and `source_updates_pending` that a newer build has been requested. 503 read_model_warming while the day has no build yet; one has been requested.",
+        "description": "One UTC day's resolved markets: how often the side the profitable wallets held won, beside how often every qualifying wallet's side won, one vote each. `scored_grades` names their grades: S and A from 2026-11-24, S, A and B before; an earlier day keeps the wallets it was published with. `markets` lists each market they held a position in, with the consensus side, its confidence, and the full roster of wallets, their side, cost and realized P&L; `view=totals` drops it. Counts cover the whole day before that list is filtered. A day from 2026-10-21 counts sports and esports markets only; an earlier day counts every resolved Polymarket market, and `market_scope` says which. A past day is served from its retained build: `generated_at` says when it was built and `source_updates_pending` that a newer build has been requested. 503 read_model_warming while the day has no build yet; one has been requested.",
         "tags": ["Reports"],
         "parameters": [
           {
@@ -38302,6 +38302,11 @@
                         "date": "2026-10-31",
                         "market_scope": "sports_and_esports",
                         "grade_basis": "at_resolution",
+                        "scored_grades": [
+                          "S",
+                          "A",
+                          "B"
+                        ],
                         "total_resolved": 1240,
                         "with_smart_positions": 96,
                         "smart_money_right": 61,
@@ -48362,6 +48367,14 @@
           },
           "with_smart_positions": {
             "type": ["integer", "null"]
+          },
+          "scored_grades": {
+            "description": "The grades whose positions the day scores, best first: [\"S\", \"A\"] for a day from 2026-11-24, [\"S\", \"A\", \"B\"] for an earlier day, which keeps the wallets it was published with. Every count, the accuracy and each market's roster cover these grades only.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["S", "A", "B", "C", "D", "F"]
+            }
           }
         },
         "required": [
@@ -48383,7 +48396,8 @@
           "positions_without_side",
           "time_basis_counts",
           "generated_at",
-          "source_updates_pending"
+          "source_updates_pending",
+          "scored_grades"
         ]
       },
       "WebhookEventType": {

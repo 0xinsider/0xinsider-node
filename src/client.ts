@@ -3812,7 +3812,9 @@ export class OxinsiderApiClient {
    * Fetch one UTC day's resolution report (single-object envelope): how often
    * the profitable wallets' side won on the day's resolved markets: sports and
    * esports only from 2026-10-21, every Polymarket market before, as
-   * `market_scope` says. `view: "totals"` drops the per-market list.
+   * `market_scope` says. `scored_grades` names the wallets' grades: S and A
+   * from 2026-11-24, S, A and B before. `view: "totals"` drops the per-market
+   * list.
    */
   getResolutionReport(
     date: OperationQuery["getResolutionReport"]["date"],

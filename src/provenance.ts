@@ -7,9 +7,9 @@
 // document to see whether a release is behind the API.
 
 export const OPENAPI_SOURCE = "0xinsider/0xinsider:web/public/api/v1/openapi.json";
-export const OPENAPI_SHA256 = "94a4feca0a67dd09b2a7578a41fa508dbb25c07aca2936a2462809d862ff766f";
+export const OPENAPI_SHA256 = "3b302bd7e77d259b5fe0b82b8a83a3caf71c38f30be3286a8ea702f22940aae8";
 export const OPENAPI_VERSION = "1.0.0";
 export const OPERATION_COUNT = 119;
 export const APP_REPOSITORY = "0xinsider/0xinsider";
 export const APP_SPEC_PATH = "web/public/api/v1/openapi.json";
-export const APP_COMMIT: string | null = "4096408dd6f92f326d329a1b4c1a7100ce372553";
+export const APP_COMMIT: string | null = "64da82efc55e53b0d756b933f092c85f55924ee9";

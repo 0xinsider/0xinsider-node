@@ -4913,6 +4913,8 @@ export type ResolutionReport = {
   total_resolved: number | null;
   total_smart_pnl: number | null;
   with_smart_positions: number | null;
+  /** The grades whose positions the day scores, best first: ["S", "A"] for a day from 2026-11-24, ["S", "A", "B"] for an earlier day, which keeps the wallets it was published with. Every count, the accuracy and each market's roster cover these grades only. */
+  scored_grades: ("S" | "A" | "B" | "C" | "D" | "F")[];
 };
 
 export type ResponseMeta = {
