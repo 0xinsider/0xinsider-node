@@ -12129,7 +12129,7 @@
                       "description": "Total matching rows when the read model exposes a count; the key is absent when it does not."
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/ResponseMeta"
+                      "$ref": "#/components/schemas/LeaderboardResponseMeta"
                     },
                     "summary": {
                       "$ref": "#/components/schemas/LeaderboardSummary"
@@ -36266,7 +36266,7 @@
       "post": {
         "operationId": "createMcpJsonRpcResponse",
         "summary": "Remote MCP endpoint (JSON-RPC)",
-        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 80 tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, list_game_markets, list_props, get_fair_price, list_settled_markets, get_game_sharp_money, get_game_trades, get_game_holders, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_resolution_report, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_usage, get_account, get_large_positions, get_trending_wallets, get_leaderboard_leagues, get_sport_leaderboard, list_category_leaders, get_category_leaderboard, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_pick_of_the_day_stats, get_pick_of_the_day_wallet_markets, get_trader_context, get_trader_categories, get_trader_grade_at, list_traders_grade_at, get_trader_clv, get_trader_markets, get_market_holders, get_market_top_holders, get_market_candles, get_market_close, get_clv, get_market_trades, list_price_moves, get_market_wallets_in_out, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. tools/list answers every tool unless the endpoint URL names toolsets: /api/v1/mcp?toolsets=core lists the 16 core tools, and ?toolsets=games,picks lists those groups (the toolsets parameter names them all). A shortened list leaves out the deprecated alias tools; tools/call still runs every tool; an unknown toolset answers JSON-RPC error -32602. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
+        "description": "Model Context Protocol (MCP) Streamable HTTP transport. Accepts one JSON-RPC 2.0 request or notification. ID-bearing initialize, ping, tools/list, and tools/call requests (and server/discover on revision 2026-07-28) receive one same-ID JSON-RPC response; an unknown method, or a notification method sent with an id, answers JSON-RPC error -32601. Every ID-less message (a notification, known or not) receives HTTP 202 with no body and runs nothing; an unsolicited response message receives HTTP 400 with a JSON-RPC -32600 body and no id. Unknown cancellation IDs are ignored; cancellation does not stop running tool work. Only tools/call is counted against the per-minute request budget, the monthly quota and pay-as-you-go usage; every other message, with or without a key, spends none of them and reports the per-IP budget in RateLimit-* (since 2026-10-18). Remote MCP exposes 81 tools for public V1 read operations: get_leaderboard, get_trader, batch_get_traders, get_large_trades, get_large_trade, get_large_trades_history, get_whale_trades, get_whale_trade, get_whale_trades_history, get_edge_hunter, list_games, get_game, list_game_markets, list_props, get_fair_price, get_fee_quote, list_settled_markets, get_game_sharp_money, get_game_trades, get_game_holders, get_market_flow, batch_get_market_flow, get_market_intel, batch_get_market_intel, get_sharp_money_flows, get_smart_money_flows, get_market_snapshot, get_suspicious_trades, get_suspicious_trade, get_insider_radar, get_insider_radar_flag, get_positions, get_position_timeline, get_position_timeline_by_id, search_markets, search_content, explore_markets, get_event_replay_since, list_webhooks, get_webhook, get_daily_report_snapshot, get_weekly_report_snapshot, get_monthly_report_snapshot, get_resolution_report, get_report, get_trader_export_snapshot, get_coverage, get_platforms, get_usage, get_account, get_large_positions, get_trending_wallets, get_leaderboard_leagues, get_sport_leaderboard, list_category_leaders, get_category_leaderboard, get_trader_pnl, get_pick_of_the_day, get_pick_of_the_day_ledger_entry, get_pick_of_the_day_archive, get_pick_of_the_day_stats, get_pick_of_the_day_wallet_markets, get_trader_context, get_trader_categories, get_trader_grade_at, list_traders_grade_at, get_trader_clv, get_trader_markets, get_market_holders, get_market_top_holders, get_market_candles, get_market_close, get_clv, get_market_trades, list_price_moves, get_market_wallets_in_out, get_combo_fills, get_combos_summary, get_combo, get_large_trade_counterparty_executions, get_large_trade_counterparty_makers. Webhook create/update/delete/verify/rotate operations are intentionally not exposed as remote MCP tools. The remote endpoint advertises tools only; it does not implement resources/list, resources/read, prompts/list, or prompts/get. Each tool dispatches to the matching /api/v1/* handler in-process so auth, rate limits, and payload shape match. initialize, notifications/initialized, ping and tools/list answer without a credential; tools/call (and any GET) need Authorization: Bearer <token> with an OAuth 2.1 access token (see the oauth2 security scheme; a tool outside the token's scopes returns isError) or an API key, and without one answer HTTP 401 with a WWW-Authenticate challenge whose resource_metadata names the RFC 9728 document at /.well-known/oauth-protected-resource/api/v1/mcp. A key in a ?token= query parameter is rejected on every authenticated route (the public routes ignore it) with 401 invalid_api_key and error.reason api_key_in_query, because URLs land in shell history, browser history, and logs; a client that can only take a URL can run the @0xinsider/mcp stdio package. The endpoint is stateless: it mints no Mcp-Session-Id and ignores one a client sends. Origin header, when present, is validated against the 0xinsider + localhost allowlist. tools/call arguments are validated against the tool's advertised inputSchema before anything runs: an unknown key, a wrong type, an out-of-range number, a value outside an enum or an argument combination outside a oneOf answers a tool result with isError true whose text names the field, never a query built from the arguments that fit; a tools/call without name, or whose arguments is not an object, answers JSON-RPC error -32602 and runs nothing. Every tools/call result carries the REST envelope's meta verbatim (request_id, cached, cache_age_s, cost, and the route's provenance such as source and completeness on get_whale_trades_history or ranking_source and directional_source on get_edge_hunter) as structuredContent.meta beside the payload's own keys, and a tool failure carries structuredContent.error with the REST error fields verbatim (code, reason, param, doc_url, retry_at) plus retry_after_seconds, request_id and status, beside its text. tools/list answers every tool unless the endpoint URL names toolsets: /api/v1/mcp?toolsets=core lists the 16 core tools, and ?toolsets=games,picks lists those groups (the toolsets parameter names them all). A shortened list leaves out the deprecated alias tools; tools/call still runs every tool; an unknown toolset answers JSON-RPC error -32602. The MCP-Protocol-Version request header is checked on every POST: a value outside 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 answers HTTP 400 with the standard error envelope (error.code bad_request); an absent header is served as 2025-03-26, the transport specification's compatibility default. Revision 2026-07-28 also requires the Mcp-Method header (JSON-RPC error -32020 without it) and adds resultType to every result. Browser preflight allows MCP-Protocol-Version, Mcp-Method and Mcp-Name.",
         "tags": ["MCP"],
         "parameters": [
           {
@@ -52246,6 +52246,28 @@
           "cost": {
             "type": "integer",
             "description": "Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price."
+          }
+        }
+      },
+      "LeaderboardResponseMeta": {
+        "type": "object",
+        "description": "meta on GET /api/v1/leaderboard: the ResponseMeta fields, then the ranking snapshot the page was read from.",
+        "required": ["request_id", "cached", "cost"],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines."
+          },
+          "cached": {
+            "type": "boolean"
+          },
+          "cache_age_s": {
+            "type": "integer",
+            "description": "Cache age in seconds. Omitted when the response was not cached, and also when it was cached but its age cannot be established (an entry stored before its cache carried a computed instant). Never a placeholder: an unknown age is reported as no value rather than as the cache TTL."
+          },
+          "cost": {
+            "type": "integer",
+            "description": "Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price."
           },
           "ranking_generation": {
             "type": "integer",
@@ -52259,6 +52281,28 @@
           "continued_from_generation": {
             "type": "integer",
             "description": "GET /api/v1/leaderboard only. The cursor's ranking_generation, set when this page continued a cursor from an earlier ranking that moved under it: the rows follow the cursor's boundary in the ranking named by ranking_generation, so a trader who crossed the boundary can repeat a row you already hold or be missing from the walk. De-duplicate by id, or restart from the first page for an exact walk. Omitted on a first page and on an exact continuation, including a newer generation in which nothing a page of that order reads moved. It can equal ranking_generation when the ranking moved within one generation: on the default order, sort=rank and sort=grade when the rank keys changed, and on every other sort whenever the projection republished (about once a minute; since 2026-11-07)."
+          }
+        }
+      },
+      "EdgeHunterSignalsResponseMeta": {
+        "type": "object",
+        "description": "meta on GET /api/v1/edge-hunter with view=signals: the ResponseMeta fields, then the ranking, directional and category-skill provenance.",
+        "required": ["request_id", "cached", "cost"],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines."
+          },
+          "cached": {
+            "type": "boolean"
+          },
+          "cache_age_s": {
+            "type": "integer",
+            "description": "Cache age in seconds. Omitted when the response was not cached, and also when it was cached but its age cannot be established (an entry stored before its cache carried a computed instant). Never a placeholder: an unknown age is reported as no value rather than as the cache TTL."
+          },
+          "cost": {
+            "type": "integer",
+            "description": "Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price."
           },
           "directional_source": {
             "type": "string",
@@ -66057,7 +66101,7 @@
             "type": "integer"
           },
           "meta": {
-            "$ref": "#/components/schemas/ResponseMeta"
+            "$ref": "#/components/schemas/EdgeHunterSignalsResponseMeta"
           },
           "selection": {
             "$ref": "#/components/schemas/EdgeHunterSelection",
