@@ -7368,6 +7368,7 @@ export interface OperationData {
         /** The domain's verifyingContract, the exchange's Polygon address: 0xE111180000d2663C0091e4f400237545B87B996B (CTF Exchange), 0xe2222d279d744050d28e00520010520000310F59 (Neg Risk CTF Exchange) or 0xe3333700cA9d93003F00f0F71f8515005F6c00Aa (ExchangeV3). */
         verifying_contract: string;
       };
+      accepting_orders: boolean | null;
     };
     /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
     protocol_version: "v1" | "v2";
