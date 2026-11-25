@@ -6488,6 +6488,325 @@
         }
       }
     },
+    "/api/v1/fees/quote": {
+      "get": {
+        "operationId": "getFeeQuote",
+        "summary": "Get one order's Polymarket fee and rebate",
+        "description": "What one Polymarket order on a sports or esports game outcome costs in fees, before and after the wallet's rebate tier. The market, its live book and its fee curve are the same reads as GET /api/v1/fair-price, and fee_per_share is the same formula: rate x (p x (1 - p))^exponent per share at price p (Polymarket's fee page: fee = C x feeRate x p x (1 - p) at exponent 1). A taker pays fee_usd = shares x fee_per_share, unrounded: Polymarket rounds each fill's fee to 5 decimals at match time. A maker pays nothing; fee_generated_usd is the taker fee its fill generates, the base of its maker rebate. weighted_volume is the volume the fill adds toward the role's rebate tier: shares x p x (1 - p) for a taker buy and a maker fill on a fee-paying market, 0 on a fee-free one, and null for a taker sell, which Polymarket's taker rebate page does not define. With wallet, the wallet's taker tier (Polymarket's POST /tiers) and maker tier (POST /v1/maker-tier/tiers) are read and priced: rebate_usd is the taker tier's share of fee_usd (Gold 10%, Platinum 25%, Diamond 40%, Obsidian 50%, Onyx 60%; Tier 0 and the retired Bronze and Silver names 0%) or the maker tier's rebate_bps share of fee_generated_usd, and net_fee_usd = fee_usd - rebate_usd. Each tier names the next one up, the weighted volume it still needs, and the fees that volume takes at this market's rate. A tier not read is status unavailable, and every after-rebate figure is then null; the gross fee still serves. A new wallet's first quote usually answers pending: its lookup runs on and caches the tier for 10 minutes, so quote again in 1 to 2 seconds. rate_limited means tier lookups are at their limit; quote again in a few seconds. status is checked in this order: closed (the market closed or resolved), unavailable with fee_schedule_unavailable (no Gamma fee record in hand; the quote never assumes a rate, where /fair-price would), unavailable with the book's reason (no price sent and the side it defaults to is missing; cache_miss starts the outcome's live book, so a read a few seconds later can answer), else ok. rules_version names the Polymarket rule set the figures apply. A missing value is null, never 0. Unknown condition ids return 404.",
+        "tags": ["Games"],
+        "parameters": [
+          {
+            "name": "X-Query-Validation",
+            "in": "header",
+            "required": false,
+            "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
+            "schema": {
+              "type": "string",
+              "enum": ["strict"]
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The market's condition id, raw or the mkt_-prefixed market.id V1 responses emit, as markets[].condition_id on GET /api/v1/games/{event_slug}/markets. The market must be a covered game's, as on GET /api/v1/fair-price."
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "enum": [0, 1]
+            },
+            "description": "The outcome index to trade, 0 or 1, as outcomes[].index on GET /api/v1/games/{event_slug}/markets."
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["buy", "sell"],
+              "default": "buy"
+            },
+            "description": "buy (the default) or sell the outcome's shares."
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["taker", "maker"],
+              "default": "taker"
+            },
+            "description": "taker (the default): the order fills against the book and pays the fee. maker: the order rests on the book, pays no fee, and earns the wallet's maker rebate on the taker fee its fill generates."
+          },
+          {
+            "name": "shares",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000000
+            },
+            "description": "The order's size in shares. Pass shares or notional_usd, exactly one."
+          },
+          {
+            "name": "notional_usd",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000000
+            },
+            "description": "The order's size in USD before the fee; shares is notional_usd / price. Pass shares or notional_usd, exactly one."
+          },
+          {
+            "name": "price",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 0.999
+            },
+            "description": "The fill price, 0.001 to 0.999. Omitted, the quote uses the live book: the best ask for a taker buy or a maker sell, the best bid for a taker sell or a maker buy."
+          },
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{40}$"
+            },
+            "description": "The wallet you trade from, usually your Polymarket proxy wallet, to read its taker and maker rebate tiers from Polymarket and price the rebate. 0xinsider does not store it or log it, and the response does not echo it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order's fee before and after the wallet's rebate, or the status that says why it has none.",
+            "headers": {
+              "X-Query-Ignored": {
+                "$ref": "#/components/headers/X-Query-Ignored"
+              },
+              "X-Effective-Query": {
+                "$ref": "#/components/headers/X-Effective-Query"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-Usage-Accounting": {
+                "$ref": "#/components/headers/X-Usage-Accounting"
+              },
+              "Server-Timing": {
+                "$ref": "#/components/headers/Server-Timing"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["object", "data", "meta"],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "fee_quote"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FeeQuote"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ResponseMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameter: a missing condition_id or outcome, both or neither of shares and notional_usd, a size or price out of range, an unknown side or role, or a wallet that is not a 0x address of 40 hex digits. error.param names the parameter.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Active Pro subscription required. The key is valid but the account has no paid access: error.reason is subscription_inactive when the Pro subscription has lapsed, or payment_overdue when the plan stands but its latest invoice is unpaid (#32592). error.billing_url and error.message name where a person clears it (https://0xinsider.com/billing). Permanent until a person acts: no Retry-After, never retry on a schedule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The condition id is no covered game's market.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The handler did not answer inside the server's 30-second timeout. error.code is request_timeout. On GET and HEAD the response carries Retry-After and error.retry_at; on a mutation it carries neither, because the request may have completed on the server: check its state before repeating it, and reuse its Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Four independent budgets. (1) 100 requests/minute per user on Pro, 400 on Max (sliding window), on every authenticated route; RateLimit-Limit reports the caller's. On the remote MCP endpoint /api/v1/mcp only tools/call is counted: initialize, ping, tools/list, notifications, and the GET, HEAD and DELETE the endpoint answers 405 spend no per-minute request, no monthly quota and no pay-as-you-go usage, with or without a key. (2) On the BATCH routes only: 2500 batch item units/minute per user on Pro, 10000 on Max, reserved before any item is executed. A batch with N requested items costs N item units, including duplicate and invalid items. 2500 = 100 requests x 25 items per batch on Pro, 10000 = 400 x 25 on Max, which is the most item work a key can buy through the request limiter at all: a caller may spend their plan's entire request minute on full 25-item batches without the item budget being what stops them. The REQUEST budget is the effective ceiling, and batching is never the more expensive choice. The item budget can still deny at a sliding-window boundary (both counters carry the previous window forward with a floor, and the item counter runs 25x the request counter), so honor a 429 from either. Over-quota batches return 429 with Retry-After plus RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset before any item work is done. (3) The monthly quota: Pro includes 500,000 and Max includes 2,000,000 authenticated requests per UTC calendar month. Over the plan's included requests: with pay as you go on, the excess bills at USD 0.20 per 1,000 on a monthly invoice, up to four times the included allowance (2,000,000 requests for Pro); without it, from October 1, 2026, the next request answers 429 rate_limited with error.reason monthly_quota_exceeded and a Retry-After to the month's reset. Pay-as-you-go accounts receive the same refusal at their ceiling. A refused request is not counted, and neither is a 5xx. X-Monthly-Quota-Limit, X-Monthly-Quota-Remaining, and X-Monthly-Quota-Reset (unix seconds, the first of next month) are on every response a route answers for a counted request, on the monthly-quota 429, and on GET /api/v1/me and GET /api/v1/usage, which read the month without spending it. Any other refusal or failure before the route runs, such as a per-minute 429 or a 401, carries none, nor does a remote MCP message other than tools/call. (4) The per-address budget: 1200 requests/minute per IP, shared by every caller behind one address and counted before authentication, on every route. A 429 from it carries error.reason ip_rate_limited and describes that bucket in RateLimit-*; a throttled address (sustained over-limit traffic) carries error.reason ip_throttled with a Retry-After of minutes to days, and a request before it does not shorten the cooldown. Every 429 is the standard error envelope with meta.request_id equal to X-Request-Id.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until rate limit resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-latency-budget": {
+          "milliseconds": 250,
+          "measurement": "response-ready",
+          "requirement": "engineering-budget"
+        }
+      }
+    },
     "/api/v1/positions": {
       "get": {
         "operationId": "listPositions",
@@ -49493,6 +49812,625 @@
             }
           }
         }
+      },
+      "FeeQuote": {
+        "type": "object",
+        "properties": {
+          "all_in_price": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "gross",
+                  "net"
+                ],
+                "properties": {
+                  "gross": {
+                    "type": "number",
+                    "description": "Per share before any rebate: a buy's cost, a sell's proceeds."
+                  },
+                  "net": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Per share after the wallet's rebate; null without a wallet tier."
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Per share: a buy's cost (price plus the fee, or less a maker's rebate), a sell's proceeds (price less the fee, or plus a maker's rebate). Null when the quote is not ok."
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this answer was read."
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "The market's condition id."
+          },
+          "event_slug": {
+            "type": "string",
+            "description": "The market's own event: the game's slug, or a child event's."
+          },
+          "fee_generated_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The taker fee the fill generates, USD: fee_usd for a taker, and the base of a maker's rebate."
+          },
+          "fee_per_share": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The fee the order pays per share: the taker fee, 0 for a maker."
+          },
+          "fee_schedule": {
+            "type": "object",
+            "required": [
+              "basis",
+              "rate",
+              "exponent",
+              "fees_enabled",
+              "observed_at"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "observed",
+                  "disabled",
+                  "assumed"
+                ],
+                "description": "observed: the market's own Gamma fee curve. disabled: the market charges no fee. assumed: no record in hand; the quote is then unavailable with fee_schedule_unavailable."
+              },
+              "exponent": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "The curve's exponent: fee per share = rate x (p x (1 - p))^exponent. Null when basis is assumed."
+              },
+              "fees_enabled": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the market charges a taker fee."
+              },
+              "observed_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When the Gamma record was read; null when basis is assumed."
+              },
+              "rate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "The taker fee rate; null when basis is assumed."
+              }
+            }
+          },
+          "fee_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The fee the order pays before any rebate, USD: shares x fee_per_share, unrounded."
+          },
+          "line": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The outcome's handicap on a spread, the total on a total."
+          },
+          "market_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "moneyline",
+                  "spread",
+                  "total"
+                ],
+                "description": "The three market types the route prices."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "moneyline, spread or total; null for another market type."
+          },
+          "net_fee_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "fee_usd - rebate_usd (negative for a maker's rebate); null when rebate_usd is."
+          },
+          "notional_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The order's size in USD before the fee: as sent, or shares x price."
+          },
+          "outcome": {
+            "type": "object",
+            "required": [
+              "index",
+              "label"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "description": "The provider's outcome index, 0 or 1."
+              },
+              "label": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The provider's label: Commanders, Over, or Yes on a 1X2 leg."
+              }
+            }
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "value",
+                  "source",
+                  "observed_at",
+                  "confirmed_age_seconds"
+                ],
+                "properties": {
+                  "confirmed_age_seconds": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "For a book price: seconds since the book was last confirmed current (/fair-price's quote.confirmed_age_seconds). Null for request."
+                  },
+                  "observed_at": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time",
+                    "description": "For a book price: when the bid or ask last changed. Null for request."
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "request",
+                      "best_ask",
+                      "best_bid"
+                    ],
+                    "description": "request: the caller's price. best_ask: a taker buy's or a maker sell's default. best_bid: a taker sell's or a maker buy's default."
+                  },
+                  "value": {
+                    "type": "number",
+                    "description": "The fill price the figures use, 0 to 1."
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the quote is not ok."
+          },
+          "protocol_version": {
+            "type": "string",
+            "enum": [
+              "v1",
+              "v2"
+            ],
+            "description": "v1 (CTF) or v2 (Protocol V2), read from the condition id; the fee formula is the same on both."
+          },
+          "rebate_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The rebate the wallet's tier earns on this order, USD: the taker tier's share of fee_usd, or the maker tier's of fee_generated_usd. Null without a wallet or when its tier is unavailable."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "taker",
+              "maker"
+            ],
+            "description": "taker (pays the fee) or maker (pays none, and may earn a maker rebate), as sent; taker by default."
+          },
+          "rules_version": {
+            "type": "string",
+            "description": "The Polymarket fee and rebate rules the figures apply."
+          },
+          "shares": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The order's size in shares: as sent, or notional_usd / price."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "description": "buy or sell, as sent; buy by default."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "closed",
+              "unavailable"
+            ],
+            "description": "ok: every figure the inputs allow is served. closed: the market closed or resolved, nothing to trade. unavailable: no figure; unavailable_reason says why."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The provider's per-market display name."
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fee_schedule_unavailable",
+                  "cache_miss",
+                  "cache_unavailable",
+                  "stream_capacity",
+                  "no_orderbook",
+                  "missing_provider_token_id",
+                  "one_sided_book",
+                  "empty_book"
+                ],
+                "description": "Why a quote has no figures."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set exactly when status is unavailable. fee_schedule_unavailable: no Gamma fee record for the market is in hand yet, and the quote never assumes a rate. cache_miss: the cache holds no book for the outcome yet; this read starts its live book, so a read a few seconds later may answer. cache_unavailable: the book cache could not be read. stream_capacity: API reads hold every live book they may open. no_orderbook: the provider confirmed the outcome has no order book. missing_provider_token_id: the outcome has no provider token id. one_sided_book: the book has no order on the side the price defaults to. empty_book: the book holds no orders."
+          },
+          "wallet": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "taker_tier",
+                  "maker_tier"
+                ],
+                "properties": {
+                  "maker_tier": {
+                    "type": "object",
+                    "required": [
+                      "status",
+                      "unavailable_reason",
+                      "tier",
+                      "name",
+                      "rebate_bps",
+                      "rebate",
+                      "wv_30d",
+                      "own_wv_30d",
+                      "snapshot_date",
+                      "next",
+                      "observed_at"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "None under tier 1, else Tier 1 ... Tier 4; null for a tier number the table does not hold."
+                      },
+                      "next": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "name",
+                              "wv_30d_needed",
+                              "wv_remaining",
+                              "fees_needed_at_this_rate"
+                            ],
+                            "properties": {
+                              "fees_needed_at_this_rate": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "description": "The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve."
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "The next tier's name."
+                              },
+                              "wv_30d_needed": {
+                                "type": "number",
+                                "description": "30-day weighted volume the tier needs, USD."
+                              },
+                              "wv_remaining": {
+                                "type": "number",
+                                "description": "wv_30d_needed less the wallet's wv_30d, never below 0."
+                              }
+                            },
+                            "description": "The next tier up and what reaching it takes."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The next maker tier up and what reaching it takes; null above Tier 4, or when unavailable."
+                      },
+                      "observed_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When the tier was read from Polymarket."
+                      },
+                      "own_wv_30d": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "The wallet's own share of wv_30d."
+                      },
+                      "rebate": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "rebate_bps / 10,000."
+                      },
+                      "rebate_bps": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "description": "The share of the taker fee each maker fill generates, in basis points, as Polymarket reports it (a campaign can replace the standard rate)."
+                      },
+                      "snapshot_date": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "The UTC day whose fills this tier pays; null with no snapshot row."
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "ok",
+                          "unavailable"
+                        ],
+                        "description": "ok, or unavailable when the tier was not read: unavailable_reason says why."
+                      },
+                      "tier": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "description": "Polymarket's maker tier, 0 to 4."
+                      },
+                      "unavailable_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": ["provider_timeout", "provider_error", "pending", "rate_limited"],
+                            "description": "Why a wallet's tier is not served."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error."
+                      },
+                      "wv_30d": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "30-day maker weighted volume pooled across the wallet's maker link group, USD."
+                      }
+                    }
+                  },
+                  "taker_tier": {
+                    "type": "object",
+                    "required": [
+                      "status",
+                      "unavailable_reason",
+                      "tier",
+                      "name",
+                      "rule",
+                      "rebate",
+                      "wv_30d",
+                      "next",
+                      "observed_at"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "Polymarket's tier_name, verbatim: Tier 0, Gold ... Onyx."
+                      },
+                      "next": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "name",
+                              "wv_30d_needed",
+                              "wv_remaining",
+                              "fees_needed_at_this_rate"
+                            ],
+                            "properties": {
+                              "fees_needed_at_this_rate": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "description": "The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve."
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "The next tier's name."
+                              },
+                              "wv_30d_needed": {
+                                "type": "number",
+                                "description": "30-day weighted volume the tier needs, USD."
+                              },
+                              "wv_remaining": {
+                                "type": "number",
+                                "description": "wv_30d_needed less the wallet's wv_30d, never below 0."
+                              }
+                            },
+                            "description": "The next tier up and what reaching it takes."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The next tier up and what reaching it takes; null above Onyx, for an unrecognized name, or when unavailable."
+                      },
+                      "observed_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When the tier was read from Polymarket."
+                      },
+                      "rebate": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "The share of the taker fee returned: the tier's row, 0 for tier 0 or a retired name, null for an unrecognized one."
+                      },
+                      "rule": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "current",
+                              "none",
+                              "retired",
+                              "unrecognized"
+                            ],
+                            "description": "How a taker tier name reads against Polymarket's current tier table."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "current: Gold to Onyx, the table's rebate. none: Tier 0, no rebate. retired: a name the November 20, 2026 change retired (Bronze, Silver) that an older daily snapshot can still return, no rebate. unrecognized: a name the table does not know, so rebate is null."
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "ok",
+                          "unavailable"
+                        ],
+                        "description": "ok, or unavailable when the tier was not read: unavailable_reason says why."
+                      },
+                      "tier": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "description": "Polymarket's tier number; 0 under the first tier or for an unknown address."
+                      },
+                      "unavailable_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": ["provider_timeout", "provider_error", "pending", "rate_limited"],
+                            "description": "Why a wallet's tier is not served."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error."
+                      },
+                      "wv_30d": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "30-day taker weighted volume, USD, as Polymarket reports it. The tier is the one that pays even when this sits off its threshold."
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The wallet's taker and maker rebate tiers, read from Polymarket; set when wallet was sent, null otherwise. The address is not echoed."
+          },
+          "weighted_volume": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The weighted volume the fill adds toward the role's tier, USD; 0 on a fee-free market, null for a taker sell."
+          }
+        },
+        "required": [
+          "status",
+          "unavailable_reason",
+          "condition_id",
+          "protocol_version",
+          "event_slug",
+          "market_type",
+          "title",
+          "line",
+          "outcome",
+          "side",
+          "role",
+          "price",
+          "fee_schedule",
+          "shares",
+          "notional_usd",
+          "fee_per_share",
+          "fee_usd",
+          "fee_generated_usd",
+          "weighted_volume",
+          "wallet",
+          "rebate_usd",
+          "net_fee_usd",
+          "all_in_price",
+          "rules_version",
+          "as_of"
+        ],
+        "description": "One order's Polymarket fee before and after the wallet's rebate tier."
       },
       "FairPrice": {
         "type": "object",

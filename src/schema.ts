@@ -1619,6 +1619,151 @@ export type FairPrice = {
   protocol_version: "v1" | "v2";
 };
 
+/** One order's Polymarket fee before and after the wallet's rebate tier. */
+export type FeeQuote = {
+  /** Per share: a buy's cost (price plus the fee, or less a maker's rebate), a sell's proceeds (price less the fee, or plus a maker's rebate). Null when the quote is not ok. */
+  all_in_price: {
+    /** Per share before any rebate: a buy's cost, a sell's proceeds. */
+    gross: number;
+    /** Per share after the wallet's rebate; null without a wallet tier. */
+    net: number | null;
+  } | null;
+  /** When this answer was read. */
+  as_of: string;
+  /** The market's condition id. */
+  condition_id: string;
+  /** The market's own event: the game's slug, or a child event's. */
+  event_slug: string;
+  /** The taker fee the fill generates, USD: fee_usd for a taker, and the base of a maker's rebate. */
+  fee_generated_usd: number | null;
+  /** The fee the order pays per share: the taker fee, 0 for a maker. */
+  fee_per_share: number | null;
+  fee_schedule: {
+    /** observed: the market's own Gamma fee curve. disabled: the market charges no fee. assumed: no record in hand; the quote is then unavailable with fee_schedule_unavailable. */
+    basis: "observed" | "disabled" | "assumed";
+    /** The curve's exponent: fee per share = rate x (p x (1 - p))^exponent. Null when basis is assumed. */
+    exponent: number | null;
+    /** Whether the market charges a taker fee. */
+    fees_enabled: boolean | null;
+    /** When the Gamma record was read; null when basis is assumed. */
+    observed_at: string | null;
+    /** The taker fee rate; null when basis is assumed. */
+    rate: number | null;
+  };
+  /** The fee the order pays before any rebate, USD: shares x fee_per_share, unrounded. */
+  fee_usd: number | null;
+  /** The outcome's handicap on a spread, the total on a total. */
+  line: number | null;
+  /** moneyline, spread or total; null for another market type. */
+  market_type: "moneyline" | "spread" | "total" | null;
+  /** fee_usd - rebate_usd (negative for a maker's rebate); null when rebate_usd is. */
+  net_fee_usd: number | null;
+  /** The order's size in USD before the fee: as sent, or shares x price. */
+  notional_usd: number | null;
+  outcome: {
+    /** The provider's outcome index, 0 or 1. */
+    index: number;
+    /** The provider's label: Commanders, Over, or Yes on a 1X2 leg. */
+    label: string | null;
+  };
+  /** Null when the quote is not ok. */
+  price: {
+    /** For a book price: seconds since the book was last confirmed current (/fair-price's quote.confirmed_age_seconds). Null for request. */
+    confirmed_age_seconds: number | null;
+    /** For a book price: when the bid or ask last changed. Null for request. */
+    observed_at: string | null;
+    /** request: the caller's price. best_ask: a taker buy's or a maker sell's default. best_bid: a taker sell's or a maker buy's default. */
+    source: "request" | "best_ask" | "best_bid";
+    /** The fill price the figures use, 0 to 1. */
+    value: number;
+  } | null;
+  /** v1 (CTF) or v2 (Protocol V2), read from the condition id; the fee formula is the same on both. */
+  protocol_version: "v1" | "v2";
+  /** The rebate the wallet's tier earns on this order, USD: the taker tier's share of fee_usd, or the maker tier's of fee_generated_usd. Null without a wallet or when its tier is unavailable. */
+  rebate_usd: number | null;
+  /** taker (pays the fee) or maker (pays none, and may earn a maker rebate), as sent; taker by default. */
+  role: "taker" | "maker";
+  /** The Polymarket fee and rebate rules the figures apply. */
+  rules_version: string;
+  /** The order's size in shares: as sent, or notional_usd / price. */
+  shares: number | null;
+  /** buy or sell, as sent; buy by default. */
+  side: "buy" | "sell";
+  /** ok: every figure the inputs allow is served. closed: the market closed or resolved, nothing to trade. unavailable: no figure; unavailable_reason says why. */
+  status: "ok" | "closed" | "unavailable";
+  /** The provider's per-market display name. */
+  title: string | null;
+  /** Set exactly when status is unavailable. fee_schedule_unavailable: no Gamma fee record for the market is in hand yet, and the quote never assumes a rate. cache_miss: the cache holds no book for the outcome yet; this read starts its live book, so a read a few seconds later may answer. cache_unavailable: the book cache could not be read. stream_capacity: API reads hold every live book they may open. no_orderbook: the provider confirmed the outcome has no order book. missing_provider_token_id: the outcome has no provider token id. one_sided_book: the book has no order on the side the price defaults to. empty_book: the book holds no orders. */
+  unavailable_reason: "fee_schedule_unavailable" | "cache_miss" | "cache_unavailable" | "stream_capacity" | "no_orderbook" | "missing_provider_token_id" | "one_sided_book" | "empty_book" | null;
+  /** The wallet's taker and maker rebate tiers, read from Polymarket; set when wallet was sent, null otherwise. The address is not echoed. */
+  wallet: {
+    maker_tier: {
+      /** None under tier 1, else Tier 1 ... Tier 4; null for a tier number the table does not hold. */
+      name: string | null;
+      /** The next maker tier up and what reaching it takes; null above Tier 4, or when unavailable. */
+      next: {
+        /** The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve. */
+        fees_needed_at_this_rate: number | null;
+        /** The next tier's name. */
+        name: string;
+        /** 30-day weighted volume the tier needs, USD. */
+        wv_30d_needed: number;
+        /** wv_30d_needed less the wallet's wv_30d, never below 0. */
+        wv_remaining: number;
+      } | null;
+      /** When the tier was read from Polymarket. */
+      observed_at: string | null;
+      /** The wallet's own share of wv_30d. */
+      own_wv_30d: number | null;
+      /** rebate_bps / 10,000. */
+      rebate: number | null;
+      /** The share of the taker fee each maker fill generates, in basis points, as Polymarket reports it (a campaign can replace the standard rate). */
+      rebate_bps: number | null;
+      /** The UTC day whose fills this tier pays; null with no snapshot row. */
+      snapshot_date: string | null;
+      /** ok, or unavailable when the tier was not read: unavailable_reason says why. */
+      status: "ok" | "unavailable";
+      /** Polymarket's maker tier, 0 to 4. */
+      tier: number | null;
+      /** Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error. */
+      unavailable_reason: "provider_timeout" | "provider_error" | "pending" | "rate_limited" | null;
+      /** 30-day maker weighted volume pooled across the wallet's maker link group, USD. */
+      wv_30d: number | null;
+    };
+    taker_tier: {
+      /** Polymarket's tier_name, verbatim: Tier 0, Gold ... Onyx. */
+      name: string | null;
+      /** The next tier up and what reaching it takes; null above Onyx, for an unrecognized name, or when unavailable. */
+      next: {
+        /** The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve. */
+        fees_needed_at_this_rate: number | null;
+        /** The next tier's name. */
+        name: string;
+        /** 30-day weighted volume the tier needs, USD. */
+        wv_30d_needed: number;
+        /** wv_30d_needed less the wallet's wv_30d, never below 0. */
+        wv_remaining: number;
+      } | null;
+      /** When the tier was read from Polymarket. */
+      observed_at: string | null;
+      /** The share of the taker fee returned: the tier's row, 0 for tier 0 or a retired name, null for an unrecognized one. */
+      rebate: number | null;
+      /** current: Gold to Onyx, the table's rebate. none: Tier 0, no rebate. retired: a name the November 20, 2026 change retired (Bronze, Silver) that an older daily snapshot can still return, no rebate. unrecognized: a name the table does not know, so rebate is null. */
+      rule: "current" | "none" | "retired" | "unrecognized" | null;
+      /** ok, or unavailable when the tier was not read: unavailable_reason says why. */
+      status: "ok" | "unavailable";
+      /** Polymarket's tier number; 0 under the first tier or for an unknown address. */
+      tier: number | null;
+      /** Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error. */
+      unavailable_reason: "provider_timeout" | "provider_error" | "pending" | "rate_limited" | null;
+      /** 30-day taker weighted volume, USD, as Polymarket reports it. The tier is the one that pays even when this sits off its threshold. */
+      wv_30d: number | null;
+    };
+  } | null;
+  /** The weighted volume the fill adds toward the role's tier, USD; 0 on a fee-free market, null for a taker sell. */
+  weighted_volume: number | null;
+};
+
 export type FreshnessFailure = {
   /** The caller's requested whole-response freshness ceiling in seconds. */
   max_age_s: number;
@@ -6785,6 +6930,7 @@ export interface OperationData {
   getEdgeHunter: EdgeHunterBoard | EdgeHunterRankedSignal[] | EdgeHunterObservation[];
   getEventReplaySince: EventReplayEvent[];
   getFairPrice: FairPrice;
+  getFeeQuote: FeeQuote;
   getGame: Game;
   getGameHolders: BatchGameHoldersItem[];
   getGameSharpMoney: GameSharpMoney;
@@ -7543,6 +7689,24 @@ export interface OperationQuery {
     max_spread_c?: number;
     /** The least USD each side of the outcome's book must hold within 2 cents of its midpoint: bids at or above the midpoint minus 0.02 and asks at or below the midpoint plus 0.02, each level's price times size. A whole number from 1 to 10000000. Default 500. A thinner side fails thin_book; a depth the cache does not hold fails nothing. */
     min_book_usd_within_2c?: number;
+  };
+  getFeeQuote: {
+    /** The market's condition id, raw or the mkt_-prefixed market.id V1 responses emit, as markets[].condition_id on GET /api/v1/games/{event_slug}/markets. The market must be a covered game's, as on GET /api/v1/fair-price. */
+    condition_id: string;
+    /** The outcome index to trade, 0 or 1, as outcomes[].index on GET /api/v1/games/{event_slug}/markets. */
+    outcome: 0 | 1;
+    /** buy (the default) or sell the outcome's shares. */
+    side?: "buy" | "sell";
+    /** taker (the default): the order fills against the book and pays the fee. maker: the order rests on the book, pays no fee, and earns the wallet's maker rebate on the taker fee its fill generates. */
+    role?: "taker" | "maker";
+    /** The order's size in shares. Pass shares or notional_usd, exactly one. */
+    shares?: number;
+    /** The order's size in USD before the fee; shares is notional_usd / price. Pass shares or notional_usd, exactly one. */
+    notional_usd?: number;
+    /** The fill price, 0.001 to 0.999. Omitted, the quote uses the live book: the best ask for a taker buy or a maker sell, the best bid for a taker sell or a maker buy. */
+    price?: number;
+    /** The wallet you trade from, usually your Polymarket proxy wallet, to read its taker and maker rebate tiers from Polymarket and price the rebate. 0xinsider does not store it or log it, and the response does not echo it. */
+    wallet?: string;
   };
   getGame: Record<string, never>;
   getGameHolders: {
@@ -8331,6 +8495,7 @@ export interface OperationPath {
   getEdgeHunter: Record<string, never>;
   getEventReplaySince: Record<string, never>;
   getFairPrice: Record<string, never>;
+  getFeeQuote: Record<string, never>;
   getGame: {
     /** The game's event slug, for example nfl-buf-nyj-2026-09-22. Matched case-insensitively. */
     event_slug: string;
@@ -8633,6 +8798,7 @@ export interface OperationBody {
   getEdgeHunter: never;
   getEventReplaySince: never;
   getFairPrice: never;
+  getFeeQuote: never;
   getGame: never;
   getGameHolders: never;
   getGameSharpMoney: never;
@@ -8846,6 +9012,11 @@ export interface OperationResponse {
   getFairPrice: {
     object: "fair_price";
     data: OperationData["getFairPrice"];
+    meta: ResponseMeta;
+  };
+  getFeeQuote: {
+    object: "fee_quote";
+    data: OperationData["getFeeQuote"];
     meta: ResponseMeta;
   };
   getGame: {

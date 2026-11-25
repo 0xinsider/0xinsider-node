@@ -366,6 +366,12 @@ export const API_CLIENT_OPERATIONS = [
   },
   {
     method: "GET",
+    path: "/api/v1/fees/quote",
+    operationId: "getFeeQuote",
+    auth: "bearer",
+  },
+  {
+    method: "GET",
     path: "/api/v1/markets/settled",
     operationId: "listSettledMarkets",
     auth: "bearer",
@@ -1504,6 +1510,9 @@ export type PropsListParams = OperationQuery["listProps"];
 
 /** Query parameters accepted by {@link OxinsiderApiClient.getFairPrice}. */
 export type FairPriceParams = OperationQuery["getFairPrice"];
+
+/** Query parameters accepted by {@link OxinsiderApiClient.getFeeQuote}. */
+export type FeeQuoteParams = OperationQuery["getFeeQuote"];
 
 /** Query parameters accepted by {@link OxinsiderApiClient.listSettledMarkets}. */
 export type SettledMarketsListParams = OperationQuery["listSettledMarkets"];
@@ -3179,6 +3188,20 @@ export class OxinsiderApiClient {
    */
   getFairPrice(params: FairPriceParams, options: ConvenienceOptions = {}) {
     return this.call("getFairPrice", { ...options, query: params });
+  }
+
+  /**
+   * What one Polymarket order on a game outcome costs in fees, before and
+   * after the wallet's rebate tier (#36591). Name the outcome by
+   * `condition_id` and `outcome`, and the size by `shares` or `notional_usd`.
+   * `side` defaults to `buy`, `role` to `taker`, and `price` to the live
+   * book. With `wallet`, `data.wallet` holds its taker and maker tiers read
+   * from Polymarket and `data.rebate_usd` what they return on this order; a
+   * tier Polymarket does not answer for is `unavailable` and the after-rebate
+   * figures are null. A missing value is null, never 0.
+   */
+  getFeeQuote(params: FeeQuoteParams, options: ConvenienceOptions = {}) {
+    return this.call("getFeeQuote", { ...options, query: params });
   }
 
   /**
