@@ -7371,6 +7371,13 @@ export interface OperationData {
     };
     /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
     protocol_version: "v1" | "v2";
+    /** Polymarket's reported cumulative volume of the market, as 0xinsider stores it: the figure Gamma's volumeNum and the Data API's /v2/live-volume state, refreshed about every 5 minutes while the market trades and set to Polymarket's final figure after close. Not a sum of the fills 0xinsider ingested; the game's own volume on GET /api/v1/games/{event_slug} sums the same store. null when no figure is stored for the market. */
+    volume: {
+      /** taker_shares: cumulative one-side (taker) volume in shares, never dollars. */
+      unit: string;
+      /** The figure at full precision. */
+      value: number;
+    } | null;
   })[];
   listGames: Game[];
   listGameTrades: GameTrade[];
@@ -9285,11 +9292,18 @@ export interface OperationResponse {
   listGameMarkets: {
     data: OperationData["listGameMarkets"];
     event_slug: string;
-    families: {
+    families: ({
       active: number;
       markets: number;
       sports_market_type?: string;
-    }[];
+      /** The sum of the volume of this type's markets across the whole event, whatever the filters, in the same unit. null when any of those markets has no stored volume, so a sum is never partial. */
+      volume: {
+        /** taker_shares: cumulative one-side (taker) volume in shares, never dollars. */
+        unit: string;
+        /** The sum at full precision. */
+        value: number;
+      } | null;
+    })[];
     has_more: boolean;
     meta: ResponseMeta;
     next_cursor?: string;
