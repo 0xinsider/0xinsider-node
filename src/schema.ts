@@ -1569,7 +1569,7 @@ export type FairPrice = {
   };
   /** The taker fee a buy at quote.best_ask pays: fee per share = rate x (p x (1 - p))^exponent, with p the ask. */
   fee: {
-    /** observed: the market's own Gamma fee curve. disabled: the market's Gamma record says it charges no fee. assumed: no record in hand, so the 0.05 sports rate Polymarket's fee page documents, exponent 1. */
+    /** observed: the market's own Gamma fee curve. disabled: the market's Gamma record says it charges no fee. assumed: no record in hand, so the 0.05 sports rate Polymarket's fee page documents, exponent 1. The first read of a market not read lately starts its Gamma fee read and waits for it briefly; a read still running then keeps going, so a read 1 to 2 seconds later is observed. */
     basis: "observed" | "disabled" | "assumed";
     /** The taker fee rate; 0 when basis is disabled. */
     rate: number;
@@ -1639,7 +1639,7 @@ export type FeeQuote = {
   /** The fee the order pays per share: the taker fee, 0 for a maker. */
   fee_per_share: number | null;
   fee_schedule: {
-    /** observed: the market's own Gamma fee curve. disabled: the market charges no fee. assumed: no record in hand; the quote is then unavailable with fee_schedule_unavailable. */
+    /** observed: the market's own Gamma fee curve. disabled: the market charges no fee. assumed: no record in hand; the quote is then unavailable with fee_schedule_unavailable, and a quote 1 to 2 seconds later usually answers. */
     basis: "observed" | "disabled" | "assumed";
     /** The curve's exponent: fee per share = rate x (p x (1 - p))^exponent. Null when basis is assumed. */
     exponent: number | null;
@@ -1693,7 +1693,7 @@ export type FeeQuote = {
   status: "ok" | "closed" | "unavailable";
   /** The provider's per-market display name. */
   title: string | null;
-  /** Set exactly when status is unavailable. fee_schedule_unavailable: no Gamma fee record for the market is in hand yet, and the quote never assumes a rate. cache_miss: the cache holds no book for the outcome yet; this read starts its live book, so a read a few seconds later may answer. cache_unavailable: the book cache could not be read. stream_capacity: API reads hold every live book they may open. no_orderbook: the provider confirmed the outcome has no order book. missing_provider_token_id: the outcome has no provider token id. one_sided_book: the book has no order on the side the price defaults to. empty_book: the book holds no orders. */
+  /** Set exactly when status is unavailable. fee_schedule_unavailable: no Gamma fee record for the market is in hand, and the quote never assumes a rate. The first quote of a market not read lately starts its Gamma fee read and waits for it briefly; a read still running then keeps going, so quote again in 1 to 2 seconds. The same answer again means Gamma has no fee curve for the market, or did not answer. cache_miss: the cache holds no book for the outcome yet; this read starts its live book, so a read a few seconds later may answer. cache_unavailable: the book cache could not be read. stream_capacity: API reads hold every live book they may open. no_orderbook: the provider confirmed the outcome has no order book. missing_provider_token_id: the outcome has no provider token id. one_sided_book: the book has no order on the side the price defaults to. empty_book: the book holds no orders. */
   unavailable_reason: "fee_schedule_unavailable" | "cache_miss" | "cache_unavailable" | "stream_capacity" | "no_orderbook" | "missing_provider_token_id" | "one_sided_book" | "empty_book" | null;
   /** The wallet's taker and maker rebate tiers, read from Polymarket; set when wallet was sent, null otherwise. The address is not echoed. */
   wallet: {
