@@ -20301,7 +20301,7 @@
       "get": {
         "operationId": "getMarketHolders",
         "summary": "List a market's graded holders",
-        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its net shares, their value (Polymarket's own currentValue for the leg, scaled to the net shares for a wallet holding both outcomes), its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. When a complete scan cannot be made in time (incomplete, unstable, failed or past its budget), the answer is the market's last complete roster from the past 15 minutes, a 200 marked stale in `data_quality` (below); with none kept it is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. Without as_of this is current state: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), `scan.fetched_at` is its timestamp, and the body carries no `data_quality`. The one exception is a kept roster (#35943): when no complete scan can be made in time, the last complete roster computed in the past 15 minutes is served as it was computed, with `data_quality.status` `stale`, its `holder_population` group on `scan.fetched_at` and its `grades_and_badges` group on the compute, each with a reason, and `meta.cached` true with `meta.cache_age_s` its age; the walk keeps running, so a read after 30 s can get a fresh roster. With as_of=kickoff (#34064) the answer is a game moneyline's roster as it stood at kickoff: the roster this route computed in the 15 minutes before kickoff over the newest complete holder population it held then, stored before kickoff and never rewritten after (a game rescheduled to a later kickoff is captured again), with each clock in `as_of` and `data_quality`. A kickoff roster stored before the net valuation shipped (#35751, November 2026) values a wallet holding both outcomes at its whole leg on its net side, not at its net shares, and keeps that value. It reads one stored row, walks nothing and spends no cold-read share. Until 30 s after kickoff it is 404 kickoff_roster_pending with retry_at at that instant; a market with no stored kickoff roster is 404 kickoff_roster_not_captured, never the current roster and never an empty list. For any other instant, snapshot this route yourself on your own schedule; the other frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
+        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its net shares, their value (Polymarket's own currentValue for the leg, scaled to the net shares for a wallet holding both outcomes), its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. When a complete scan cannot be made in time (incomplete, unstable, failed or past its budget), the answer is the market's last complete roster from the past 15 minutes, or from the past 60 minutes when Polymarket's holder data failed and the game has not started (#36708), a 200 marked stale in `data_quality` (below); with none kept it is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. Without as_of this is current state: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), `scan.fetched_at` is its timestamp, and the body carries no `data_quality`. The one exception is a kept roster (#35943): when no complete scan can be made in time, the last complete roster computed in the past 15 minutes is served as it was computed, with `data_quality.status` `stale`, its `holder_population` group on `scan.fetched_at` and its `grades_and_badges` group on the compute, each with a reason, and `meta.cached` true with `meta.cache_age_s` its age. When Polymarket's holder data failed this compute and the market's game has not reached its listed start, the bound is 60 minutes, and the reason says so (#36708); in play, and for a market with no game, it stays 15; the walk keeps running, so a read after 30 s can get a fresh roster. With as_of=kickoff (#34064) the answer is a game moneyline's roster as it stood at kickoff: the roster this route computed in the 15 minutes before kickoff over the newest complete holder population it held then, stored before kickoff and never rewritten after (a game rescheduled to a later kickoff is captured again), with each clock in `as_of` and `data_quality`. A kickoff roster stored before the net valuation shipped (#35751, November 2026) values a wallet holding both outcomes at its whole leg on its net side, not at its net shares, and keeps that value. It reads one stored row, walks nothing and spends no cold-read share. Until 30 s after kickoff it is 404 kickoff_roster_pending with retry_at at that instant; a market with no stored kickoff roster is 404 kickoff_roster_not_captured, never the current roster and never an empty list. For any other instant, snapshot this route yourself on your own schedule; the other frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -20719,7 +20719,7 @@
             }
           },
           "503": {
-            "description": "The holder scan could not be served: the provider walk was incomplete, unstable, unavailable, or ran past its 20 s budget, or the roster's single-flight lease expired with nothing published, and no complete roster of the market was kept from the past 15 minutes (a kept one is served as a 200 marked stale in data_quality instead). The body's error.reason is read_model_warming; retry after Retry-After. A shorter list is never served in place of the market.",
+            "description": "The holder scan could not be served: the provider walk was incomplete, unstable, unavailable, or ran past its 20 s budget, or the roster's single-flight lease expired with nothing published, and no complete roster of the market was kept from the past 15 minutes, or the past 60 when Polymarket's holder data failed before the game's listed start (a kept one is served as a 200 marked stale in data_quality instead). The body's error.reason is read_model_warming; retry after Retry-After. A shorter list is never served in place of the market.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds to wait before asking for this market's roster again.",
@@ -28285,7 +28285,8 @@
                           "outcomes",
                           "status",
                           "settlement",
-                          "protocol_version"
+                          "protocol_version",
+                          "volume"
                         ],
                         "properties": {
                           "condition_id": {
@@ -28698,6 +28699,28 @@
                             "type": "string",
                             "enum": ["v1", "v2"],
                             "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market an outcome's token_id is its V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
+                          },
+                          "volume": {
+                            "description": "Polymarket's reported cumulative volume of the market, as 0xinsider stores it: the figure Gamma's volumeNum and the Data API's /v2/live-volume state, refreshed about every 5 minutes while the market trades and set to Polymarket's final figure after close. Not a sum of the fills 0xinsider ingested; the game's own volume on GET /api/v1/games/{event_slug} sums the same store. null when no figure is stored for the market.",
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["value", "unit"],
+                                "properties": {
+                                  "unit": {
+                                    "type": "string",
+                                    "description": "taker_shares: cumulative one-side (taker) volume in shares, never dollars."
+                                  },
+                                  "value": {
+                                    "type": "number",
+                                    "description": "The figure at full precision."
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -28709,7 +28732,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["markets", "active"],
+                        "required": ["markets", "active", "volume"],
                         "properties": {
                           "active": {
                             "type": "integer"
@@ -28719,6 +28742,28 @@
                           },
                           "sports_market_type": {
                             "type": "string"
+                          },
+                          "volume": {
+                            "description": "The sum of the volume of this type's markets across the whole event, whatever the filters, in the same unit. null when any of those markets has no stored volume, so a sum is never partial.",
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": ["value", "unit"],
+                                "properties": {
+                                  "unit": {
+                                    "type": "string",
+                                    "description": "taker_shares: cumulative one-side (taker) volume in shares, never dollars."
+                                  },
+                                  "value": {
+                                    "type": "number",
+                                    "description": "The sum at full precision."
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -28781,6 +28826,10 @@
                         "settlement_time_basis": null,
                         "proposed_answer": null,
                         "observed_at": "2026-11-04T03:29:29.435109Z"
+                      },
+                      "volume": {
+                        "value": 246070.792064,
+                        "unit": "taker_shares"
                       }
                     },
                     {
@@ -28822,6 +28871,10 @@
                         "settlement_time_basis": null,
                         "proposed_answer": null,
                         "observed_at": "2026-11-04T03:29:29.435109Z"
+                      },
+                      "volume": {
+                        "value": 135626.693372,
+                        "unit": "taker_shares"
                       }
                     }
                   ],
@@ -28831,22 +28884,38 @@
                     {
                       "sports_market_type": "moneyline",
                       "markets": 1,
-                      "active": 1
+                      "active": 0,
+                      "volume": {
+                        "value": 908107.128548,
+                        "unit": "taker_shares"
+                      }
                     },
                     {
                       "sports_market_type": "points",
-                      "markets": 72,
-                      "active": 72
+                      "markets": 29,
+                      "active": 0,
+                      "volume": {
+                        "value": 6223.747549,
+                        "unit": "taker_shares"
+                      }
                     },
                     {
                       "sports_market_type": "spreads",
-                      "markets": 33,
-                      "active": 33
+                      "markets": 25,
+                      "active": 0,
+                      "volume": {
+                        "value": 699248.671013,
+                        "unit": "taker_shares"
+                      }
                     },
                     {
                       "sports_market_type": "totals",
-                      "markets": 31,
-                      "active": 31
+                      "markets": 30,
+                      "active": 0,
+                      "volume": {
+                        "value": 493885.544466,
+                        "unit": "taker_shares"
+                      }
                     }
                   ],
                   "meta": {
