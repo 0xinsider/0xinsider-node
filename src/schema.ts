@@ -1148,9 +1148,45 @@ export type EdgeHunterSignalsResponse = {
   has_more: boolean;
   next_cursor?: string;
   total?: number;
-  meta: ResponseMeta;
+  meta: EdgeHunterSignalsResponseMeta;
   /** Normalized axes requested with a selector or category; omitted on an unselected default read. */
   selection?: EdgeHunterSelection;
+};
+
+/** meta on GET /api/v1/edge-hunter with view=signals: the ResponseMeta fields, then the ranking, directional and category-skill provenance. */
+export type EdgeHunterSignalsResponseMeta = {
+  /** Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines. */
+  request_id: string;
+  cached: boolean;
+  /** Cache age in seconds. Omitted when the response was not cached, and also when it was cached but its age cannot be established (an entry stored before its cache carried a computed instant). Never a placeholder: an unknown age is reported as no value rather than as the cache TTL. */
+  cache_age_s?: number;
+  /** Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price. */
+  cost: number;
+  /** Directional evidence provenance for Edge Hunter signals collections. The default board carries this provenance in data.directional_source and omits this optional meta field. */
+  directional_source?: "live" | "degraded";
+  /** Ranking evidence provenance for Edge Hunter signals collections. The default board carries this clock/provenance in data.ranking_source and omits this optional meta field. */
+  ranking_source?: "live" | "db_only";
+  /** Whole filtered snapshot category-evidence status before pagination. Operational live always remains partial source coverage. */
+  category_skill_source?: "live" | "partial" | "degraded" | "unavailable";
+  category_skill_model_version?: string;
+  category_skill_taxonomy_version?: string;
+  category_skill_platform?: "polymarket";
+  category_skill_scope?: "observed_goldsky_primary_taker_fill";
+  category_skill_source_coverage?: "partial_whale_threshold_fills" | "graded_wallet_fills";
+  category_skill_observation_started_at?: string;
+  /** Whole-model operational readiness captured with the category model snapshot. Present on category-enriched responses even when the filtered signal list is empty. When true, category_skill_source is degraded and Edge Hunter signals uses the shorter degraded cache TTL. */
+  category_skill_model_operationally_degraded?: boolean;
+  category_skill_status_counts?: {
+    live: number;
+    insufficient: number;
+    stale: number;
+    unknown: number;
+    degraded: number;
+  };
+  /** SHA-256 of the funded signal membership/order/rank/cursor vector immediately before category-skill enrichment. Edge Hunter signals view only. */
+  category_skill_base_payload_hash?: string;
+  /** Independent SHA-256 recomputation over the same base fields immediately after category-skill enrichment. Equality with category_skill_base_payload_hash proves category-skill enrichment did not change funded inputs. Edge Hunter signals view only. */
+  category_skill_enriched_base_payload_hash?: string;
 };
 
 /** Independent sports-board supply plus stored-universe terminal accounting for one canonical sport. */
@@ -2643,6 +2679,23 @@ export type LeaderboardPriceEdge = {
   status: "ranked" | "too_few_markets" | "sample_mismatch";
   /** Why the leaderboard does not rank a ranked edge. record_incomplete: the wallet's stored sports and esports record shows more profit than Polymarket reports for it, so some losing markets are likely missing. Omitted when nothing holds the edge, and always omitted unless status is ranked. */
   hold?: "record_incomplete";
+};
+
+/** meta on GET /api/v1/leaderboard: the ResponseMeta fields, then the ranking snapshot the page was read from. */
+export type LeaderboardResponseMeta = {
+  /** Unique request ID (req_ prefix). The same value as the X-Request-Id response header, the request's usage accounting row and its log lines. */
+  request_id: string;
+  cached: boolean;
+  /** Cache age in seconds. Omitted when the response was not cached, and also when it was cached but its age cannot be established (an entry stored before its cache carried a computed instant). Never a placeholder: an unknown age is reported as no value rather than as the cache TTL. */
+  cache_age_s?: number;
+  /** Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price. */
+  cost: number;
+  /** Committed PostgreSQL-owned leaderboard generation for the returned rows and cursor. Present on GET /api/v1/leaderboard; omitted on endpoints that do not read this ranking. */
+  ranking_generation?: number;
+  /** Authoritative RFC3339 timestamp from cache_generations.updated_at for ranking_generation. It is read in the same repeatable-read snapshot as the leaderboard rows and is not request time, cache write time, or row insertion order. */
+  ranking_as_of?: string;
+  /** GET /api/v1/leaderboard only. The cursor's ranking_generation, set when this page continued a cursor from an earlier ranking that moved under it: the rows follow the cursor's boundary in the ranking named by ranking_generation, so a trader who crossed the boundary can repeat a row you already hold or be missing from the walk. De-duplicate by id, or restart from the first page for an exact walk. Omitted on a first page and on an exact continuation, including a newer generation in which nothing a page of that order reads moved. It can equal ranking_generation when the ranking moved within one generation: on the default order, sort=rank and sort=grade when the rank keys changed, and on every other sort whenever the projection republished (about once a minute; since 2026-11-07). */
+  continued_from_generation?: number;
 };
 
 /** The whole board's totals, the counts the 0xinsider leaderboard page shows (#32737), read with the ranking snapshot the page is served at. Sent on every page of a request with no category and no strategy, whatever its sort, dir and activity, which order or split the same wallets. Omitted on a category or strategy page, which lists a subset these totals do not describe, and while the ranking has no totals for the served generation. */
@@ -5070,37 +5123,6 @@ export type ResponseMeta = {
   cache_age_s?: number;
   /** Advisory request weight (relative compute cost). 1 for simple reads; higher for heavier endpoints. Not a credit/price. */
   cost: number;
-  /** Committed PostgreSQL-owned leaderboard generation for the returned rows and cursor. Present on GET /api/v1/leaderboard; omitted on endpoints that do not read this ranking. */
-  ranking_generation?: number;
-  /** Authoritative RFC3339 timestamp from cache_generations.updated_at for ranking_generation. It is read in the same repeatable-read snapshot as the leaderboard rows and is not request time, cache write time, or row insertion order. */
-  ranking_as_of?: string;
-  /** GET /api/v1/leaderboard only. The cursor's ranking_generation, set when this page continued a cursor from an earlier ranking that moved under it: the rows follow the cursor's boundary in the ranking named by ranking_generation, so a trader who crossed the boundary can repeat a row you already hold or be missing from the walk. De-duplicate by id, or restart from the first page for an exact walk. Omitted on a first page and on an exact continuation, including a newer generation in which nothing a page of that order reads moved. It can equal ranking_generation when the ranking moved within one generation: on the default order, sort=rank and sort=grade when the rank keys changed, and on every other sort whenever the projection republished (about once a minute; since 2026-11-07). */
-  continued_from_generation?: number;
-  /** Directional evidence provenance for Edge Hunter signals collections. The default board carries this provenance in data.directional_source and omits this optional meta field. */
-  directional_source?: "live" | "degraded";
-  /** Ranking evidence provenance for Edge Hunter signals collections. The default board carries this clock/provenance in data.ranking_source and omits this optional meta field. */
-  ranking_source?: "live" | "db_only";
-  /** Whole filtered snapshot category-evidence status before pagination. Operational live always remains partial source coverage. */
-  category_skill_source?: "live" | "partial" | "degraded" | "unavailable";
-  category_skill_model_version?: string;
-  category_skill_taxonomy_version?: string;
-  category_skill_platform?: "polymarket";
-  category_skill_scope?: "observed_goldsky_primary_taker_fill";
-  category_skill_source_coverage?: "partial_whale_threshold_fills" | "graded_wallet_fills";
-  category_skill_observation_started_at?: string;
-  /** Whole-model operational readiness captured with the category model snapshot. Present on category-enriched responses even when the filtered signal list is empty. When true, category_skill_source is degraded and Edge Hunter signals uses the shorter degraded cache TTL. */
-  category_skill_model_operationally_degraded?: boolean;
-  category_skill_status_counts?: {
-    live: number;
-    insufficient: number;
-    stale: number;
-    unknown: number;
-    degraded: number;
-  };
-  /** SHA-256 of the funded signal membership/order/rank/cursor vector immediately before category-skill enrichment. Edge Hunter signals view only. */
-  category_skill_base_payload_hash?: string;
-  /** Independent SHA-256 recomputation over the same base fields immediately after category-skill enrichment. Equality with category_skill_base_payload_hash proves category-skill enrichment did not change funded inputs. Edge Hunter signals view only. */
-  category_skill_enriched_base_payload_hash?: string;
 };
 
 /** An entitled same-day slot with a future scheduled release: stable identity and backend-owned release/kickoff instants. It leaves this list at its release instant; an unpublished slot is never a delayed recommendation. No matchup, category, platform, side, price, or holder fields appear before release. Unauthorized scheduled ranks appear only in locked_picks. */
@@ -9354,7 +9376,7 @@ export interface OperationResponse {
     next_cursor?: string;
     /** Total matching rows when the read model exposes a count; the key is absent when it does not. */
     total?: number;
-    meta: ResponseMeta;
+    meta: LeaderboardResponseMeta;
     summary?: LeaderboardSummary;
   };
   listLeaderboardLeagues: {

@@ -68,7 +68,10 @@ are exported by name, and five per-operation maps (`OperationPath`,
 every convenience method, `call`, `list` and `paginate` by the operation they
 name: the path parameters it takes, the query keys and values it documents,
 the body it requires, and the envelope it answers with its own `data` and
-`meta` (`BatchResponseMeta` on a batch, `EventReplayMeta` on the replay).
+`meta` (`BatchResponseMeta` on a batch, `EventReplayMeta` on the replay,
+`LeaderboardResponseMeta` on the leaderboard, `EdgeHunterSignalsResponseMeta`
+on Edge Hunter signals; since 0.127.0 the ranking and category-skill fields
+are on those two only, the routes that send them).
 Nothing takes a type argument any more; the method knows its shape.
 
 ```ts
