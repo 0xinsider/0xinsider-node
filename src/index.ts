@@ -439,6 +439,7 @@ export type {
   LeaderboardPriceEdge,
   LeaderboardResponseMeta,
   LeaderboardSummary,
+  LeaderboardWindowVolume,
   MarketCandles,
   MarketClose,
   MarketFlow,

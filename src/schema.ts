@@ -2638,6 +2638,8 @@ export type LeaderboardEntry = {
   last_active?: string;
   /** Additive (since 2026-11-11, #34333): in_scope.win_rate_status, lifted to the row beside win_rate. measured from 5 decided markets (in_scope.markets_decided), not_enough_data below, the floor the 0xinsider leaderboard page applies before it shows a win rate. Below it win_rate is still sent; quote in_scope.markets_decided instead of win_rate as a rate. Omitted exactly when in_scope.win_rate_status is. */
   win_rate_status?: "measured" | "not_enough_data";
+  /** Additive (since 2026-11-25, #36706): the wallet's sports and esports volume over the request's window, the value a sort=volume&window= page is ordered by. Sent on every entry of a page with window, and only there. Until every wallet's recent volume is computed, such a page answers 503 rate_limit_unavailable with error.reason read_model_warming instead. */
+  window_volume?: LeaderboardWindowVolume;
 };
 
 /** Every league with a skill leaderboard, by sport: the league values GET /api/v1/leaderboard/sports/{sport} accepts. */
@@ -2712,6 +2714,16 @@ export type LeaderboardSummary = {
   active_30d: number;
   /** When the totals were counted, UTC. They are recounted about once a minute while the ranking is current. */
   as_of: string;
+};
+
+/** Sports and esports volume over a window of UTC days (#36706), on the basis of the lifetime volume sort=volume orders by and GET /api/v1/trader/{address} serves as stats.total_volume: shares times price of the wallet's fills, fees excluded. */
+export type LeaderboardWindowVolume = {
+  /** USD volume over the UTC days from to to, to the cent. 0 for a wallet with no sports or esports fill in them. */
+  volume: number;
+  /** The window's first UTC day. */
+  from: string;
+  /** The window's last UTC day, today: counted up to the row's latest refresh, so a partial day. */
+  to: string;
 };
 
 /** One side's score line inside a `live_sports_updated` pulse. */
@@ -8143,18 +8155,20 @@ export interface OperationQuery {
   listLeaderboard: {
     /** Maximum number of ranked traders to return. Out-of-range values are clamped to 1..100. */
     limit?: number;
-    /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the effective category/strategy filters, and on a sorted page to its sort, dir and activity, and it names the leaderboard generation it was read at. A cursor from another sort or dir is a 400 bad_request on cursor; one from another activity, category or strategy is cursor_expired. A cursor from an earlier generation continues after its boundary in the current ranking (since 2026-11-07, #33377); meta.continued_from_generation is set when the ranking moved under it. Legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
+    /** Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the effective category/strategy filters, and on a sorted page to its sort, dir, activity and window, and it names the leaderboard generation it was read at. A cursor from another sort, dir or window is a 400 bad_request on cursor; one from another activity, category or strategy is cursor_expired. A cursor from an earlier generation continues after its boundary in the current ranking (since 2026-11-07, #33377); meta.continued_from_generation is set when the ranking moved under it. Legacy, malformed, non-finite, and unsupported-version cursors are rejected. */
     cursor?: string;
     /** Filter by category: a sport or esports bucket, matched case-insensitively. League values fold into their sport (NBA and NCAAB into Basketball, NFL into Football). Sports and esports only (#27306): a category outside them returns 400 bad_request with param category and names the accepted buckets. The word sports, in any casing, matches every sport but Esports, the provider's catch-all Sports category (cycling, lacrosse) included: use esports for Esports alone, or omit category for both (#32657). */
     category?: string;
     /** Filter by observed trading style. Current styles: two_sided, category_focused, high_activity, diversified, mixed, unclassified. Current styles count the wallet's sports and esports markets only. The ten archetype keys retired on 2026-10-01 (accumulator, algo_trader, arbitrageur, directional, event_driven, market_maker, momentum, scalper, speculator, swing_trader) are still accepted and match no wallet. Style describes recorded behavior; grade measures performance. */
     strategy?: "category_focused" | "diversified" | "high_activity" | "mixed" | "two_sided" | "unclassified";
-    /** Order of the list, the sort columns of the site's leaderboard (/skill-leaderboard). rank (default) is the board's own order, the rank the site and the trader profile show. grade orders by score. volume orders by sports and esports USD volume, the figure GET /api/v1/trader/{address} serves as stats.total_volume. predictions orders by markets_traded. pnl orders by in_scope.realized_pnl. win_rate orders by win_rate among wallets with at least 5 decided sports and esports markets; a wallet with fewer sorts as having none. edge orders by price_edge.edge among wallets whose price_edge.status is ranked and that carry no price_edge.hold; any other wallet sorts as having none. The site's Edge column ranks those same wallets by their edge pulled toward the sports and esports average, a figure the API does not send, so the two orders can differ. A wallet without the value sorts as the lowest, so last in the natural direction and first with the direction reversed. Ties fall to address ascending. With ?category= a sort still orders by these whole-record figures; the category only decides which wallets are listed. Since 2026-11-02 (#32237; edge, #32270). */
+    /** Order of the list, the sort columns of the site's leaderboard (/skill-leaderboard). rank (default) is the board's own order, the rank the site and the trader profile show. grade orders by score. volume orders by sports and esports USD volume, the figure GET /api/v1/trader/{address} serves as stats.total_volume, or with window by that volume over its last 1, 7 or 30 UTC days. predictions orders by markets_traded. pnl orders by in_scope.realized_pnl. win_rate orders by win_rate among wallets with at least 5 decided sports and esports markets; a wallet with fewer sorts as having none. edge orders by price_edge.edge among wallets whose price_edge.status is ranked and that carry no price_edge.hold; any other wallet sorts as having none. The site's Edge column ranks those same wallets by their edge pulled toward the sports and esports average, a figure the API does not send, so the two orders can differ. A wallet without the value sorts as the lowest, so last in the natural direction and first with the direction reversed. Ties fall to address ascending. With ?category= a sort still orders by these whole-record figures; the category only decides which wallets are listed. Since 2026-11-02 (#32237; edge, #32270). */
     sort?: "rank" | "grade" | "volume" | "predictions" | "pnl" | "win_rate" | "edge";
     /** Direction of sort. Omitted, each sort reads in its natural direction: rank 1 first for rank (asc), largest first for every other sort (desc). The opposite value reverses the list. Since 2026-11-02 (#32237). */
     dir?: "asc" | "desc";
     /** Limit the list to wallets by recent trading, the site leaderboard's split. active: the wallet's last trade, as its current grade recorded it and aged to today, is 30 days old or less. inactive: older than 30 days, or no trade on record. all (default): every ranked wallet. Since 2026-11-02 (#32237). */
     activity?: "all" | "active" | "inactive";
+    /** With sort=volume only: order by sports and esports USD volume over the last 1, 7 or 30 UTC days, today's trading so far included, on the same basis as the lifetime volume sort=volume orders by without it. Each entry then carries window_volume (volume, from, to). Until every wallet's recent volume is computed, a window page answers 503 rate_limit_unavailable with error.reason read_model_warming and Retry-After; other pages serve. A new trade can take about an hour to count, as for last_active. Any other sort, or no sort, returns 400 bad_request with param window. Omitted: lifetime volume. Since 2026-11-25 (#36706). */
+    window?: "1d" | "7d" | "30d";
   };
   listLeaderboardLeagues: Record<string, never>;
   listMarketPriceMoves: {
