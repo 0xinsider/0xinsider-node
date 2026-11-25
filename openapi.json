@@ -11963,7 +11963,7 @@
       "get": {
         "operationId": "listLeaderboard",
         "summary": "Get trader leaderboard",
-        "description": "Returns ranked traders (grades S/A/B), by default in the board's own order: score descending, with a fixed tiebreak so the order never changes between reads of one ranking generation. sort, dir and activity reorder and scope the same wallets the way the site's leaderboard does (since 2026-11-02, #32237). Supports cursor pagination and optional category/strategy filters. A cursor survives a new ranking generation: the next page continues after its boundary, and meta.continued_from_generation names the cursor's generation when the ranking moved under it, so a trader who crossed the boundary can repeat or be missing. A sorted or activity-scoped page reads the serving projection only; while that projection is older than its 300 s freshness bound it answers 503 rate_limit_unavailable with error.reason read_model_warming and Retry-After, and the default order keeps serving.",
+        "description": "Returns ranked traders (grades S/A/B), by default in the board's own order: score descending, with a fixed tiebreak so the order never changes between reads of one ranking generation. sort, dir and activity reorder and scope the same wallets the way the site's leaderboard does (since 2026-11-02, #32237), and window ranks by volume over the last 1, 7 or 30 UTC days (since 2026-11-25, #36706). Supports cursor pagination and optional category/strategy filters. A cursor survives a new ranking generation: the next page continues after its boundary, and meta.continued_from_generation names the cursor's generation when the ranking moved under it, so a trader who crossed the boundary can repeat or be missing. Every page reads the serving projection: while it was last verified 180 s ago or more, every page, the default order included, answers 503 rate_limit_unavailable with error.reason read_model_warming and Retry-After.",
         "tags": ["Leaderboard"],
         "parameters": [
           {
@@ -11990,7 +11990,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the effective category/strategy filters, and on a sorted page to its sort, dir and activity, and it names the leaderboard generation it was read at. A cursor from another sort or dir is a 400 bad_request on cursor; one from another activity, category or strategy is cursor_expired. A cursor from an earlier generation continues after its boundary in the current ranking (since 2026-11-07, #33377); meta.continued_from_generation is set when the ranking moved under it. Legacy, malformed, non-finite, and unsupported-version cursors are rejected.",
+            "description": "Opaque lbv1_ pagination cursor from a prior response. It binds the finite score/address boundary to the effective category/strategy filters, and on a sorted page to its sort, dir, activity and window, and it names the leaderboard generation it was read at. A cursor from another sort, dir or window is a 400 bad_request on cursor; one from another activity, category or strategy is cursor_expired. A cursor from an earlier generation continues after its boundary in the current ranking (since 2026-11-07, #33377); meta.continued_from_generation is set when the ranking moved under it. Legacy, malformed, non-finite, and unsupported-version cursors are rejected.",
             "schema": {
               "type": "string"
             }
@@ -12022,7 +12022,7 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Order of the list, the sort columns of the site's leaderboard (/skill-leaderboard). rank (default) is the board's own order, the rank the site and the trader profile show. grade orders by score. volume orders by sports and esports USD volume, the figure GET /api/v1/trader/{address} serves as stats.total_volume. predictions orders by markets_traded. pnl orders by in_scope.realized_pnl. win_rate orders by win_rate among wallets with at least 5 decided sports and esports markets; a wallet with fewer sorts as having none. edge orders by price_edge.edge among wallets whose price_edge.status is ranked and that carry no price_edge.hold; any other wallet sorts as having none. The site's Edge column ranks those same wallets by their edge pulled toward the sports and esports average, a figure the API does not send, so the two orders can differ. A wallet without the value sorts as the lowest, so last in the natural direction and first with the direction reversed. Ties fall to address ascending. With ?category= a sort still orders by these whole-record figures; the category only decides which wallets are listed. Since 2026-11-02 (#32237; edge, #32270).",
+            "description": "Order of the list, the sort columns of the site's leaderboard (/skill-leaderboard). rank (default) is the board's own order, the rank the site and the trader profile show. grade orders by score. volume orders by sports and esports USD volume, the figure GET /api/v1/trader/{address} serves as stats.total_volume, or with window by that volume over its last 1, 7 or 30 UTC days. predictions orders by markets_traded. pnl orders by in_scope.realized_pnl. win_rate orders by win_rate among wallets with at least 5 decided sports and esports markets; a wallet with fewer sorts as having none. edge orders by price_edge.edge among wallets whose price_edge.status is ranked and that carry no price_edge.hold; any other wallet sorts as having none. The site's Edge column ranks those same wallets by their edge pulled toward the sports and esports average, a figure the API does not send, so the two orders can differ. A wallet without the value sorts as the lowest, so last in the natural direction and first with the direction reversed. Ties fall to address ascending. With ?category= a sort still orders by these whole-record figures; the category only decides which wallets are listed. Since 2026-11-02 (#32237; edge, #32270).",
             "schema": {
               "type": "string",
               "enum": ["rank", "grade", "volume", "predictions", "pnl", "win_rate", "edge"],
@@ -12046,6 +12046,15 @@
               "type": "string",
               "enum": ["all", "active", "inactive"],
               "default": "all"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "description": "With sort=volume only: order by sports and esports USD volume over the last 1, 7 or 30 UTC days, today's trading so far included, on the same basis as the lifetime volume sort=volume orders by without it. Each entry then carries window_volume (volume, from, to). Until every wallet's recent volume is computed, a window page answers 503 rate_limit_unavailable with error.reason read_model_warming and Retry-After; other pages serve. A new trade can take about an hour to count, as for last_active. Any other sort, or no sort, returns 400 bad_request with param window. Omitted: lifetime volume. Since 2026-11-25 (#36706).",
+            "schema": {
+              "type": "string",
+              "enum": ["1d", "7d", "30d"]
             }
           },
           {
@@ -58043,6 +58052,31 @@
             "type": "string",
             "enum": ["measured", "not_enough_data"],
             "description": "Additive (since 2026-11-11, #34333): in_scope.win_rate_status, lifted to the row beside win_rate. measured from 5 decided markets (in_scope.markets_decided), not_enough_data below, the floor the 0xinsider leaderboard page applies before it shows a win rate. Below it win_rate is still sent; quote in_scope.markets_decided instead of win_rate as a rate. Omitted exactly when in_scope.win_rate_status is."
+          },
+          "window_volume": {
+            "$ref": "#/components/schemas/LeaderboardWindowVolume",
+            "description": "Additive (since 2026-11-25, #36706): the wallet's sports and esports volume over the request's window, the value a sort=volume&window= page is ordered by. Sent on every entry of a page with window, and only there. Until every wallet's recent volume is computed, such a page answers 503 rate_limit_unavailable with error.reason read_model_warming instead."
+          }
+        }
+      },
+      "LeaderboardWindowVolume": {
+        "type": "object",
+        "description": "Sports and esports volume over a window of UTC days (#36706), on the basis of the lifetime volume sort=volume orders by and GET /api/v1/trader/{address} serves as stats.total_volume: shares times price of the wallet's fills, fees excluded.",
+        "required": ["volume", "from", "to"],
+        "properties": {
+          "volume": {
+            "type": "number",
+            "description": "USD volume over the UTC days from to to, to the cent. 0 for a wallet with no sports or esports fill in them."
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "The window's first UTC day."
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "The window's last UTC day, today: counted up to the row's latest refresh, so a partial day."
           }
         }
       },
