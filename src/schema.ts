@@ -1764,9 +1764,9 @@ export type GameMapState = {
   current_map?: number;
   /** How complete the stored score is: full when it parsed and no map reading was unavailable or disagreed with the series score; partial when one was; unavailable when the provider score did not parse. Omitted when no stored score was read. */
   quality?: "full" | "partial" | "unavailable";
-  /** When the per-map reading behind this state was taken, never this response's clock. A later reading that changed nothing does not move it, so a quiet map can show a reading minutes old. Omitted when no reading is stored. */
+  /** When the per-map reading behind this state was taken, never this response's clock. It dates the finished maps. A later reading that changed nothing does not move it, so it can stay minutes old through a whole map in play: the map in play's score comes from the live score and moves with it, and freshness.scores_age_seconds on the same game dates that score. Omitted when no reading is stored. */
   observed_at?: string;
-  /** Seconds from observed_at to the response's as_of, measured as freshness.scores_age_seconds is; 0 when the reading is newer than as_of. Omitted with observed_at. */
+  /** Seconds from observed_at to the response's as_of, measured as freshness.scores_age_seconds is; 0 when the reading is newer than as_of. The age of the finished maps' reading, not of the map in play's score: read freshness.scores_age_seconds for that. Omitted with observed_at. */
   age_seconds?: number;
 };
 
