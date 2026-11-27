@@ -681,7 +681,7 @@ export type EdgeHunterBoard = {
   /** Ranked rows after normalized selections and grade filtering, before the view-specific limit cap. */
   total: number;
   rows: EdgeHunterRow[];
-  /** Markets the window and selection evaluated without a row, by reason. Every one drew a large trade from an S, A or B wallet in the last 24 hours, as every row did, so total plus the three counts is every market evaluated, and total 0 with all three 0 means no market in the window drew such a trade. Null on a snapshot cached before the counts existed. */
+  /** Markets the window and selection evaluated without a row, by reason. Candidates enter from 24-hour S/A/B large trades or multi-wallet S/A positioning, so total plus the four counts covers the evaluated candidates (with board rows deduplicated to one per event_slug). Null on a snapshot cached before the counts existed. */
   unranked: {
     /** A side is backed, but no wallet on it is at or above min_grade. */
     below_grade_floor: number;
@@ -689,6 +689,8 @@ export type EdgeHunterBoard = {
     no_graded_holders: number;
     /** Graded money on the two sides is too evenly split to back a side. */
     split_holder_pile: number;
+    /** S or A wallets hold a side, but its money share does not sit far enough above the market price (or lost per-game conflict reconciliation). */
+    below_price_edge: number;
   } | null;
 };
 
@@ -1067,6 +1069,16 @@ export type EdgeHunterRankedSignal = {
   market_context: EdgeHunterMarketContext | null;
   /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
   protocol_version: "v1" | "v2";
+  /** Backed-side A-grade wallets holding at least $25 net value at snapshot time. */
+  counted_a_count: number;
+  /** Backed-side S-grade wallets holding at least $25 net value at snapshot time. */
+  counted_s_count: number;
+  /** Normalized implied probability (0..1) of the backed outcome at snapshot time, computed from the Yes/No midpoint pair. */
+  implied_price_share: number | null;
+  /** Opposing-outcome S and A wallets holding at least $25 net value at snapshot time. */
+  opposing_sa_count: number;
+  /** S and A money share minus implied_price_share on the backed outcome (>= 0.05 on ranked signals). */
+  price_divergence: number | null;
 };
 
 /** One full Max row from Edge Hunter. signal is populated on every row this endpoint returns. Identity and quotes preserve provider values; unknown values stay null. */
@@ -1138,6 +1150,16 @@ export type EdgeHunterSignal = {
   ranked_at: string;
   /** Existing aggregate category evidence copied from the same ranked snapshot. Read its status, coverage and own clocks; it never changes admission or ordering and is not a predicted return. */
   category_skill: EdgeHunterCategorySkill;
+  /** Backed-side A-grade wallets holding at least $25 net value at snapshot time. */
+  counted_a_count: number;
+  /** Backed-side S-grade wallets holding at least $25 net value at snapshot time. */
+  counted_s_count: number;
+  /** Normalized implied probability (0..1) of the backed outcome at snapshot time, computed from the Yes/No midpoint pair. */
+  implied_price_share: number | null;
+  /** Opposing-outcome S and A wallets holding at least $25 net value at snapshot time. */
+  opposing_sa_count: number;
+  /** S and A money share minus implied_price_share on the backed outcome (>= 0.05 on ranked signals). */
+  price_divergence: number | null;
 };
 
 /** Full Edge Hunter signals list envelope. The view literal distinguishes advanced collections, including empty pages. */

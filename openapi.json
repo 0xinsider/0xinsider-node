@@ -1608,9 +1608,7 @@
         "operationId": "listTradersGradeAt",
         "summary": "List the wallets graded S, A or B at a past instant",
         "description": "Lists every wallet whose grade was min_grade or better (S, A or B; default B) at as_of, read from the same prospective grade observations as GET /api/v1/trader/{address}/grade-at, so a backtest or audit reads the whole set at one instant without one call per wallet. A wallet with status graded carries the grade and the observation that was visible at as_of: observed_at is when the grade writer began the transition and published_by is the later confirmation that the row was committed. A wallet with status unknown had a grade change in flight at as_of, and one of the listed grades is among those it could have held; its grade and observation are null. The page-level status is recorded from available_from, the instant the record names the whole set; before it, status is unknown and data is empty, which never means that no wallet was graded. A future as_of is refused. Wallets come in a stable internal order. A page checks a fixed number of wallets, so it can hold fewer than limit wallets, even none, while has_more is true: follow next_cursor until has_more is false. The answer for an as_of does not change once no row for it can still arrive. A grade change can reach the record hours after it began, so a page whose as_of is at least 48 hours old is served with Cache-Control private, max-age=604800, immutable; a younger one is private, no-cache, revalidated by ETag. Do not substitute current grades or a dated ranking row.",
-        "tags": [
-          "Traders"
-        ],
+        "tags": ["Traders"],
         "parameters": [
           {
             "name": "X-Query-Validation",
@@ -1619,9 +1617,7 @@
             "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
             "schema": {
               "type": "string",
-              "enum": [
-                "strict"
-              ]
+              "enum": ["strict"]
             }
           },
           {
@@ -1642,11 +1638,7 @@
             "description": "The worst grade listed: S lists S, A lists S and A, B lists S, A and B. Any other value returns 400 with error.param=min_grade. With cursor, omit it or send the one the cursor was issued for.",
             "schema": {
               "type": "string",
-              "enum": [
-                "S",
-                "A",
-                "B"
-              ],
+              "enum": ["S", "A", "B"],
               "default": "B"
             }
           },
@@ -1772,11 +1764,7 @@
                             "anyOf": [
                               {
                                 "type": "object",
-                                "required": [
-                                  "id",
-                                  "observed_at",
-                                  "published_by"
-                                ],
+                                "required": ["id", "observed_at", "published_by"],
                                 "properties": {
                                   "id": {
                                     "type": "integer",
@@ -1802,20 +1790,11 @@
                           },
                           "status": {
                             "type": "string",
-                            "enum": [
-                              "graded",
-                              "unknown"
-                            ],
+                            "enum": ["graded", "unknown"],
                             "description": "graded: the grade was visibly recorded at as_of. unknown: a grade change was in flight at as_of and one of the listed grades is among those it could have held."
                           }
                         },
-                        "required": [
-                          "id",
-                          "address",
-                          "status",
-                          "grade",
-                          "observation"
-                        ]
+                        "required": ["id", "address", "status", "grade", "observation"]
                       }
                     },
                     "has_more": {
@@ -1823,10 +1802,7 @@
                       "description": "True when more wallets may follow: send next_cursor for them. A page can hold fewer than limit wallets, even none, while this is true."
                     },
                     "next_cursor": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
+                      "type": ["string", "null"],
                       "description": "Opaque tga_v1_ cursor for the next page; null when has_more is false."
                     },
                     "as_of": {
@@ -1841,17 +1817,11 @@
                     },
                     "status": {
                       "type": "string",
-                      "enum": [
-                        "recorded",
-                        "unknown"
-                      ],
+                      "enum": ["recorded", "unknown"],
                       "description": "recorded when as_of is at or after available_from; unknown before it, when data is empty because the set is not known."
                     },
                     "available_from": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
+                      "type": ["string", "null"],
                       "format": "date-time",
                       "description": "The first instant the record names the whole set; null while recording of the set has not finished."
                     },
@@ -2460,9 +2430,7 @@
         "operationId": "getTraderMarkets",
         "summary": "List one wallet's sports and esports markets",
         "description": "One page of one wallet's sports and esports markets, the rows behind the profile positions table. status=closed (the default) is the Closed tab: no live leg, or the market has a winner, or the open row's cost is under 0.10 USD. status=open is the Open tab: a live leg whose cost is at least 0.10 USD and that has no winner. status=all is both, newest last trade first, not open rows before closed rows. An open row with no winner and no stored cost is in all only. cost and realized_pnl are the stored cost and realized P&L the profile labels Cost and Realized, each an exact decimal with value, unit USD, scale and basis; null means not stored, never zero. resolved_at is the market's settlement time and is null when the market has not settled, including a closed position on a market that still trades. Ordered by last_trade_at descending, then condition_id descending; a row with no last_trade_at comes after every dated row. The cursor is bound to the same status. GET /api/v1/positions stays the open board and still leaves resolved markets out.",
-        "tags": [
-          "Traders"
-        ],
+        "tags": ["Traders"],
         "parameters": [
           {
             "name": "X-Query-Validation",
@@ -2471,9 +2439,7 @@
             "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
             "schema": {
               "type": "string",
-              "enum": [
-                "strict"
-              ]
+              "enum": ["strict"]
             }
           },
           {
@@ -2492,11 +2458,7 @@
             "description": "open, closed (default) or all. closed is the profile Closed tab. all is one time order, newest last trade first, not open rows before closed rows.",
             "schema": {
               "type": "string",
-              "enum": [
-                "open",
-                "closed",
-                "all"
-              ],
+              "enum": ["open", "closed", "all"],
               "default": "closed"
             }
           },
@@ -13040,10 +13002,10 @@
             }
           },
           "503": {
-            "description": "Service unavailable. On this route a 503 has TWO distinct causes; branch on error.reason. (1) error.reason=\"read_model_warming\": the requested endpoint cannot serve its read model yet. Exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh; consult that endpoint's contract and do not infer dependency health from this shared reason. This is endpoint-local unavailability, not rate limiting: retry only this route after Retry-After (or error.retry_at), and do not feed it into a rate-limit backoff shared with other endpoints. (2) no error.reason: the Redis-backed authenticated rate limiter is unavailable and the middleware failed closed; Retry-After is the seconds until it probes Redis again. Both carry error.code=\"rate_limit_unavailable\" (a FROZEN contract value, so it cannot be split per cause) and X-Request-Id -- which is why error.reason, not error.code, is the discriminator.",
+            "description": "Service unavailable. On this route a 503 has THREE distinct causes; branch on error.reason. (1) error.reason=\"read_model_warming\": the requested endpoint cannot serve its read model yet. Exact causes are endpoint-specific and can include a cold or contended refresh or a dependency that prevented refresh; consult that endpoint's contract and do not infer dependency health from this shared reason. This is endpoint-local unavailability, not rate limiting: retry only this route after Retry-After (or error.retry_at), and do not feed it into a rate-limit backoff shared with other endpoints. (2) error.reason=\"database_unavailable\": the read could not reach the database; retry after Retry-After (5 s). (3) no error.reason: the Redis-backed authenticated rate limiter is unavailable and the middleware failed closed; Retry-After is the seconds until it probes Redis again. All three carry error.code=\"rate_limit_unavailable\" (a FROZEN contract value, so it cannot be split per cause) and X-Request-Id -- which is why error.reason, not error.code, is the discriminator.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until retrying is worth doing. With error.reason=\"read_model_warming\" this is the endpoint-local read-model retry interval; without a reason it is the rate-limiter outage cooldown. Always >= 1.",
+                "description": "Seconds until retrying is worth doing. With error.reason=\"read_model_warming\" this is the endpoint-local read-model retry interval; with error.reason=\"database_unavailable\" it is 5; without a reason it is the rate-limiter outage cooldown. Always >= 1.",
                 "schema": {
                   "type": "integer"
                 }
@@ -13580,10 +13542,10 @@
             }
           },
           "503": {
-            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "description": "Temporarily unavailable. error.reason=database_unavailable means the archive read could not reach the database; retry after Retry-After (5 s). The authenticated rate limiter being unavailable answers the same status with no error.reason and its own per-process cooldown.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "description": "Seconds until a retry is worth making: 5 with error.reason=database_unavailable; without a reason, until the middleware probes the Redis-backed rate limiter again.",
                 "schema": {
                   "type": "integer"
                 }
@@ -14428,10 +14390,10 @@
             }
           },
           "503": {
-            "description": "Redis-backed authenticated rate limiter unavailable; retry after the per-process outage cooldown",
+            "description": "Temporarily unavailable. error.reason=database_unavailable means the stats read could not reach the database; retry after Retry-After (5 s). The authenticated rate limiter being unavailable answers the same status with no error.reason and its own per-process cooldown.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until the middleware will probe the Redis-backed rate limiter again.",
+                "description": "Seconds until a retry is worth making: 5 with error.reason=database_unavailable; without a reason, until the middleware probes the Redis-backed rate limiter again.",
                 "schema": {
                   "type": "integer"
                 }
@@ -17434,7 +17396,14 @@
                       "type": "string"
                     }
                   },
-                  "required": ["object", "data", "has_more", "next_cursor", "complete_through", "meta"]
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "complete_through",
+                    "meta"
+                  ]
                 }
               }
             }
@@ -20310,7 +20279,7 @@
       "get": {
         "operationId": "getMarketHolders",
         "summary": "List a market's graded holders",
-        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its net shares, their value (Polymarket's own currentValue for the leg, scaled to the net shares for a wallet holding both outcomes), its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. When a complete scan cannot be made in time (incomplete, unstable, failed or past its budget), the answer is the market's last complete roster from the past 15 minutes, or from the past 60 minutes when Polymarket's holder data failed and the game has not started (#36708), a 200 marked stale in `data_quality` (below); with none kept it is a 503 with Retry-After, never a shorter list. Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. Without as_of this is current state: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), `scan.fetched_at` is its timestamp, and the body carries no `data_quality`. The one exception is a kept roster (#35943): when no complete scan can be made in time, the last complete roster computed in the past 15 minutes is served as it was computed, with `data_quality.status` `stale`, its `holder_population` group on `scan.fetched_at` and its `grades_and_badges` group on the compute, each with a reason, and `meta.cached` true with `meta.cache_age_s` its age. When Polymarket's holder data failed this compute and the market's game has not reached its listed start, the bound is 60 minutes, and the reason says so (#36708); in play, and for a market with no game, it stays 15; the walk keeps running, so a read after 30 s can get a fresh roster. With as_of=kickoff (#34064) the answer is a game moneyline's roster as it stood at kickoff: the roster this route computed in the 15 minutes before kickoff over the newest complete holder population it held then, stored before kickoff and never rewritten after (a game rescheduled to a later kickoff is captured again), with each clock in `as_of` and `data_quality`. A kickoff roster stored before the net valuation shipped (#35751, November 2026) values a wallet holding both outcomes at its whole leg on its net side, not at its net shares, and keeps that value. It reads one stored row, walks nothing and spends no cold-read share. Until 30 s after kickoff it is 404 kickoff_roster_pending with retry_at at that instant; a market with no stored kickoff roster is 404 kickoff_roster_not_captured, never the current roster and never an empty list. For any other instant, snapshot this route yourself on your own schedule; the other frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
+        "description": "The graded holder roster of one market, the roster a Pick of the Day draws its holder list from, for any Polymarket market: every S/A/B wallet with open shares on either outcome, from a complete provider holder scan, each with its net shares, their value (Polymarket's own currentValue for the leg, scaled to the net shares for a wallet holding both outcomes), its grade, its win record in the market's category with the price edge the event page prints beside it (`category_price_edge`, or `category_price_edge_hold` for the reason it prints none, the same figures GET /api/v1/market/{condition_id}/top-holders carries), and its badges. Both outcomes are listed; a wallet holding both is listed once on its net side. Ordered by current_value_usd DESC, then shares DESC, then address. The roster is computed at most once a minute per market and shared by every caller; a page is cut from that roster, so paging is cheap and `total` is exact. An answer whose scan saw no wallet at all (`scan.wallet_count` 0), on an open market before its end date, is kept for up to an hour while no trade in that market is seen after the scan; `meta.cache_age_s` gives its age. The route never widens past the graded cohort: `scan.wallet_count` reports every wallet the walk saw, graded or not. When a complete scan cannot be made in time (incomplete, unstable, failed or past its budget), the answer is the market's last complete roster from the past 15 minutes, or from the past 60 minutes when Polymarket's holder data failed and the game has not started (#36708), a 200 marked stale in `data_quality` (below); with none kept it is a 503 with Retry-After, never a shorter list. A roster still being computed 200 ms into the request is answered from the market's roster kept from the past 15 minutes, marked stale the same way, while the computation finishes for the next read; with none kept, the request waits for it (#36778). Cold reads are shared per account (#28752): a request for a market with no cached roster and no cached complete scan walks Polymarket, and an account may start 6 such walks a minute, in bursts of up to 400. Over that share the answer is 429 rate_limited with error.reason cold_read_limited and Retry-After, and nothing is walked; a market whose roster or scan is cached, including one another caller just read, still answers and spends no share. A complete scan in which no S, A or B wallet holds either outcome is a 200 with an empty holders list and zero totals; retrying cannot change it. The cohort is S, A and B by the wallet's current grade (`traders.latest_grade`); a C, D, F or ungraded wallet is never listed here and appears only inside `scan.wallet_count`. A count here will not match GET /api/v1/positions for the same market, and the cohort is only one of three reasons: /positions reads the `wallet_positions` mirror rather than this live provider scan, and without a `wallet` its `min_size` defaults to 100 USD, so it drops the smaller legs this route keeps. Read a difference as all three, never as a grade count. Without as_of this is current state: the roster is at most 60 s old over a provider walk at most 180 s old (an answer with no wallet at all, at most an hour), `scan.fetched_at` is its timestamp, and the body carries no `data_quality`. The one exception is a kept roster (#35943): when no complete scan can be made in time, or one is still being computed 200 ms into the request (#36778), the last complete roster computed in the past 15 minutes is served as it was computed, with `data_quality.status` `stale`, its `holder_population` group on `scan.fetched_at` and its `grades_and_badges` group on the compute, each with a reason, and `meta.cached` true with `meta.cache_age_s` its age. When Polymarket's holder data failed this compute and the market's game has not reached its listed start, the bound is 60 minutes, and the reason says so (#36708); in play, and for a market with no game, it stays 15; the walk keeps running, so a read after 30 s can get a fresh roster. With as_of=kickoff (#34064) the answer is a game moneyline's roster as it stood at kickoff: the roster this route computed in the 15 minutes before kickoff over the newest complete holder population it held then, stored before kickoff and never rewritten after (a game rescheduled to a later kickoff is captured again), with each clock in `as_of` and `data_quality`. A kickoff roster stored before the net valuation shipped (#35751, November 2026) values a wallet holding both outcomes at its whole leg on its net side, not at its net shares, and keeps that value. It reads one stored row, walks nothing and spends no cold-read share. Until 30 s after kickoff it is 404 kickoff_roster_pending with retry_at at that instant; a market with no stored kickoff roster is 404 kickoff_roster_not_captured, never the current roster and never an empty list. For any other instant, snapshot this route yourself on your own schedule; the other frozen roster the API serves is `display_holders` on GET /api/v1/pick-of-the-day, for that pick's market and backed side at publication.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -24949,7 +24918,12 @@
                     "coverage": {
                       "type": "object",
                       "description": "What the record holds. A window outside it reads empty because it is outside the record, not because nothing traded.",
-                      "required": ["min_size_usd", "recorded_from", "complete_through", "retention_days"],
+                      "required": [
+                        "min_size_usd",
+                        "recorded_from",
+                        "complete_through",
+                        "retention_days"
+                      ],
                       "properties": {
                         "min_size_usd": {
                           "type": "integer",
@@ -28110,7 +28084,7 @@
       "get": {
         "operationId": "listGameMarkets",
         "summary": "List a game's markets",
-        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, active or closed status, and settlement. protocol_version says which Polymarket protocol the market trades on: v1 (CTF) or v2 (Protocol V2, where each outcome token_id is a V2 position id); the protocol_version filter keeps one, and with expand=trading_terms, trading_terms.trading names the exchange to sign for, its EIP-712 domain version and verifying contract, and the balance asset_type. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. settlement is how Polymarket's oracle settled or is settling the market, read from Polymarket's /v2/resolutions and stored per game: status observed (the provider's row is below), not_posed (no oracle request yet; settled false) or unavailable (no read in hand and no recorded settlement; every other field null, and a read a moment later may answer); oracle_status, the provider lifecycle state verbatim (posed, proposed, challenged, reproposed, disputed, arbitration, resolved); settled; payouts, the provider's payout per share per outcome index in micro-USDC (1000000 is $1), only on a resolved row that carries them; result, outcome or split (Polymarket's 50-50), and winning_outcome_index, both read off payouts, or on a resolved UMA question row, which carries no payouts (payouts stays null), off the payout Polymarket's ConditionalTokens contract reported on chain, which 0xinsider reads once per such market (null until it has paid); was_disputed; resolved_at, null on a resolved UMA question row, which carries none; oracle_updated_at, Polymarket's last_update_timestamp, its latest lifecycle change and never a resolution time: on a resolved UMA question row, when UMA's answer settled the question; expected_settlement_time and settlement_time_basis, the provider's earliest-settlement estimate for a pending market, never a deadline; proposed_answer (outcome_0, outcome_1, split, too_early), the newest proposal of a pending round; observed_at, our clock: on a settled market when 0xinsider first saw the settlement, recorded once (usually about 12 seconds after resolved_at and within about 25 seconds for 95 in 100; a game market the resolution scan misses can take up to about 5 minutes) and the same on every later read, otherwise when the provider answered the read behind the block. Every key is present; a null is unknown. A settled read is refreshed at most every 10 minutes, any other at most every minute; when many games are read at once a refresh can wait for a later read, and observed_at dates the read served. Before kickoff, while none of the game's markets has closed, nothing can have settled and the read is not refreshed, so observed_at can be up to 6 hours old; the first read after kickoff, or after a market closes, refreshes it. expand=sharp_money adds each row's sharp-money split (side USD from S and A grade wallets, and S, A and B wallet counts per outcome) from the game page's per-line owner, and each status has one meaning. computed: the split is in hand, dated by money_as_of, also while the game's prop frame is being built. not_computed: the line is outside the game's prop frame as last read (a player prop, a line beyond the seven around its family's main line, a closed or settled line), and no read computes it; it turns unavailable only when a later frame holds it, as when its family's main line moves. unavailable: the line is in the frame, or the frame's lines are not known because the read failed, and no figure is held: the line was never read in the frame, or its last read is over 5 minutes old (15 minutes for a line with no trade since). A read that asks for the frame lines on its own page asks for 2 minutes, and a line answers once it has been read. A read asks only when the key's last read of the same game came under 2 minutes before it, or under 477 seconds before it and that read came under 477 seconds after the one before, since nothing it asked for would still serve at a next read further off. A key's first read of a game asks for none: read the same page again after the 30 seconds its Cache-Control max-age states, which asks, and again a minute later. A key that reads a game 2 minutes to 477 seconds apart asks from its third read. A game read alone answers about 35 lines in about a minute; a game with 100 or more lines, or any game at a busy hour when many games are read at once, can take several minutes. expand=quotes adds each outcome's quote, the cached figures GET /api/v1/market/{condition_id}/snapshot serves, for the whole page in one cache read, on every plan, for 1 more unit of cost: status observed (the cache holds the outcome's price, its book or both; a null beside it is a figure the cache does not hold, but a null best_bid or best_ask beside a book_observed_at is a side with no orders, so a book with one side or none is observed), no_orderbook (the provider confirmed the outcome has no book and no price is cached) or unavailable (nothing cached; every figure null); price, 0 to 1, the price Polymarket shows, with price_basis midpoint (the best bid and ask are at most $0.10 apart) or last_trade, and price_observed_at, when its quote and trade state became observable; best_bid and best_ask with book_observed_at, when their CLOB frame was observed, and book_source, clob_stream (the market websocket) or clob_rest (a CLOB books read); book_depth_within_2c, the USD resting on each side within 2 cents of the midpoint (bid_usd: bids at or above the midpoint minus 0.02; ask_usd: asks at or below the midpoint plus 0.02; price times size, from the whole book, recomputed with the book), null when no depth is cached for the book; book_unavailable_reason, null when book_observed_at is set, else cache_miss, cache_unavailable, stream_capacity, no_orderbook or missing_provider_token_id. Each read keeps the page's open markets covered, so an outcome that reads cache_miss usually answers a few seconds later, as does cache_unavailable (we could not read the book from the cache this time); stream_capacity means the market is not streamed because API reads already hold every live book they may open, and the read starts a CLOB books read of it behind the response, so it too usually answers a few seconds later, with book_source clob_rest. The cache holds no book levels: for every level, read Polymarket's CLOB GET /book, or POST /books for many, with the outcome's token_id. With expand=quotes the ETag moves whenever a quote does. expand=trading_terms adds each row's trading_terms, the market's terms from its Gamma record passed through unchanged, on every plan, for 1 more unit of cost: status observed (Gamma's record was read at observed_at; a null figure is one the record does not carry), not_listed (Gamma's market list returned no record for the market) or unavailable (no read in hand; every figure null); fees_enabled; fee_schedule with rate, exponent, taker_only and rebate_rate, the market-level rebate fraction, which is not what a maker receives: since Polymarket's 2026-11-20 change a maker's rebate is its own 30-day volume tier's rate, 0% to 15% of the taker fees its fills generate; rewards_min_size, in shares, and rewards_max_spread, in cents from the midpoint; reward_allocations, the dated allocations with rewards_amount, rewards_daily_rate, start_date and end_date; seconds_delay, the delay before a newly placed marketable order can match; tick_size, the minimum price increment for limit orders; min_order_size_shares, the smallest order the CLOB accepts, in shares (Polymarket's market reference calls this figure USDC, and the CLOB enforces it on an order's share count); and accepting_orders, Gamma's acceptingOrders: true when the market's order book takes new limit and market orders, false when Polymarket has paused them on a market that is not closed, null when the record does not carry it (Polymarket's trade-ready check is an active, not closed market with acceptingOrders true). Each market's read serves for a minute and then refreshes off the request path, so a market that reads unavailable usually answers a few seconds later and the ETag moves about once a minute. Without expand=quotes no price, and never a holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
+        "description": "Every stored Polymarket market of one event_slug: the moneyline, spreads, totals, team totals, half and quarter lines, player props and the rest, plus the markets of the event's child events (a soccer game's exact score, halftime result and more-markets events), each with its own event_slug. The game object on GET /api/v1/games carries only the winner markets the sports board binds to the two sides; this read lists the rest. Each row carries the condition_id, the provider's sports_market_type, groupItemTitle and typed line, the outcome index the line belongs to when the provider states it, both outcome labels with their CLOB token ids, active or closed status, and settlement. protocol_version says which Polymarket protocol the market trades on: v1 (CTF) or v2 (Protocol V2, where each outcome token_id is a V2 position id); the protocol_version filter keeps one, and with expand=trading_terms, trading_terms.trading names the exchange to sign for, its EIP-712 domain version and verifying contract, and the balance asset_type. families lists every market type the event holds with its counts, whatever the filters. Ordered by sports_market_type, then line, then condition_id. Live, upcoming and settled events all answer. settlement is how Polymarket's oracle settled or is settling the market, read from Polymarket's /v2/resolutions and stored per game: status observed (the provider's row is below), not_posed (no oracle request yet; settled false) or unavailable (no read in hand and no recorded settlement; every other field null, and a read a moment later may answer); oracle_status, the provider lifecycle state verbatim (posed, proposed, challenged, reproposed, disputed, arbitration, resolved); settled; payouts, the provider's payout per share per outcome index in micro-USDC (1000000 is $1), only on a resolved row that carries them; result, outcome or split (Polymarket's 50-50), and winning_outcome_index, both read off payouts, or on a resolved UMA question row, which carries no payouts (payouts stays null), off the payout Polymarket's ConditionalTokens contract reported on chain, which 0xinsider reads once per such market (null until it has paid); was_disputed; resolved_at, null on a resolved UMA question row, which carries none; oracle_updated_at, Polymarket's last_update_timestamp, its latest lifecycle change and never a resolution time: on a resolved UMA question row, when UMA's answer settled the question; expected_settlement_time and settlement_time_basis, the provider's earliest-settlement estimate for a pending market, never a deadline; proposed_answer (outcome_0, outcome_1, split, too_early), the newest proposal of a pending round; observed_at, our clock: on a settled market when 0xinsider first saw the settlement, recorded once (usually about 12 seconds after resolved_at and within about 25 seconds for 95 in 100; a game market the resolution scan misses can take up to about 5 minutes) and the same on every later read, otherwise when the provider answered the read behind the block. Every key is present; a null is unknown. A settled read is refreshed at most every 10 minutes, any other at most every minute; when many games are read at once a refresh can wait for a later read, and observed_at dates the read served. Before kickoff, while none of the game's markets has closed, nothing can have settled and the read is not refreshed, so observed_at can be up to 6 hours old; the first read after kickoff, or after a market closes, refreshes it. expand=sharp_money adds each row's sharp-money split (side USD from S and A grade wallets, and S, A and B wallet counts per outcome) from the game page's per-line owner, and each status has one meaning. computed: the split is in hand, dated by money_as_of, also while the game's prop frame is being built. not_computed: the line is outside the game's prop frame as last read (a player prop, a line beyond the seven around its family's main line, a closed or settled line), and no read computes it; it turns unavailable only when a later frame holds it, as when its family's main line moves. unavailable: the line is in the frame, or the frame's lines are not known because the read failed, and no figure is held: the line was never read in the frame, or its last read is over 5 minutes old (15 minutes for a line with no trade since). A read that asks for the frame lines on its own page asks for 2 minutes, and a line answers once it has been read. A read asks only when the key's last read of the same game came under 2 minutes before it, or under 477 seconds before it and that read came under 477 seconds after the one before, since nothing it asked for would still serve at a next read further off. A key's first read of a game asks for none: read the same page again after the 30 seconds its Cache-Control max-age states, which asks, and again a minute later. A key that reads a game 2 minutes to 477 seconds apart asks from its third read. A game read alone answers about 35 lines in about a minute; a game with 100 or more lines, or any game at a busy hour when many games are read at once, can take several minutes. expand=quotes adds each outcome's quote, the cached figures GET /api/v1/market/{condition_id}/snapshot serves, for the whole page in one cache read, on every plan, for 1 more unit of cost: status observed (the cache holds the outcome's price, its book or both; a null beside it is a figure the cache does not hold, but a null best_bid or best_ask beside a book_observed_at is a side with no orders, so a book with one side or none is observed), no_orderbook (the provider confirmed the outcome has no book and no price is cached) or unavailable (nothing cached; every figure null); price, 0 to 1, the price Polymarket shows, with price_basis midpoint (the best bid and ask are at most $0.10 apart) or last_trade, and price_observed_at, when its quote and trade state became observable; best_bid and best_ask with book_observed_at, when their CLOB frame was observed, and book_source, clob_stream (the market websocket) or clob_rest (a CLOB books read); book_depth_within_2c, the USD resting on each side within 2 cents of the midpoint (bid_usd: bids at or above the midpoint minus 0.02; ask_usd: asks at or below the midpoint plus 0.02; price times size, from the whole book, recomputed with the book), null when no depth is cached for the book; book_unavailable_reason, null when book_observed_at is set, else cache_miss, cache_unavailable, stream_capacity, no_orderbook or missing_provider_token_id. Each read keeps the page's open markets covered, so an outcome that reads cache_miss usually answers a few seconds later, as does cache_unavailable (we could not read the book from the cache this time); stream_capacity means the market is not streamed because API reads already hold every live book they may open, and a read of the page within a few seconds of the last starts a CLOB books read of it behind the response, so a page read every few seconds usually carries its book by its third read, with book_source clob_rest. The cache holds no book levels: for every level, read Polymarket's CLOB GET /book, or POST /books for many, with the outcome's token_id. With expand=quotes the ETag moves whenever a quote does. expand=trading_terms adds each row's trading_terms, the market's terms from its Gamma record passed through unchanged, on every plan, for 1 more unit of cost: status observed (Gamma's record was read at observed_at; a null figure is one the record does not carry), not_listed (Gamma's market list returned no record for the market) or unavailable (no read in hand; every figure null); fees_enabled; fee_schedule with rate, exponent, taker_only and rebate_rate, the market-level rebate fraction, which is not what a maker receives: since Polymarket's 2026-11-20 change a maker's rebate is its own 30-day volume tier's rate, 0% to 15% of the taker fees its fills generate; rewards_min_size, in shares, and rewards_max_spread, in cents from the midpoint; reward_allocations, the dated allocations with rewards_amount, rewards_daily_rate, start_date and end_date; seconds_delay, the delay before a newly placed marketable order can match; tick_size, the minimum price increment for limit orders; min_order_size_shares, the smallest order the CLOB accepts, in shares (Polymarket's market reference calls this figure USDC, and the CLOB enforces it on an order's share count); and accepting_orders, Gamma's acceptingOrders: true when the market's order book takes new limit and market orders, false when Polymarket has paused them on a market that is not closed, null when the record does not carry it (Polymarket's trade-ready check is an active, not closed market with acceptingOrders true). Each market's read serves for a minute and then refreshes off the request path, so a market that reads unavailable usually answers a few seconds later and the ETag moves about once a minute. Without expand=quotes no price, and never a holder identity: GET /api/v1/games/{event_slug}/holders reads the holders of up to 25 of these markets in one call, and GET /api/v1/market/{condition_id}/holders or /snapshot reads one.",
         "tags": ["Games"],
         "parameters": [
           {
@@ -28694,7 +28668,11 @@
                                   },
                                   "exchange": {
                                     "type": "string",
-                                    "enum": ["ctf_exchange_v2", "neg_risk_ctf_exchange_v2", "exchange_v3"],
+                                    "enum": [
+                                      "ctf_exchange_v2",
+                                      "neg_risk_ctf_exchange_v2",
+                                      "exchange_v3"
+                                    ],
                                     "description": "The exchange an order is signed for: ctf_exchange_v2 or neg_risk_ctf_exchange_v2 on a v1 market, by its negative_risk; exchange_v3 on every v2 market."
                                   },
                                   "verifying_contract": {
@@ -38703,11 +38681,7 @@
                         "date": "2026-10-31",
                         "market_scope": "sports_and_esports",
                         "grade_basis": "at_resolution",
-                        "scored_grades": [
-                          "S",
-                          "A",
-                          "B"
-                        ],
+                        "scored_grades": ["S", "A", "B"],
                         "total_resolved": 1240,
                         "with_smart_positions": 96,
                         "smart_money_right": 61,
@@ -42668,9 +42642,7 @@
         "operationId": "getPickOfTheDayWalletMarkets",
         "summary": "List the markets behind a pick wallet's record",
         "description": "The decided markets behind one wallet row of a Pick of the Day: sample=edge lists the settled markets behind the row's edge, of every size (\"won 57% of 119 markets\"), sample=record every closed position behind its any-size record (\"58 of 121 markets in profit\"). The pick follows the tier rule of GET /api/v1/pick-of-the-day: a pick the key cannot open, a wallet the pick's display_holders do not list, and a within the row prints no figure for all return 404, the same as an unknown pick.\n\nNothing stores the markets a printed figure counted, so the list is derived. basis=at_release lists the markets settled at or before as_of, the instant the row's figures were counted (records_as_of on the pick); basis=current, on a pick saved before that instant was recorded, lists the markets as they stand now and as_of is the read's own clock. printed is the figure the row shows; listed is the list's own count by the same rules, with matches_printed false when they differ. listed.status=counting means the count is still running: read again in a few seconds. listed.status=unavailable means the count failed; the page itself is the list's either way. Pages run newest first; pass next_cursor as cursor.",
-        "tags": [
-          "Pick of the Day"
-        ],
+        "tags": ["Pick of the Day"],
         "parameters": [
           {
             "name": "X-Query-Validation",
@@ -42679,9 +42651,7 @@
             "description": "Opt into strict query-name validation. The default is compatible: unknown names are ignored and reported in X-Query-Ignored. With strict, an unknown name returns 400 bad_request with error.reason unknown_query_parameter before the handler runs, including when its percent escape is incomplete.",
             "schema": {
               "type": "string",
-              "enum": [
-                "strict"
-              ]
+              "enum": ["strict"]
             }
           },
           {
@@ -42711,10 +42681,7 @@
             "description": "edge: the markets behind the row's edge (won X% of N markets, settled markets of every size where the side and price are known). record: the markets behind its any-size record (X of N markets in profit). Any other value, or none, returns 400 bad_request with error.param=sample.",
             "schema": {
               "type": "string",
-              "enum": [
-                "edge",
-                "record"
-              ]
+              "enum": ["edge", "record"]
             }
           },
           {
@@ -42724,10 +42691,7 @@
             "description": "scope: the league or esports title the row names; the default when it names one. category: the whole sport, the default otherwise. scope on a row that names none returns 404. Any other value returns 400 bad_request with error.param=within.",
             "schema": {
               "type": "string",
-              "enum": [
-                "scope",
-                "category"
-              ]
+              "enum": ["scope", "category"]
             }
           },
           {
@@ -42809,11 +42773,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "object",
-                    "data",
-                    "meta"
-                  ],
+                  "required": ["object", "data", "meta"],
                   "properties": {
                     "object": {
                       "type": "string",
@@ -42843,7 +42803,13 @@
                           "oneOf": [
                             {
                               "type": "object",
-                              "required": ["status", "markets", "won", "won_share", "matches_printed"],
+                              "required": [
+                                "status",
+                                "markets",
+                                "won",
+                                "won_share",
+                                "matches_printed"
+                              ],
                               "properties": {
                                 "markets": {
                                   "type": "integer"
@@ -45385,7 +45351,8 @@
                     "unranked": {
                       "split_holder_pile": 1,
                       "no_graded_holders": 0,
-                      "below_grade_floor": 0
+                      "below_grade_floor": 0,
+                      "below_price_edge": 0
                     },
                     "rows": []
                   },
@@ -46735,9 +46702,7 @@
       "post": {
         "summary": "market_settled",
         "description": "Fires once per settled state when a sports or esports game market settles, the first time 0xinsider records Polymarket's resolution of it: usually within a few minutes. A market can settle in more than one state: a resolved oracle question with no winner yet, the same question with the winner Polymarket's ConditionalTokens contract paid on chain, and the provider's row with payouts; each state fires once, with its own settlement_id, except one naming the winner an earlier state named. Carries the game, its league, the market type, the outcome names and the settlement object the game markets routes serve: payouts per share in micro-USDC, result (outcome or split), the winning outcome index, whether it was disputed, and when it resolved, and protocol_version: v1 for a ConditionalTokens market, v2 for a Polymarket Protocol V2 market (any market whose Gamma version reads v2, the polyv2 copies included), the same value GET /api/v1/markets/settled lists. settlement_filters narrows it by league, market type, game or market, and defaults to the markets Polymarket labels moneyline: each head-to-head game's winner market, but in golf and other field events every player market (winner, make the cut, round leader), so one tournament can send hundreds of states; scope it with leagues or condition_ids. Most settling markets are props, spreads and totals. A state first seen more than 6 hours after it resolved is not sent. Pro and Max only.",
-        "tags": [
-          "Webhooks"
-        ],
+        "tags": ["Webhooks"],
         "parameters": [
           {
             "$ref": "#/components/parameters/WebhookSignatureHeader"
@@ -46767,12 +46732,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "id",
-                  "type",
-                  "created_at",
-                  "data"
-                ],
+                "required": ["id", "type", "created_at", "data"],
                 "properties": {
                   "id": {
                     "type": "string",
@@ -46807,19 +46767,13 @@
                       "game_id": "90114161",
                       "league": "epl",
                       "sports_market_type": "moneyline",
-                      "outcomes": [
-                        "Yes",
-                        "No"
-                      ],
+                      "outcomes": ["Yes", "No"],
                       "copy_of_event_slug": null,
                       "settlement": {
                         "status": "observed",
                         "oracle_status": "resolved",
                         "settled": true,
-                        "payouts": [
-                          1000000,
-                          0
-                        ],
+                        "payouts": [1000000, 0],
                         "result": "outcome",
                         "winning_outcome_index": 0,
                         "was_disputed": false,
@@ -46845,7 +46799,6 @@
         }
       }
     }
-
   },
   "components": {
     "securitySchemes": {
@@ -49902,20 +49855,14 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": [
-                  "gross",
-                  "net"
-                ],
+                "required": ["gross", "net"],
                 "properties": {
                   "gross": {
                     "type": "number",
                     "description": "Per share before any rebate: a buy's cost, a sell's proceeds."
                   },
                   "net": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
+                    "type": ["number", "null"],
                     "description": "Per share after the wallet's rebate; null without a wallet tier."
                   }
                 }
@@ -49940,92 +49887,54 @@
             "description": "The market's own event: the game's slug, or a child event's."
           },
           "fee_generated_usd": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The taker fee the fill generates, USD: fee_usd for a taker, and the base of a maker's rebate."
           },
           "fee_per_share": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The fee the order pays per share: the taker fee, 0 for a maker."
           },
           "fee_schedule": {
             "type": "object",
-            "required": [
-              "basis",
-              "rate",
-              "exponent",
-              "fees_enabled",
-              "observed_at"
-            ],
+            "required": ["basis", "rate", "exponent", "fees_enabled", "observed_at"],
             "properties": {
               "basis": {
                 "type": "string",
-                "enum": [
-                  "observed",
-                  "disabled",
-                  "assumed"
-                ],
+                "enum": ["observed", "disabled", "assumed"],
                 "description": "observed: the market's own Gamma fee curve. disabled: the market charges no fee. assumed: no record in hand; the quote is then unavailable with fee_schedule_unavailable, and a quote 1 to 2 seconds later usually answers."
               },
               "exponent": {
-                "type": [
-                  "number",
-                  "null"
-                ],
+                "type": ["number", "null"],
                 "description": "The curve's exponent: fee per share = rate x (p x (1 - p))^exponent. Null when basis is assumed."
               },
               "fees_enabled": {
-                "type": [
-                  "boolean",
-                  "null"
-                ],
+                "type": ["boolean", "null"],
                 "description": "Whether the market charges a taker fee."
               },
               "observed_at": {
-                "type": [
-                  "string",
-                  "null"
-                ],
+                "type": ["string", "null"],
                 "format": "date-time",
                 "description": "When the Gamma record was read; null when basis is assumed."
               },
               "rate": {
-                "type": [
-                  "number",
-                  "null"
-                ],
+                "type": ["number", "null"],
                 "description": "The taker fee rate; null when basis is assumed."
               }
             }
           },
           "fee_usd": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The fee the order pays before any rebate, USD: shares x fee_per_share, unrounded."
           },
           "line": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The outcome's handicap on a spread, the total on a total."
           },
           "market_type": {
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "moneyline",
-                  "spread",
-                  "total"
-                ],
+                "enum": ["moneyline", "spread", "total"],
                 "description": "The three market types the route prices."
               },
               {
@@ -50035,35 +49944,23 @@
             "description": "moneyline, spread or total; null for another market type."
           },
           "net_fee_usd": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "fee_usd - rebate_usd (negative for a maker's rebate); null when rebate_usd is."
           },
           "notional_usd": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The order's size in USD before the fee: as sent, or shares x price."
           },
           "outcome": {
             "type": "object",
-            "required": [
-              "index",
-              "label"
-            ],
+            "required": ["index", "label"],
             "properties": {
               "index": {
                 "type": "integer",
                 "description": "The provider's outcome index, 0 or 1."
               },
               "label": {
-                "type": [
-                  "string",
-                  "null"
-                ],
+                "type": ["string", "null"],
                 "description": "The provider's label: Commanders, Over, or Yes on a 1X2 leg."
               }
             }
@@ -50072,35 +49969,20 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": [
-                  "value",
-                  "source",
-                  "observed_at",
-                  "confirmed_age_seconds"
-                ],
+                "required": ["value", "source", "observed_at", "confirmed_age_seconds"],
                 "properties": {
                   "confirmed_age_seconds": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
+                    "type": ["number", "null"],
                     "description": "For a book price: seconds since the book was last confirmed current (/fair-price's quote.confirmed_age_seconds). Null for request."
                   },
                   "observed_at": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
+                    "type": ["string", "null"],
                     "format": "date-time",
                     "description": "For a book price: when the bid or ask last changed. Null for request."
                   },
                   "source": {
                     "type": "string",
-                    "enum": [
-                      "request",
-                      "best_ask",
-                      "best_bid"
-                    ],
+                    "enum": ["request", "best_ask", "best_bid"],
                     "description": "request: the caller's price. best_ask: a taker buy's or a maker sell's default. best_bid: a taker sell's or a maker buy's default."
                   },
                   "value": {
@@ -50117,25 +49999,16 @@
           },
           "protocol_version": {
             "type": "string",
-            "enum": [
-              "v1",
-              "v2"
-            ],
+            "enum": ["v1", "v2"],
             "description": "v1 (CTF) or v2 (Protocol V2), read from the condition id; the fee formula is the same on both."
           },
           "rebate_usd": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The rebate the wallet's tier earns on this order, USD: the taker tier's share of fee_usd, or the maker tier's of fee_generated_usd. Null without a wallet or when its tier is unavailable."
           },
           "role": {
             "type": "string",
-            "enum": [
-              "taker",
-              "maker"
-            ],
+            "enum": ["taker", "maker"],
             "description": "taker (pays the fee) or maker (pays none, and may earn a maker rebate), as sent; taker by default."
           },
           "rules_version": {
@@ -50143,34 +50016,21 @@
             "description": "The Polymarket fee and rebate rules the figures apply."
           },
           "shares": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The order's size in shares: as sent, or notional_usd / price."
           },
           "side": {
             "type": "string",
-            "enum": [
-              "buy",
-              "sell"
-            ],
+            "enum": ["buy", "sell"],
             "description": "buy or sell, as sent; buy by default."
           },
           "status": {
             "type": "string",
-            "enum": [
-              "ok",
-              "closed",
-              "unavailable"
-            ],
+            "enum": ["ok", "closed", "unavailable"],
             "description": "ok: every figure the inputs allow is served. closed: the market closed or resolved, nothing to trade. unavailable: no figure; unavailable_reason says why."
           },
           "title": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The provider's per-market display name."
           },
           "unavailable_reason": {
@@ -50199,10 +50059,7 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": [
-                  "taker_tier",
-                  "maker_tier"
-                ],
+                "required": ["taker_tier", "maker_tier"],
                 "properties": {
                   "maker_tier": {
                     "type": "object",
@@ -50221,10 +50078,7 @@
                     ],
                     "properties": {
                       "name": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
+                        "type": ["string", "null"],
                         "description": "None under tier 1, else Tier 1 ... Tier 4; null for a tier number the table does not hold."
                       },
                       "next": {
@@ -50239,10 +50093,7 @@
                             ],
                             "properties": {
                               "fees_needed_at_this_rate": {
-                                "type": [
-                                  "number",
-                                  "null"
-                                ],
+                                "type": ["number", "null"],
                                 "description": "The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve."
                               },
                               "name": {
@@ -50267,61 +50118,45 @@
                         "description": "The next maker tier up and what reaching it takes; null above Tier 4, or when unavailable."
                       },
                       "observed_at": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
+                        "type": ["string", "null"],
                         "format": "date-time",
                         "description": "When the tier was read from Polymarket."
                       },
                       "own_wv_30d": {
-                        "type": [
-                          "number",
-                          "null"
-                        ],
+                        "type": ["number", "null"],
                         "description": "The wallet's own share of wv_30d."
                       },
                       "rebate": {
-                        "type": [
-                          "number",
-                          "null"
-                        ],
+                        "type": ["number", "null"],
                         "description": "rebate_bps / 10,000."
                       },
                       "rebate_bps": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
+                        "type": ["integer", "null"],
                         "description": "The share of the taker fee each maker fill generates, in basis points, as Polymarket reports it (a campaign can replace the standard rate)."
                       },
                       "snapshot_date": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
+                        "type": ["string", "null"],
                         "description": "The UTC day whose fills this tier pays; null with no snapshot row."
                       },
                       "status": {
                         "type": "string",
-                        "enum": [
-                          "ok",
-                          "unavailable"
-                        ],
+                        "enum": ["ok", "unavailable"],
                         "description": "ok, or unavailable when the tier was not read: unavailable_reason says why."
                       },
                       "tier": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
+                        "type": ["integer", "null"],
                         "description": "Polymarket's maker tier, 0 to 4."
                       },
                       "unavailable_reason": {
                         "anyOf": [
                           {
                             "type": "string",
-                            "enum": ["provider_timeout", "provider_error", "pending", "rate_limited"],
+                            "enum": [
+                              "provider_timeout",
+                              "provider_error",
+                              "pending",
+                              "rate_limited"
+                            ],
                             "description": "Why a wallet's tier is not served."
                           },
                           {
@@ -50331,10 +50166,7 @@
                         "description": "Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error."
                       },
                       "wv_30d": {
-                        "type": [
-                          "number",
-                          "null"
-                        ],
+                        "type": ["number", "null"],
                         "description": "30-day maker weighted volume pooled across the wallet's maker link group, USD."
                       }
                     }
@@ -50354,10 +50186,7 @@
                     ],
                     "properties": {
                       "name": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
+                        "type": ["string", "null"],
                         "description": "Polymarket's tier_name, verbatim: Tier 0, Gold ... Onyx."
                       },
                       "next": {
@@ -50372,10 +50201,7 @@
                             ],
                             "properties": {
                               "fees_needed_at_this_rate": {
-                                "type": [
-                                  "number",
-                                  "null"
-                                ],
+                                "type": ["number", "null"],
                                 "description": "The taker fees that weighted volume takes at this market's rate (each fee dollar is 1 / rate of weighted volume on the documented curve); null on a fee-free market or another curve."
                               },
                               "name": {
@@ -50400,30 +50226,19 @@
                         "description": "The next tier up and what reaching it takes; null above Onyx, for an unrecognized name, or when unavailable."
                       },
                       "observed_at": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
+                        "type": ["string", "null"],
                         "format": "date-time",
                         "description": "When the tier was read from Polymarket."
                       },
                       "rebate": {
-                        "type": [
-                          "number",
-                          "null"
-                        ],
+                        "type": ["number", "null"],
                         "description": "The share of the taker fee returned: the tier's row, 0 for tier 0 or a retired name, null for an unrecognized one."
                       },
                       "rule": {
                         "anyOf": [
                           {
                             "type": "string",
-                            "enum": [
-                              "current",
-                              "none",
-                              "retired",
-                              "unrecognized"
-                            ],
+                            "enum": ["current", "none", "retired", "unrecognized"],
                             "description": "How a taker tier name reads against Polymarket's current tier table."
                           },
                           {
@@ -50434,24 +50249,23 @@
                       },
                       "status": {
                         "type": "string",
-                        "enum": [
-                          "ok",
-                          "unavailable"
-                        ],
+                        "enum": ["ok", "unavailable"],
                         "description": "ok, or unavailable when the tier was not read: unavailable_reason says why."
                       },
                       "tier": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
+                        "type": ["integer", "null"],
                         "description": "Polymarket's tier number; 0 under the first tier or for an unknown address."
                       },
                       "unavailable_reason": {
                         "anyOf": [
                           {
                             "type": "string",
-                            "enum": ["provider_timeout", "provider_error", "pending", "rate_limited"],
+                            "enum": [
+                              "provider_timeout",
+                              "provider_error",
+                              "pending",
+                              "rate_limited"
+                            ],
                             "description": "Why a wallet's tier is not served."
                           },
                           {
@@ -50461,10 +50275,7 @@
                         "description": "Set exactly when status is unavailable: pending (the lookup is still running; quote again in 1 to 2 seconds), rate_limited (lookups are at their limit; quote again in a few seconds), provider_timeout or provider_error."
                       },
                       "wv_30d": {
-                        "type": [
-                          "number",
-                          "null"
-                        ],
+                        "type": ["number", "null"],
                         "description": "30-day taker weighted volume, USD, as Polymarket reports it. The tier is the one that pays even when this sits off its threshold."
                       }
                     }
@@ -50478,10 +50289,7 @@
             "description": "The wallet's taker and maker rebate tiers, read from Polymarket; set when wallet was sent, null otherwise. The address is not echoed."
           },
           "weighted_volume": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "description": "The weighted volume the fill adds toward the role's tier, USD; 0 on a fee-free market, null for a taker sell."
           }
         },
@@ -50931,17 +50739,11 @@
       "GameMapState": {
         "type": "object",
         "description": "The per-map state of an esports series, read from 0xinsider's stored composition of Polymarket's per-map breakdown (the GRID data behind Polymarket's own esports scoreboard), which 0xinsider checks against the series score every 5 to 10 seconds while the series is in play. No provider is read for this response. maps is present only when availability is available; a series with no map reading says why in reason and never carries an empty or guessed list.",
-        "required": [
-          "availability"
-        ],
+        "required": ["availability"],
         "properties": {
           "availability": {
             "type": "string",
-            "enum": [
-              "available",
-              "unavailable",
-              "not_applicable"
-            ],
+            "enum": ["available", "unavailable", "not_applicable"],
             "description": "available: maps holds the series' maps. unavailable: there is no map reading to serve; reason says why. not_applicable: the series has no per-map state to read: it has not started, or it is a single-map series whose map score is the series score."
           },
           "reason": {
@@ -50971,11 +50773,7 @@
           },
           "quality": {
             "type": "string",
-            "enum": [
-              "full",
-              "partial",
-              "unavailable"
-            ],
+            "enum": ["full", "partial", "unavailable"],
             "description": "How complete the stored score is: full when it parsed and no map reading was unavailable or disagreed with the series score; partial when one was; unavailable when the provider score did not parse. Omitted when no stored score was read."
           },
           "observed_at": {
@@ -50993,11 +50791,7 @@
       "GameMap": {
         "type": "object",
         "description": "One map of an esports series.",
-        "required": [
-          "number",
-          "state",
-          "scores"
-        ],
+        "required": ["number", "state", "scores"],
         "properties": {
           "number": {
             "type": "integer",
@@ -51006,10 +50800,7 @@
           },
           "state": {
             "type": "string",
-            "enum": [
-              "finished",
-              "current"
-            ],
+            "enum": ["finished", "current"],
             "description": "finished: played to its end. current: the map in play, 0-0 before its first round."
           },
           "scores": {
@@ -51024,10 +50815,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": [
-                "win",
-                "loss"
-              ]
+              "enum": ["win", "loss"]
             },
             "description": "Each competitor's result in this map, in competitors order. Kills do not decide a League of Legends or Dota 2 map, so read the winner here, never from scores. Present on a finished map whose winner is known; omitted on the current map."
           }
@@ -51267,7 +51055,14 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["as_of", "verdict", "total_usd", "trader_count", "outcomes", "money_grades"],
+                "required": [
+                  "as_of",
+                  "verdict",
+                  "total_usd",
+                  "trader_count",
+                  "outcomes",
+                  "money_grades"
+                ],
                 "properties": {
                   "as_of": {
                     "type": "string",
@@ -51358,7 +51153,14 @@
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "required": ["side", "label", "bought_usd", "pct", "avg_buy_price", "is_leader"],
+                      "required": [
+                        "side",
+                        "label",
+                        "bought_usd",
+                        "pct",
+                        "avg_buy_price",
+                        "is_leader"
+                      ],
                       "properties": {
                         "avg_buy_price": {
                           "type": ["number", "null"]
@@ -53050,31 +52852,19 @@
             "description": "The recorded state: one per market per settled state, never reused. Deduplicate on it, or on the event id."
           },
           "event_slug": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Polymarket event (game) slug, or null when the market stores none."
           },
           "game_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Polymarket game ID for the event as a string, the game_id of GET /api/v1/games, or null when the market stores none."
           },
           "league": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The event slug league prefix (nba in nba-lal-gsw-2026-11-01), lowercase, read after a polyv2 copy prefix. A PGA Tour golf slug starts with the year, so its markets are pga, from their series. null when neither names a league."
           },
           "sports_market_type": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Polymarket sportsMarketType of the market (moneyline, spreads, totals, a prop type) verbatim, or null when the market stores none."
           },
           "outcomes": {
@@ -53085,10 +52875,7 @@
             "description": "Outcome names, each at its outcome index: settlement.payouts and settlement.winning_outcome_index index into it. Empty when the market stores none; an outcome Polymarket labels blank is an empty string."
           },
           "copy_of_event_slug": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Set on a Polymarket polyv2 copy of a game whose original event has a moneyline market: the original event slug, which GET /api/v1/games serves. Such a copy reaches a webhook only when its settlement_filters name its condition ID or its own event slug."
           },
           "settlement": {
@@ -53111,30 +52898,18 @@
             ],
             "properties": {
               "expected_settlement_time": {
-                "type": [
-                  "string",
-                  "null"
-                ],
+                "type": ["string", "null"],
                 "format": "date-time"
               },
               "observed_at": {
-                "type": [
-                  "string",
-                  "null"
-                ],
+                "type": ["string", "null"],
                 "format": "date-time"
               },
               "oracle_status": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               },
               "payouts": {
-                "type": [
-                  "array",
-                  "null"
-                ],
+                "type": ["array", "null"],
                 "items": {
                   "type": "integer"
                 }
@@ -53143,12 +52918,7 @@
                 "anyOf": [
                   {
                     "type": "string",
-                    "enum": [
-                      "outcome_0",
-                      "outcome_1",
-                      "split",
-                      "too_early"
-                    ]
+                    "enum": ["outcome_0", "outcome_1", "split", "too_early"]
                   },
                   {
                     "type": "null"
@@ -53156,20 +52926,14 @@
                 ]
               },
               "resolved_at": {
-                "type": [
-                  "string",
-                  "null"
-                ],
+                "type": ["string", "null"],
                 "format": "date-time"
               },
               "result": {
                 "anyOf": [
                   {
                     "type": "string",
-                    "enum": [
-                      "outcome",
-                      "split"
-                    ]
+                    "enum": ["outcome", "split"]
                   },
                   {
                     "type": "null"
@@ -53177,36 +52941,20 @@
                 ]
               },
               "settled": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "settlement_time_basis": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               },
               "status": {
                 "type": "string",
-                "enum": [
-                  "observed",
-                  "not_posed",
-                  "unavailable"
-                ]
+                "enum": ["observed", "not_posed", "unavailable"]
               },
               "was_disputed": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "winning_outcome_index": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
+                "type": ["integer", "null"]
               },
               "oracle_updated_at": {
                 "type": ["string", "null"],
@@ -55944,7 +55692,13 @@
           "after_release": {
             "type": "object",
             "description": "What this wallet did on the pick's market after the pick was released, read from the fills, merges, splits and redemptions 0xinsider stores. Sits beside the release `shares`, which never change. `state` is `held`, `added`, `reduced`, `exited`, `hedged` or `switched` for the time between release and the game's start, then `redeemed` once the wallet redeemed backed shares after settlement, unless it switched. The state reads both outcomes: compare the release `backed_outcome_shares` and `other_outcome_shares` with `shares_after` and `other_shares_after`. Read `unavailable` as unknown, never as held. Present on `display_holders` items of a full pick; absent on teasers and on payloads predating the field.",
-            "required": ["state", "changes_through", "redemptions_through", "observed_at", "frozen"],
+            "required": [
+              "state",
+              "changes_through",
+              "redemptions_through",
+              "observed_at",
+              "frozen"
+            ],
             "properties": {
               "changes_through": {
                 "type": "string",
@@ -59224,7 +58978,15 @@
         "properties": {
           "market": {
             "type": "object",
-            "required": ["id", "condition_id", "title", "slug", "category", "platform", "protocol_version"],
+            "required": [
+              "id",
+              "condition_id",
+              "title",
+              "slug",
+              "category",
+              "platform",
+              "protocol_version"
+            ],
             "properties": {
               "id": {
                 "type": "string"
@@ -59312,15 +59074,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": [
-                "id",
-                "address",
-                "username",
-                "grade",
-                "side",
-                "token_id",
-                "size_usd"
-              ],
+              "required": ["id", "address", "username", "grade", "side", "token_id", "size_usd"],
               "properties": {
                 "id": {
                   "type": "string"
@@ -59362,7 +59116,15 @@
         "properties": {
           "market": {
             "type": "object",
-            "required": ["id", "condition_id", "title", "slug", "category", "platform", "protocol_version"],
+            "required": [
+              "id",
+              "condition_id",
+              "title",
+              "slug",
+              "category",
+              "platform",
+              "protocol_version"
+            ],
             "properties": {
               "id": {
                 "type": "string"
@@ -60057,7 +59819,14 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["basis", "state", "unknown_reason", "positions_at", "opposing_usd", "legs"],
+                "required": [
+                  "basis",
+                  "state",
+                  "unknown_reason",
+                  "positions_at",
+                  "opposing_usd",
+                  "legs"
+                ],
                 "properties": {
                   "basis": {
                     "type": "string",
@@ -60068,7 +59837,14 @@
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "required": ["place", "condition_id", "outcome_index", "same_market", "shares", "usd"],
+                      "required": [
+                        "place",
+                        "condition_id",
+                        "outcome_index",
+                        "same_market",
+                        "shares",
+                        "usd"
+                      ],
                       "properties": {
                         "condition_id": {
                           "type": "string",
@@ -60116,7 +59892,13 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "enum": ["not_loaded", "stale", "market_decided", "read_failed", "not_recorded"]
+                        "enum": [
+                          "not_loaded",
+                          "stale",
+                          "market_decided",
+                          "read_failed",
+                          "not_recorded"
+                        ]
                       },
                       {
                         "type": "null"
@@ -65086,7 +64868,12 @@
           "current_price",
           "token_id",
           "ranked_at",
-          "category_skill"
+          "category_skill",
+          "price_divergence",
+          "implied_price_share",
+          "counted_s_count",
+          "counted_a_count",
+          "opposing_sa_count"
         ],
         "properties": {
           "piled_side": {
@@ -65169,6 +64956,26 @@
           "category_skill": {
             "$ref": "#/components/schemas/EdgeHunterCategorySkill",
             "description": "Existing aggregate category evidence copied from the same ranked snapshot. Read its status, coverage and own clocks; it never changes admission or ordering and is not a predicted return."
+          },
+          "counted_a_count": {
+            "type": "integer",
+            "description": "Backed-side A-grade wallets holding at least $25 net value at snapshot time."
+          },
+          "counted_s_count": {
+            "type": "integer",
+            "description": "Backed-side S-grade wallets holding at least $25 net value at snapshot time."
+          },
+          "implied_price_share": {
+            "type": ["number", "null"],
+            "description": "Normalized implied probability (0..1) of the backed outcome at snapshot time, computed from the Yes/No midpoint pair."
+          },
+          "opposing_sa_count": {
+            "type": "integer",
+            "description": "Opposing-outcome S and A wallets holding at least $25 net value at snapshot time."
+          },
+          "price_divergence": {
+            "type": ["number", "null"],
+            "description": "S and A money share minus implied_price_share on the backed outcome (>= 0.05 on ranked signals)."
           }
         },
         "description": "Backed-side analytics, token identity, frozen ranked_at and aggregate category evidence from the ranked snapshot, plus a separately dated current quote. Scores rank attention; they are not probabilities or order instructions."
@@ -65364,7 +65171,12 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["split_holder_pile", "no_graded_holders", "below_grade_floor"],
+                "required": [
+                  "split_holder_pile",
+                  "no_graded_holders",
+                  "below_grade_floor",
+                  "below_price_edge"
+                ],
                 "properties": {
                   "below_grade_floor": {
                     "type": "integer",
@@ -65380,6 +65192,11 @@
                     "type": "integer",
                     "minimum": 0,
                     "description": "Graded money on the two sides is too evenly split to back a side."
+                  },
+                  "below_price_edge": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "S or A wallets hold a side, but its money share does not sit far enough above the market price (or lost per-game conflict reconciliation)."
                   }
                 }
               },
@@ -65387,7 +65204,7 @@
                 "type": "null"
               }
             ],
-            "description": "Markets the window and selection evaluated without a row, by reason. Every one drew a large trade from an S, A or B wallet in the last 24 hours, as every row did, so total plus the three counts is every market evaluated, and total 0 with all three 0 means no market in the window drew such a trade. Null on a snapshot cached before the counts existed."
+            "description": "Markets the window and selection evaluated without a row, by reason. Candidates enter from 24-hour S/A/B large trades or multi-wallet S/A positioning, so total plus the four counts covers the evaluated candidates (with board rows deduplicated to one per event_slug). Null on a snapshot cached before the counts existed."
           }
         },
         "description": "The full Max-only Edge Hunter board. Defaults cover all sports and esports with B grade floor, 48-hour horizon and at most 30 rows; common selections, legacy category, min_grade and limit narrow that projection. No pagination or ETag. Rows add frozen market_context discovery metadata."
@@ -65429,7 +65246,12 @@
           "backing_score",
           "side_share",
           "market_context",
-          "protocol_version"
+          "protocol_version",
+          "price_divergence",
+          "implied_price_share",
+          "counted_s_count",
+          "counted_a_count",
+          "opposing_sa_count"
         ],
         "properties": {
           "side": {
@@ -65598,6 +65420,26 @@
             "type": "string",
             "enum": ["v1", "v2"],
             "description": "The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2."
+          },
+          "counted_a_count": {
+            "type": "integer",
+            "description": "Backed-side A-grade wallets holding at least $25 net value at snapshot time."
+          },
+          "counted_s_count": {
+            "type": "integer",
+            "description": "Backed-side S-grade wallets holding at least $25 net value at snapshot time."
+          },
+          "implied_price_share": {
+            "type": ["number", "null"],
+            "description": "Normalized implied probability (0..1) of the backed outcome at snapshot time, computed from the Yes/No midpoint pair."
+          },
+          "opposing_sa_count": {
+            "type": "integer",
+            "description": "Opposing-outcome S and A wallets holding at least $25 net value at snapshot time."
+          },
+          "price_divergence": {
+            "type": ["number", "null"],
+            "description": "S and A money share minus implied_price_share on the backed outcome (>= 0.05 on ranked signals)."
           }
         }
       },
@@ -66399,7 +66241,6 @@
             "maxItems": 1000,
             "description": "With place_exits_since only: the selection's place stays that ended before kickoff at or after place_exits_since, newest left_at first, each with why it ended. Unlike departures, an exit stays readable after the game starts. A stay that ended at kickoff, or because no reader asked for its sport or market type, is not listed, and a withheld card (split_holder_pile) keeps its place, so it shows in departures only. Filtered by category, kind, sports, market_types, condition_ids and event_slugs as data is. Read when each request is served, not from the snapshot, so two pages of one snapshot can differ; part of the ETag. An exit can first appear one snapshot after the one that ended it, so pass the snapshot_as_of of your previous read. Omitted without place_exits_since. With it, a missing field means the exits could not be read in time: ask again; it never means no exits, which is an empty array."
           }
-
         },
         "description": "Full Edge Hunter observations list envelope. Required degradation_reasons explains the source-generation verdict; required coverage distinguishes source input, intentional capacity exclusions, source emissions, incomplete holder scans, selection and the returned page. The view literal distinguishes advanced collections, including empty pages."
       },
