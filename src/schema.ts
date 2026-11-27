@@ -2308,9 +2308,9 @@ export type GameVolume = {
   unit?: "taker_shares";
   /** game_lines: the game volume Polymarket's game page states, summed over the game's own lines. event_total: the whole event's volume, stated when no game volume was readable. The two can differ in either direction. Omitted when the basis is unknown. */
   basis?: "game_lines" | "event_total";
-  /** The Polymarket API the figure was read from: polymarket_data (the Data API's live volume) or gamma (the Gamma API). */
+  /** The Polymarket API behind the figure. polymarket_data: the Data API's live volume. gamma: the Gamma API. With basis game_lines, a gamma figure is the sum over Gamma's game card, where each market counts the higher of Gamma's figure and the highest volume we recorded for that market from an earlier read of either Polymarket API, because cumulative volume never falls; so the total can sit above Gamma's own sum. With basis event_total, it is Gamma's event volume. A finished game's volume from our stored record is labelled gamma too. */
   source: "polymarket_data" | "gamma";
-  /** When 0xinsider read the figure from the provider, never a provider-authored timestamp. Omitted when no read time is held for it. */
+  /** When 0xinsider read the figure from the provider, never a provider-authored timestamp. For a gamma figure, the time of the Gamma read that composed the total; a market counted at a volume we recorded earlier was read before that time. Omitted when no read time is held for it. */
   observed_at?: string;
   /** How long after observed_at 0xinsider treats the figure as current: 60 or 300 by source and basis, or 3600 for an older figure kept because a later read of the same total was lower or missing (a cumulative volume never falls). */
   fresh_for_seconds: number;
