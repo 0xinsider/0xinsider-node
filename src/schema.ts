@@ -1844,7 +1844,7 @@ export type Game = {
   sport?: string;
   /** The league tag, for example nfl or epl. Omitted for a sport served as one whole bucket with no league scope. */
   league?: string;
-  /** The provider's event title. Omitted when the provider sent none. */
+  /** The provider's event title, served while the board carries the game. Omitted when the provider sent none, and on a game served from its stored record (freshness.source stored), which keeps no event title; competitors name that game. */
   title?: string;
   /** Kickoff in UTC, as the provider supplied it. Omitted when the provider published none; coverage.schedule then reads unavailable. */
   scheduled_at?: string;

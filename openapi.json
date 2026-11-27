@@ -50677,7 +50677,7 @@
           },
           "title": {
             "type": "string",
-            "description": "The provider's event title. Omitted when the provider sent none."
+            "description": "The provider's event title, served while the board carries the game. Omitted when the provider sent none, and on a game served from its stored record (freshness.source stored), which keeps no event title; competitors name that game."
           },
           "scheduled_at": {
             "type": "string",
