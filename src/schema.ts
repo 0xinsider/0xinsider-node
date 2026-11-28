@@ -1459,7 +1459,7 @@ export type ExploreMarket = {
     whale_signal: number | null;
     liquidity_signal: number | null;
     recency_signal: number | null;
-    /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
+    /** Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). Magnitude abs(smart_score) when smart_label names a supported YES or NO price-relative lean, 0 when smart_score is present with no supported lean, and null when smart_score is null (#36883). */
     sharp_money_signal: number | null;
     /**
      * Deprecated spelling of sharp_money_signal; emitted beside it with the same value. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money_signal.
@@ -2137,6 +2137,8 @@ export type GameSharpMoney = {
       b: number;
       s: number;
     };
+    /** The most one S or A wallet holds of usd, on the same basis, never above usd (#36883). Published while lifecycle is live and usd > 0; null when usd is 0, when lifecycle is in_play, ended, settled or indeterminate, or when no S or A wallet backs the outcome. */
+    top_wallet_usd: number | null;
   })[];
   status: "computed" | "not_computed" | "unavailable";
   total_usd: number | null;
@@ -2158,7 +2160,7 @@ export type GameSharpMoney = {
     verdict: GameSharpMoneyVerdict;
     money_grades: ("S" | "A" | "B" | "C" | "D" | "F")[];
   } | null;
-  /** What S and A grade wallets bought on a game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available. */
+  /** Net in-play buys by S and A grade wallets on a game's moneyline since its start (#36857), by side, in dollars, while lifecycle is in_play. Each wallet's in-play sells offset its in-play buys on the same outcome (floored at zero, valued at that wallet's average in-play buy price), counting wallets with at least $25 net bought. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts net buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict requires payout-share agreement (leans requires the dollar leader to also lead the runner-up in net shares bought by at least 25 percentage points; otherwise split) and makes no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no qualifying net buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available. */
   since_start: {
     as_of: string;
     bought_usd: number;
@@ -2175,6 +2177,8 @@ export type GameSharpMoney = {
     trader_count: number;
     verdict: GameSharpMoneyVerdict;
   } | null;
+  /** Why verdict.kind is no_clear_lean (#36857, #36883). divided: S and A wallets disagree, either a side other than the money leader holds at least $500 from at least 2 more S and A wallets than the leader, or one wallet holds more than half of a side with at least $500 while the other sides hold at least $500 from at least 2 S and A wallets. aligned: no such split, so the money sits about where the price does. null on every other verdict and when status is not computed. */
+  no_lean_reason: "aligned" | "divided" | null;
 };
 
 export type GameSharpMoneyVerdict = {
@@ -2867,7 +2871,7 @@ export type MarketFlow = {
     /** The Polymarket protocol the market trades on, Gamma's market version: v1 (CTF, ConditionalTokens) or v2 (Protocol V2). Read from the condition id, the same value GET /api/v1/markets/settled serves. On a v2 market every token_id this object names is a V2 position id: sign its orders for ExchangeV3 and read its balance as CONDITIONAL-V2. */
     protocol_version: "v1" | "v2";
   };
-  /** Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias. */
+  /** Outcome-aware flow from S and A graded large trades in the window (#36564, #36883). BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes across S and A large trades. Top positions list up to five S and A open net positions worth at least $25 at the stored mark. Direction uses rounded net: positive is YES, negative is NO, and zero is NEUTRAL with a null token_id. Canonical; smart_money is a deprecated byte-identical alias. */
   sharp_money: MarketFlowSharpMoney;
   /**
    * Deprecated alias of sharp_money; byte-identical. Sunset 2027-02-01 (#29352): removed from V1 on that date; read sharp_money.
@@ -2880,8 +2884,8 @@ export type MarketFlow = {
 /** One market's outcome-aware large-trade flow in the window and its top graded positions: the shape of MarketFlow's sharp_money and of its deprecated alias smart_money. */
 export type MarketFlowSharpMoney = {
   net_flow_usd: number;
-  direction: "YES" | "NO";
-  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets). */
+  direction: "YES" | "NO" | "NEUTRAL";
+  /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when direction is NEUTRAL or when unavailable (e.g. unsynced markets). */
   token_id: string | null;
   /** Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). */
   large_trade_count: number;
@@ -2900,6 +2904,7 @@ export type MarketFlowSharpMoney = {
     side: "YES" | "NO";
     /** The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets). */
     token_id: string | null;
+    /** The wallet's net position on side (YES shares minus NO shares, or the reverse) valued at the stored mark: the YES price for YES, one minus it for NO. At least 25. Read at the wallet's last sync, so oldest_snapshot_as_of dates the roster (#36883). */
     size_usd: number;
   })[];
   /** Age of the oldest stored position snapshot behind top_positions: the minimum wallet sync clock over the positions this body publishes. The roster is a stored read rather than a live one, and graded wallets sit on different sync tiers, so this names how current the whole roster is; the response is no fresher than this timestamp. Null when the roster is empty or no published position carries a sync clock. It does not date net_flow_usd, the volumes or the trade counts, which come from large-trade event times. */
@@ -8330,7 +8335,7 @@ export interface OperationQuery {
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
-    /** Minimum latest trader grade included in the flow. Default B means S/A/B only; unranked traders are excluded. */
+    /** Minimum latest trader grade included in the flow. Default A means S and A only (#36564, #36883); pass B for S/A/B; unranked traders are excluded. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Optional post-aggregate flow direction filter. */
     direction?: "YES" | "NO";
@@ -8350,7 +8355,7 @@ export interface OperationQuery {
     category?: string;
     /** Filter by source platform. all is a request-side no-op. */
     platform?: "polymarket" | "all";
-    /** Minimum latest trader grade included in the flow. Default B means S/A/B only; unranked traders are excluded. */
+    /** Minimum latest trader grade included in the flow. Default A means S and A only (#36564, #36883); pass B for S/A/B; unranked traders are excluded. */
     min_grade?: "S" | "A" | "B" | "C" | "D" | "F";
     /** Optional post-aggregate flow direction filter. */
     direction?: "YES" | "NO";

@@ -18253,7 +18253,7 @@
       "get": {
         "operationId": "listSmartMoneyFlows",
         "summary": "List ranked sharp-money flows (deprecated alias)",
-        "description": "Ranks sports and esports markets (#27306) by absolute net S/A/B-grade whale flow over a requested timeframe. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again. Deprecated alias of GET /api/v1/markets/sharp-money-flows, kept live until its sunset on 2027-02-01 (#29351); every response carries `Deprecation: @1783276950` (RFC 9745, 2026-07-05T18:42:30Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
+        "description": "Ranks sports and esports markets (#27306) by absolute net S and A grade large-trade flow over a requested timeframe (#36564, #36883), excluding $0.00 ties and stripping equal three-leg 1X2 complete-set NO buys. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again. Deprecated alias of GET /api/v1/markets/sharp-money-flows, kept live until its sunset on 2027-02-01 (#29351); every response carries `Deprecation: @1783276950` (RFC 9745, 2026-07-05T18:42:30Z) and a `Link` to the successor (`rel=\"successor-version\"`) and to the versioning policy (`rel=\"deprecation\"`). `Sunset: Mon, 01 Feb 2027 00:00:00 GMT` (RFC 8594) names that date, after which the path answers 410 Gone with error.code endpoint_retired.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -18316,11 +18316,11 @@
           {
             "name": "min_grade",
             "in": "query",
-            "description": "Minimum latest trader grade included in the flow. Default B means S/A/B only; unranked traders are excluded.",
+            "description": "Minimum latest trader grade included in the flow. Default A means S and A only (#36564, #36883); pass B for S/A/B; unranked traders are excluded.",
             "schema": {
               "type": "string",
               "enum": ["S", "A", "B", "C", "D", "F"],
-              "default": "B"
+              "default": "A"
             }
           },
           {
@@ -18709,7 +18709,7 @@
       "get": {
         "operationId": "listSharpMoneyFlows",
         "summary": "List ranked sharp-money flows",
-        "description": "Canonical path for ranked sharp-money flows; /api/v1/markets/smart-money-flows remains live as a deprecated byte-identical alias of it. Ranks sports and esports markets (#27306) by absolute net S/A/B-grade whale flow over a requested timeframe. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again.",
+        "description": "Canonical path for ranked sharp-money flows; /api/v1/markets/smart-money-flows remains live as a deprecated byte-identical alias of it. Ranks sports and esports markets (#27306) by absolute net S and A grade large-trade flow over a requested timeframe (#36564, #36883), excluding $0.00 ties and stripping equal three-leg 1X2 complete-set NO buys. Use this discovery endpoint to answer where sharp money is flowing before drilling into a specific market with /api/v1/market/{condition_id}/flow. Pagination is anchored by an opaque cursor carrying the first-page as_of timestamp, normalized effective filters, ranking revision and aggregate collection revision; a changed filter or collection returns `cursor_expired` so callers request the first page again.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -18772,11 +18772,11 @@
           {
             "name": "min_grade",
             "in": "query",
-            "description": "Minimum latest trader grade included in the flow. Default B means S/A/B only; unranked traders are excluded.",
+            "description": "Minimum latest trader grade included in the flow. Default A means S and A only (#36564, #36883); pass B for S/A/B; unranked traders are excluded.",
             "schema": {
               "type": "string",
               "enum": ["S", "A", "B", "C", "D", "F"],
-              "default": "B"
+              "default": "A"
             }
           },
           {
@@ -21071,7 +21071,7 @@
       "get": {
         "operationId": "getMarketFlow",
         "summary": "Get a market's flow and top positions",
-        "description": "Canonical since #16312; GET /api/v1/market/{condition_id}/intel is its deprecated alias and serves the same body under object market_intel. One market's flow and top positions: the signed flow of every tracked large trade in the window (net_flow_usd and its YES or NO direction), the large-trade count, gross buy and sell volumes, and the top five graded trader positions.",
+        "description": "Canonical since #16312; GET /api/v1/market/{condition_id}/intel is its deprecated alias and serves the same body under object market_intel. One market's S and A graded flow and top positions (#36883): the signed flow of S and A large trades in the window (net_flow_usd and its YES, NO or NEUTRAL direction), the large-trade count, gross buy and sell volumes, and up to five S and A open net positions worth at least $25 at the stored mark.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -21151,8 +21151,8 @@
                         },
                         "sharp_money": {
                           "net_flow_usd": 0,
-                          "direction": "YES",
-                          "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "direction": "NEUTRAL",
+                          "token_id": null,
                           "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
@@ -21162,8 +21162,8 @@
                         },
                         "smart_money": {
                           "net_flow_usd": 0,
-                          "direction": "YES",
-                          "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "direction": "NEUTRAL",
+                          "token_id": null,
                           "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
@@ -21477,7 +21477,7 @@
         "operationId": "getMarketIntel",
         "summary": "Get market intelligence",
         "deprecated": true,
-        "description": "Deprecated since #16312: use GET /api/v1/market/{condition_id}/flow, which serves the same body under object market_flow. This path stays live until its sunset on 2027-02-01 (#29351), keeps object market_intel, and answers with Deprecation, Sunset and successor Link headers; from that date it answers 410 Gone with error.code endpoint_retired. One market's flow and top positions: the signed flow of every tracked large trade in the window (net_flow_usd and its YES or NO direction), the large-trade count, gross buy and sell volumes, and the top five graded trader positions.",
+        "description": "Deprecated since #16312: use GET /api/v1/market/{condition_id}/flow, which serves the same body under object market_flow. This path stays live until its sunset on 2027-02-01 (#29351), keeps object market_intel, and answers with Deprecation, Sunset and successor Link headers; from that date it answers 410 Gone with error.code endpoint_retired. One market's S and A graded flow and top positions: the signed flow of S and A grade large trades in the window (net_flow_usd and its YES, NO, or NEUTRAL direction), the qualifying large-trade count, gross buy and sell volumes, and the top five S and A open net positions of $25 or more.",
         "tags": ["Markets"],
         "parameters": [
           {
@@ -21557,8 +21557,8 @@
                         },
                         "sharp_money": {
                           "net_flow_usd": 0,
-                          "direction": "YES",
-                          "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "direction": "NEUTRAL",
+                          "token_id": null,
                           "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
@@ -21568,8 +21568,8 @@
                         },
                         "smart_money": {
                           "net_flow_usd": 0,
-                          "direction": "YES",
-                          "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                          "direction": "NEUTRAL",
+                          "token_id": null,
                           "large_trade_count": 0,
                           "whale_trade_count": 0,
                           "buy_volume_usd": 0,
@@ -22018,8 +22018,8 @@
                             },
                             "sharp_money": {
                               "net_flow_usd": 0,
-                              "direction": "YES",
-                              "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "direction": "NEUTRAL",
+                              "token_id": null,
                               "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
@@ -22029,8 +22029,8 @@
                             },
                             "smart_money": {
                               "net_flow_usd": 0,
-                              "direction": "YES",
-                              "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "direction": "NEUTRAL",
+                              "token_id": null,
                               "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
@@ -22931,8 +22931,8 @@
                             },
                             "sharp_money": {
                               "net_flow_usd": 0,
-                              "direction": "YES",
-                              "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "direction": "NEUTRAL",
+                              "token_id": null,
                               "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
@@ -22942,8 +22942,8 @@
                             },
                             "smart_money": {
                               "net_flow_usd": 0,
-                              "direction": "YES",
-                              "token_id": "41257670817876317355997233596113195194194608207987371129645019730826567930842",
+                              "direction": "NEUTRAL",
+                              "token_id": null,
                               "large_trade_count": 0,
                               "whale_trade_count": 0,
                               "buy_volume_usd": 0,
@@ -29219,6 +29219,7 @@
                       "label": "Celtics",
                       "pct": 68
                     },
+                    "no_lean_reason": null,
                     "allocation": "exact",
                     "total_usd": 184250.42,
                     "unallocated_usd": 0.0,
@@ -29229,6 +29230,7 @@
                         "side": "home",
                         "label": "Magic",
                         "usd": 58960.13,
+                        "top_wallet_usd": 24100.0,
                         "pct": 32,
                         "is_leader": false,
                         "wallets": {
@@ -29241,6 +29243,7 @@
                         "side": "away",
                         "label": "Celtics",
                         "usd": 125290.29,
+                        "top_wallet_usd": 41850.12,
                         "pct": 68,
                         "is_leader": true,
                         "wallets": {
@@ -46586,7 +46589,7 @@
     "market_price_moved": {
       "post": {
         "summary": "market_price_moved",
-        "description": "Fires when a sports or esports market's outcome-0 midpoint moves at least your price_move_filters.min_move_cents over price_move_filters.window_seconds (60, 120, 300 or 900), measured from the Polymarket CLOB stream on a book with orders on both sides. At most one delivery per market per window: a later event inside the same window fires only for a larger move in the same direction. Carries the spread, the USD resting within 2 cents of the midpoint, the game's live state, and the large trades over the same window: all of them counted, and the ranked-wallet (grade B or better) flow among them; a missing value is null with a reason. A final game never fires. Pro and Max only.",
+        "description": "Fires when a sports or esports market's outcome-0 midpoint moves at least your price_move_filters.min_move_cents over price_move_filters.window_seconds (60, 120, 300 or 900), measured from the Polymarket CLOB stream on a book with orders on both sides. At most one delivery per market per window: a later event inside the same window fires only for a larger move in the same direction. Carries the spread, the USD resting within 2 cents of the midpoint, the game's live state, and the large trades over the same window: all of them counted, and the ranked-wallet (grade A or better) flow among them; a missing value is null with a reason. A final game never fires. Pro and Max only.",
         "tags": ["Webhooks"],
         "parameters": [
           {
@@ -46679,7 +46682,7 @@
                         "net_flow_usd": 0.0,
                         "ranked_large_trades": 0,
                         "large_trades_in_window": 1,
-                        "grade_floor": "B"
+                        "grade_floor": "A"
                       },
                       "concurrent_sharp_flow_unavailable_reason": null,
                       "gap_before": false,
@@ -50990,7 +50993,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["side", "label", "usd", "pct", "is_leader", "wallets"],
+              "required": ["side", "label", "usd", "pct", "is_leader", "wallets", "top_wallet_usd"],
               "properties": {
                 "is_leader": {
                   "type": "boolean"
@@ -51023,6 +51026,10 @@
                       "type": "integer"
                     }
                   }
+                },
+                "top_wallet_usd": {
+                  "type": ["number", "null"],
+                  "description": "The most one S or A wallet holds of usd, on the same basis, never above usd (#36883). Published while lifecycle is live and usd > 0; null when usd is 0, when lifecycle is in_play, ended, settled or indeterminate, or when no S or A wallet backs the outcome."
                 }
               }
             }
@@ -51124,7 +51131,7 @@
             ]
           },
           "since_start": {
-            "description": "What S and A grade wallets bought on a game's moneyline since its start, by side, in dollars, while lifecycle is in_play. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict is their share alone, no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available.",
+            "description": "Net in-play buys by S and A grade wallets on a game's moneyline since its start (#36857), by side, in dollars, while lifecycle is in_play. Each wallet's in-play sells offset its in-play buys on the same outcome (floored at zero, valued at that wallet's average in-play buy price), counting wallets with at least $25 net bought. since is the earlier of scheduled_at and the first live score, so a scheduled_at later than the real start does not start the window late. On a 1X2 it has three outcomes and counts net buys of each outcome's YES shares only: a NO buy is money against one outcome, so it is not counted. The verdict requires payout-share agreement (leans requires the dollar leader to also lead the runner-up in net shares bought by at least 25 percentage points; otherwise split) and makes no price claim: in play, buys follow the score, so read avg_buy_price. as_of is when the trades were read. A read that found no qualifying net buy since the start carries bought_usd 0, verdict no_sharp_money and every pct 0. null claims nothing: outside in_play, or with no reading available.",
             "anyOf": [
               {
                 "type": "object",
@@ -51207,6 +51214,18 @@
                 "type": "null"
               }
             ]
+          },
+          "no_lean_reason": {
+            "description": "Why verdict.kind is no_clear_lean (#36857, #36883). divided: S and A wallets disagree, either a side other than the money leader holds at least $500 from at least 2 more S and A wallets than the leader, or one wallet holds more than half of a side with at least $500 while the other sides hold at least $500 from at least 2 S and A wallets. aligned: no such split, so the money sits about where the price does. null on every other verdict and when status is not computed.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["aligned", "divided"]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -51224,7 +51243,8 @@
           "computed_at",
           "money_as_of",
           "at_kickoff",
-          "since_start"
+          "since_start",
+          "no_lean_reason"
         ]
       },
       "GameSharpMoneyVerdict": {
@@ -58238,7 +58258,7 @@
                 "type": ["number", "null"]
               },
               "sharp_money_signal": {
-                "description": "Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
+                "description": "Canonical key since #16308; smart_money_signal is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352). Magnitude abs(smart_score) when smart_label names a supported YES or NO price-relative lean, 0 when smart_score is present with no supported lean, and null when smart_score is null (#36883).",
                 "type": ["number", "null"]
               },
               "smart_money_signal": {
@@ -59017,7 +59037,7 @@
           },
           "sharp_money": {
             "$ref": "#/components/schemas/MarketFlowSharpMoney",
-            "description": "Outcome-aware flow from all tracked whale trades in the window, without a grade filter. BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes. Top positions are separately graded. Direction uses unrounded net: negative is NO, otherwise YES; the zero tie-break is not conviction. Canonical; smart_money is a deprecated byte-identical alias."
+            "description": "Outcome-aware flow from S and A graded large trades in the window (#36564, #36883). BUY YES and SELL NO add net exposure; BUY NO and SELL YES subtract it. Gross buy/sell volumes count both outcomes across S and A large trades. Top positions list up to five S and A open net positions worth at least $25 at the stored mark. Direction uses rounded net: positive is YES, negative is NO, and zero is NEUTRAL with a null token_id. Canonical; smart_money is a deprecated byte-identical alias."
           },
           "smart_money": {
             "$ref": "#/components/schemas/MarketFlowSharpMoney",
@@ -59049,11 +59069,11 @@
           },
           "direction": {
             "type": "string",
-            "enum": ["YES", "NO"]
+            "enum": ["YES", "NO", "NEUTRAL"]
           },
           "token_id": {
             "type": ["string", "null"],
-            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when unavailable (e.g. unsynced markets)."
+            "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for the net-flow direction outcome; null when direction is NEUTRAL or when unavailable (e.g. unsynced markets)."
           },
           "large_trade_count": {
             "description": "Canonical key since #16304 (Polymarket's noun is large trade); whale_trade_count is its deprecated spelling, emitted beside it with the same value until its sunset on 2027-02-01 (#29352).",
@@ -59098,7 +59118,8 @@
                   "description": "The Polymarket CLOB token id (ERC1155 asset id, decimal string) for this outcome; null when unavailable (e.g. unsynced markets)."
                 },
                 "size_usd": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "The wallet's net position on side (YES shares minus NO shares, or the reverse) valued at the stored mark: the YES price for YES, one minus it for NO. At least 25. Read at the wallet's last sync, so oldest_snapshot_as_of dates the roster (#36883)."
                 }
               }
             }
