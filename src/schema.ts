@@ -1910,7 +1910,7 @@ export type GameFreshness = {
   source_age_seconds?: number;
   /** Whether a reader should be told these rows are behind. This applies the half's own servable-age bar (15 s live, 120 s upcoming), which is not the same as source_freshness: a live board whose scores are seconds old reads stale for about half of every publish cycle and is not delayed. */
   delayed: boolean;
-  /** When this game's score was last observed. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame. */
+  /** When this game's score was last observed. For a score read from Polymarket's Gamma API it is at or before the time Gamma generated that response, and never after 0xinsider requested it. Gamma's cache currently serves a response up to 300 seconds old, so on a game scored only by Gamma this value can be up to 300 seconds old while the feed is healthy. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame. */
   scores_observed_at?: string;
   /** The provider's own frame clock. Omitted when the frame carries none. */
   scores_source_at?: string;
