@@ -240,6 +240,13 @@ SDK 0.126.8 documents fewer `listGameMarkets` reads with `expand: ["sharp_money"
 
 SDK 0.129.0 types `accepting_orders` on each `listGameMarkets` row's `trading_terms` with `expand: ["trading_terms"]` (#36723): Gamma's `acceptingOrders`, `true` when the market's order book takes new limit and market orders, `false` when Polymarket has paused them on a market that is not closed, `null` when the record does not carry it. It also documents that with `expand: ["quotes"]` an outcome that reads `book_unavailable_reason: "stream_capacity"` now usually carries its book a few seconds later, with `book_source: "clob_rest"`.
 
+SDK 0.131.0 counts S and A wallets only in market flow (#36883). `getMarketFlow` and `batchGetMarketFlow` sum S and A large trades, list up to five S and A net positions worth at least $25 at the stored mark, and widen `sharp_money.direction` to `"YES" | "NO" | "NEUTRAL"`: `NEUTRAL`, with `token_id: null`, when the rounded net flow is zero, where it read `"YES"`. A `switch` that handled `YES` and `NO` exhaustively no longer compiles until it handles `NEUTRAL`. `listSharpMoneyFlows` defaults `min_grade` to `"A"` (pass `"B"` for S, A and B), leaves out markets whose net flow is $0.00, and strips a wallet's equal NO buys on all three legs of a 1X2 moneyline. `getGameSharpMoney` adds `no_lean_reason` (`"aligned"` or `"divided"` on a `no_clear_lean` verdict) and `outcomes[].top_wallet_usd` before the start. `exploreMarkets` scores a NO lean in `score_components.sharp_money_signal` as strongly as a YES lean.
+
+```ts
+const flow = await client.getMarketFlow("0x...");
+if (flow.data.sharp_money.direction === "NEUTRAL") flow.data.sharp_money.token_id; // null
+```
+
 SDK 0.41.0 adds the closing line (#32517). `getMarketClose(conditionId)` reads a market's stored close: each outcome's price in the last provider minute bucket that ended at or before kickoff, captured once after settlement. Its `status` is `measured`, `pending` or `unavailable`, with `unavailable_reason`; a missing close is never 0. Every large trade (`listLargeTrades`, `listLargeTradeHistory`, `getLargeTrade`, and the expanded trades of the `getEventReplaySince` replay) now carries `clv`: cents per share against that close, positive when the trade beat it, measured on pre-kickoff trades only (`status` `measured`, `in_play`, `pending` or `unavailable`). `getTraderClv(address, { from, to, min_size, category })` summarizes one wallet's large trades in a window: the mean, stake-weighted and per-market mean CLV with a 95% interval, the share that beat the close, and the trades excluded by status. `batchGetMarketClose({ condition_ids })` reads up to 25 markets' closes in one request (#33025). New types: `MarketClose`, `TraderClv`.
 
 ```ts
