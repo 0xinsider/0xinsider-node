@@ -1878,7 +1878,7 @@ export type GameCompetitor = {
   provider_id?: string;
   /** Provider crest or logo URL. Omitted when there is none. */
   logo?: string;
-  /** The provider's score for this side, verbatim. A string because the provider sends one: a set score, a map score and a run total are not all integers. Omitted when no live-score frame carries a score. */
+  /** The provider's score for this side, verbatim. A string because the provider sends one: a set score, a map score and a run total are not all integers. On ITF singles the provider can be API-Tennis, written as Polymarket writes a set score: for a match Polymarket does not score, and when Polymarket's copy of one it scores trails the API-Tennis match bound to the game. Omitted when no live-score frame carries a score. */
   score?: string;
   /** The provider's season record for this side, for example 12-4. Omitted when the provider sent none. */
   record?: string;
@@ -1910,7 +1910,7 @@ export type GameFreshness = {
   source_age_seconds?: number;
   /** Whether a reader should be told these rows are behind. This applies the half's own servable-age bar (15 s live, 120 s upcoming), which is not the same as source_freshness: a live board whose scores are seconds old reads stale for about half of every publish cycle and is not delayed. */
   delayed: boolean;
-  /** When this game's score was last observed. For a score read from Polymarket's Gamma API it is at or before the time Gamma generated that response, and never after 0xinsider requested it. Gamma's cache currently serves a response up to 300 seconds old, so on a game scored only by Gamma this value can be up to 300 seconds old while the feed is healthy. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame. */
+  /** When this game's score was last observed. For a score read from Polymarket's Gamma API it is at or before the time Gamma generated that response, and never after 0xinsider requested it. Gamma's cache currently serves a response up to 300 seconds old, so on a game scored only by Gamma this value can be up to 300 seconds old while the feed is healthy. For an ITF singles score taken from API-Tennis (competitors[].score), it is that API-Tennis read. A write that observed no score, such as recording the end of a game the live-score feed stopped reporting, does not move it; a game ended that way before November 15, 2026 reads the time of that write. Omitted when there is no frame. */
   scores_observed_at?: string;
   /** The provider's own frame clock. Omitted when the frame carries none. */
   scores_source_at?: string;
@@ -5542,7 +5542,7 @@ export type SuspiciousTradeFlaggedData = {
   price: number;
 };
 
-/** Optional current-game tennis facts from API-Tennis, aligned with live_score.scores display order. These facts have their own revision and expiry; Polymarket remains the source of sets, match status, period, and the outer live-score revision, except on ITF singles, which Polymarket does not score: there API-Tennis supplies the whole live_score, bound on both players' names, the tournament and the date. New observations require corroborated identity, current set/games, and live state. Where Polymarket publishes no score (tennis doubles, whose live_score reads one 0-0 set throughout), the group binds on both pairs' names, the tour, the date and API-Tennis's live flag, and carries set_games, the provider's set score for the match. Cached responses and replayed frames may still carry expired facts, so clients must enforce expires_at. */
+/** Optional current-game tennis facts from API-Tennis, aligned with live_score.scores display order. These facts have their own revision and expiry; Polymarket remains the source of sets, match status, period, and the outer live-score revision, except on ITF singles. Where Polymarket does not score the match, API-Tennis supplies the whole live_score, bound on both players' names, the tournament and the date. Where it does, its copy is read through a cache up to 300 seconds old; when the API-Tennis match bound to the game is further along the same sets, the sets and period are API-Tennis's, observed_at is that read, and live_score.scores_advanced says so. New observations require corroborated identity, current set/games, and live state. Where Polymarket publishes no score (tennis doubles, whose live_score reads one 0-0 set throughout), the group binds on both pairs' names, the tour, the date and API-Tennis's live flag, and carries set_games, the provider's set score for the match. Cached responses and replayed frames may still carry expired facts, so clients must enforce expires_at. */
 export type TennisPoints = {
   source: "api_tennis";
   /** API-Tennis match ID. This is not a Polymarket market or event ID. */
