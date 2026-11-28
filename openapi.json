@@ -38569,7 +38569,7 @@
       "get": {
         "operationId": "getResolutionReport",
         "summary": "Get the daily resolution report",
-        "description": "One UTC day's resolved markets: how often the side the profitable wallets held won, beside how often every qualifying wallet's side won, one vote each. `scored_grades` names their grades: S and A from 2026-11-24, S, A and B before; an earlier day keeps the wallets it was published with. `markets` lists each market they held a position in, with the consensus side, its confidence, and the full roster of wallets, their side, cost and realized P&L; `view=totals` drops it. Counts cover the whole day before that list is filtered. A day from 2026-10-21 counts sports and esports markets only; an earlier day counts every resolved Polymarket market, and `market_scope` says which. A past day is served from its retained build: `generated_at` says when it was built and `source_updates_pending` that a newer build has been requested. 503 read_model_warming while the day has no build yet; one has been requested.",
+        "description": "One UTC day's resolved markets: how often the side the profitable wallets held won, beside how often every qualifying wallet's side won, one vote each. `scored_grades` names their grades: S and A from 2026-11-24, S, A and B before; an earlier day keeps the wallets it was published with. From 2026-11-30 a call needs `consensus_min_share` (0.625) of the weight; under it the market is `split`. `markets` lists each market they held a position in, with the consensus side, its confidence, and the full roster of wallets, their side, cost and realized P&L; `view=totals` drops it. Counts cover the whole day before that list is filtered. A day from 2026-10-21 counts sports and esports markets only; an earlier day counts every resolved Polymarket market, and `market_scope` says which. A past day is served from its retained build: `generated_at` says when it was built and `source_updates_pending` that a newer build has been requested. 503 read_model_warming while the day has no build yet; one has been requested.",
         "tags": ["Reports"],
         "parameters": [
           {
@@ -48732,6 +48732,10 @@
               "type": "string",
               "enum": ["S", "A", "B", "C", "D", "F"]
             }
+          },
+          "consensus_min_share": {
+            "description": "The weighted share the leading side needs for a call: 0.625 for a day from 2026-11-30, under which the market counts as split. Absent for an earlier day, which calls any lead.",
+            "type": "number"
           }
         },
         "required": [

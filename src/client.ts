@@ -3836,8 +3836,9 @@ export class OxinsiderApiClient {
    * the profitable wallets' side won on the day's resolved markets: sports and
    * esports only from 2026-10-21, every Polymarket market before, as
    * `market_scope` says. `scored_grades` names the wallets' grades: S and A
-   * from 2026-11-24, S, A and B before. `view: "totals"` drops the per-market
-   * list.
+   * from 2026-11-24, S, A and B before. From 2026-11-30 a call needs
+   * `consensus_min_share` (0.625) of the weight; under it the market is
+   * `split`. `view: "totals"` drops the per-market list.
    */
   getResolutionReport(
     date: OperationQuery["getResolutionReport"]["date"],

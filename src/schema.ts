@@ -5152,6 +5152,8 @@ export type ResolutionReport = {
   with_smart_positions: number | null;
   /** The grades whose positions the day scores, best first: ["S", "A"] for a day from 2026-11-24, ["S", "A", "B"] for an earlier day, which keeps the wallets it was published with. Every count, the accuracy and each market's roster cover these grades only. */
   scored_grades: ("S" | "A" | "B" | "C" | "D" | "F")[];
+  /** The weighted share the leading side needs for a call: 0.625 for a day from 2026-11-30, under which the market counts as split. Absent for an earlier day, which calls any lead. */
+  consensus_min_share?: number;
 };
 
 export type ResponseMeta = {
